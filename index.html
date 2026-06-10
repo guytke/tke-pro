@@ -236,6 +236,7 @@ if('serviceWorker' in navigator){
   <button id="main-tab-tools" onclick="switchMainTab('tools')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">🛠️ כלים</button>
   <button id="main-tab-chat" onclick="switchMainTab('chat')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">🤖 ייעוץ שטח</button>
   <button id="main-tab-parts" onclick="switchMainTab('parts')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">🔩 חלקים</button>
+  <button id="main-tab-orders" onclick="switchMainTab('orders')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">📋 הזמנות</button>
 </div>
 <div id="section-tools" style="display:none">
   <div style="padding:8px 0;color:var(--text2);font-size:13px;font-family:Heebo,sans-serif;margin-bottom:16px">כלי ניהול נתונים</div>
@@ -698,6 +699,125 @@ if('serviceWorker' in navigator){
   </div>
 
   <div id="parts-list"></div>
+</div>
+
+<!-- ORDERS SECTION -->
+<div id="section-orders" style="display:none">
+
+  <!-- Tab toggle: auto / manual -->
+  <div style="display:flex;gap:8px;margin-bottom:16px">
+    <button id="orders-mode-auto" onclick="setOrderMode('auto')"
+      style="flex:1;padding:9px 4px;border-radius:8px;border:1px solid rgba(99,102,241,0.5);background:rgba(99,102,241,0.15);color:#818cf8;font-family:Heebo,sans-serif;font-size:13px;font-weight:600;cursor:pointer">
+      🤖 מסלול אוטומטי
+    </button>
+    <button id="orders-mode-manual" onclick="setOrderMode('manual')"
+      style="flex:1;padding:9px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:13px;font-weight:500;cursor:pointer">
+      ✏️ מסלול ידני
+    </button>
+  </div>
+
+  <!-- AUTO MODE -->
+  <div id="orders-auto" style="display:block">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.6">
+        📸 <strong style="color:var(--text)">שלב 1</strong> — צלם את דף הקריאה מהמסיפון<br>
+        📦 <strong style="color:var(--text)">שלב 2</strong> — צלם את החלקים הדרושים עם כמות<br>
+        🤖 <strong style="color:var(--text)">שלב 3</strong> — ה-AI ימלא את הטופס אוטומטית
+      </div>
+
+      <!-- Image upload: service call -->
+      <div style="margin-bottom:10px">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px">תמונת קריאה (מסיפון)</div>
+        <label style="display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px dashed var(--border);border-radius:10px;padding:12px;cursor:pointer">
+          <span style="font-size:22px">📄</span>
+          <span id="call-img-label" style="font-size:13px;color:var(--text2)">לחץ לבחירת תמונה</span>
+          <input type="file" accept="image/*" capture="environment" id="call-img-input" style="display:none" onchange="handleCallImage(this)">
+        </label>
+      </div>
+
+      <!-- Image upload: parts -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px">תמונת חלקים</div>
+        <label style="display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px dashed var(--border);border-radius:10px;padding:12px;cursor:pointer">
+          <span style="font-size:22px">🔩</span>
+          <span id="parts-img-label" style="font-size:13px;color:var(--text2)">לחץ לבחירת תמונה</span>
+          <input type="file" accept="image/*" capture="environment" id="parts-img-input" style="display:none" onchange="handlePartsImage(this)">
+        </label>
+      </div>
+
+      <button onclick="analyzeOrderImages()"
+        style="width:100%;padding:11px;border-radius:10px;border:none;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#818cf8;font-family:Heebo,sans-serif;font-size:14px;font-weight:600;cursor:pointer">
+        🤖 נתח תמונות עם AI
+      </button>
+
+      <div id="orders-ai-status" style="display:none;margin-top:10px;text-align:center;font-size:12px;color:var(--text2)"></div>
+    </div>
+
+    <!-- AI result fields -->
+    <div id="orders-ai-result" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px">✅ תוצאות זיהוי — ניתן לערוך לפני שליחה</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">מספר קריאה</label>
+          <input id="ai-call-number" type="text" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none" placeholder="מספר קריאה">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">אתר</label>
+          <input id="ai-site" type="text" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none" placeholder="שם האתר">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">שם חלק</label>
+          <input id="ai-part-name" type="text" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none" placeholder="שם החלק">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">מקט</label>
+          <input id="ai-part-num" type="text" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none" placeholder="מספר מקט">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">כמות</label>
+          <input id="ai-qty" type="number" min="1" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none" placeholder="1">
+        </div>
+      </div>
+      <button onclick="sendOrderEmail('auto')"
+        style="margin-top:14px;width:100%;padding:12px;border-radius:10px;border:none;background:var(--orange);color:#fff;font-family:Heebo,sans-serif;font-size:14px;font-weight:700;cursor:pointer">
+        📧 שלח הזמנה במייל
+      </button>
+    </div>
+  </div>
+
+  <!-- MANUAL MODE -->
+  <div id="orders-manual" style="display:none">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:14px">מלא את פרטי ההזמנה</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">מספר קריאה</label>
+          <input id="man-call-number" type="text" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none" placeholder="מספר קריאה">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">אתר</label>
+          <input id="man-site" type="text" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none" placeholder="שם האתר">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">שם חלק</label>
+          <input id="man-part-name" type="text" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none" placeholder="שם החלק">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">מקט</label>
+          <input id="man-part-num" type="text" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none" placeholder="מספר מקט">
+        </div>
+        <div>
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">כמות</label>
+          <input id="man-qty" type="number" min="1" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none" placeholder="1">
+        </div>
+      </div>
+      <button onclick="sendOrderEmail('manual')"
+        style="margin-top:14px;width:100%;padding:12px;border-radius:10px;border:none;background:var(--orange);color:#fff;font-family:Heebo,sans-serif;font-size:14px;font-weight:700;cursor:pointer">
+        📧 שלח הזמנה במייל
+      </button>
+    </div>
+  </div>
+
 </div>
 
 <!-- PARTS ADD/EDIT MODAL -->
@@ -1654,9 +1774,11 @@ function switchMainTab(tab){
   var spt=document.getElementById('section-parts');
   var tpt=document.getElementById('main-tab-parts');
 
+  var so=document.getElementById('section-orders');
+  var to=document.getElementById('main-tab-orders');
   sf.style.display='none'; sp.style.display='none'; sm.style.display='none';
-  if(st)st.style.display='none'; if(sc)sc.style.display='none'; if(spt)spt.style.display='none';
-  [tf,tp,tm,tt,tc,tpt].forEach(function(b){if(b){b.style.background='var(--bg2)';b.style.borderColor='var(--border)';b.style.color='var(--text2)';b.style.fontWeight='500';}});
+  if(st)st.style.display='none'; if(sc)sc.style.display='none'; if(spt)spt.style.display='none'; if(so)so.style.display='none';
+  [tf,tp,tm,tt,tc,tpt,to].forEach(function(b){if(b){b.style.background='var(--bg2)';b.style.borderColor='var(--border)';b.style.color='var(--text2)';b.style.fontWeight='500';}});
 
   var logoText = document.getElementById('logo-text');
   var logoIcon = document.getElementById('logo-icon');
@@ -1697,7 +1819,111 @@ function switchMainTab(tab){
     if(logoIcon) logoIcon.textContent='🔩';
     parts_list = loadParts();
     renderParts();
+  } else if(tab==='orders'){
+    var so=document.getElementById('section-orders');
+    var to=document.getElementById('main-tab-orders');
+    if(so)so.style.display='block';
+    if(to){to.style.background='rgba(99,102,241,0.12)';to.style.borderColor='rgba(99,102,241,0.4)';to.style.color='#818cf8';to.style.fontWeight='600';}
+    if(logoText){ logoText.textContent='הזמנות'; logoText.style.color='#818cf8'; }
+    if(logoIcon) logoIcon.textContent='📋';
   }
+}
+
+// ─── ORDERS ───────────────────────────────────────────
+var _callImgBase64 = null, _partsImgBase64 = null;
+
+function setOrderMode(mode){
+  var auto = document.getElementById('orders-auto');
+  var manual = document.getElementById('orders-manual');
+  var btnAuto = document.getElementById('orders-mode-auto');
+  var btnManual = document.getElementById('orders-mode-manual');
+  if(mode==='auto'){
+    auto.style.display='block'; manual.style.display='none';
+    btnAuto.style.background='rgba(99,102,241,0.15)'; btnAuto.style.borderColor='rgba(99,102,241,0.5)'; btnAuto.style.color='#818cf8'; btnAuto.style.fontWeight='600';
+    btnManual.style.background='var(--bg2)'; btnManual.style.borderColor='var(--border)'; btnManual.style.color='var(--text2)'; btnManual.style.fontWeight='500';
+  } else {
+    auto.style.display='none'; manual.style.display='block';
+    btnManual.style.background='rgba(99,102,241,0.15)'; btnManual.style.borderColor='rgba(99,102,241,0.5)'; btnManual.style.color='#818cf8'; btnManual.style.fontWeight='600';
+    btnAuto.style.background='var(--bg2)'; btnAuto.style.borderColor='var(--border)'; btnAuto.style.color='var(--text2)'; btnAuto.style.fontWeight='500';
+  }
+}
+
+function handleCallImage(input){
+  if(!input.files||!input.files[0]) return;
+  document.getElementById('call-img-label').textContent = input.files[0].name;
+  var reader = new FileReader();
+  reader.onload = function(e){ _callImgBase64 = e.target.result.split(',')[1]; };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function handlePartsImage(input){
+  if(!input.files||!input.files[0]) return;
+  document.getElementById('parts-img-label').textContent = input.files[0].name;
+  var reader = new FileReader();
+  reader.onload = function(e){ _partsImgBase64 = e.target.result.split(',')[1]; };
+  reader.readAsDataURL(input.files[0]);
+}
+
+async function analyzeOrderImages(){
+  var apiKey = localStorage.getItem('tke_api_key') || localStorage.getItem('openai_key') || '';
+  if(!apiKey){ alert('הכנס מפתח API בטאב כלים'); return; }
+  var status = document.getElementById('orders-ai-status');
+  status.style.display='block'; status.textContent='🤖 מנתח תמונות...';
+
+  var messages = [{ role:'user', content:[] }];
+  var prompt = 'מתוך התמונות שסופקו, חלץ את המידע הבא ותחזיר JSON בלבד בפורמט:\n{"call_number":"...","site":"...","part_name":"...","part_number":"...","quantity":"..."}\nאם שדה לא נמצא השאר ריק.';
+  messages[0].content.push({ type:'text', text: prompt });
+  if(_callImgBase64) messages[0].content.push({ type:'image_url', image_url:{ url:'data:image/jpeg;base64,'+_callImgBase64 } });
+  if(_partsImgBase64) messages[0].content.push({ type:'image_url', image_url:{ url:'data:image/jpeg;base64,'+_partsImgBase64 } });
+
+  try {
+    var res = await fetch('https://api.openai.com/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+      body: JSON.stringify({ model:'gpt-4o', messages: messages, max_tokens:300 })
+    });
+    var data = await res.json();
+    if(data.error){ status.textContent='❌ שגיאה: '+data.error.message; return; }
+    var raw = data.choices[0].message.content.replace(/```json|```/g,'').trim();
+    var parsed = JSON.parse(raw);
+    document.getElementById('ai-call-number').value = parsed.call_number||'';
+    document.getElementById('ai-site').value = parsed.site||'';
+    document.getElementById('ai-part-name').value = parsed.part_name||'';
+    document.getElementById('ai-part-num').value = parsed.part_number||'';
+    document.getElementById('ai-qty').value = parsed.quantity||'1';
+    document.getElementById('orders-ai-result').style.display='block';
+    status.textContent='✅ זיהוי הושלם — בדוק ושלח';
+  } catch(e) {
+    status.textContent='❌ שגיאה בניתוח — בדוק מפתח API';
+  }
+}
+
+function sendOrderEmail(mode){
+  var callNum, site, partName, partNum, qty;
+  if(mode==='auto'){
+    callNum = document.getElementById('ai-call-number').value.trim();
+    site    = document.getElementById('ai-site').value.trim();
+    partName= document.getElementById('ai-part-name').value.trim();
+    partNum = document.getElementById('ai-part-num').value.trim();
+    qty     = document.getElementById('ai-qty').value.trim();
+  } else {
+    callNum = document.getElementById('man-call-number').value.trim();
+    site    = document.getElementById('man-site').value.trim();
+    partName= document.getElementById('man-part-name').value.trim();
+    partNum = document.getElementById('man-part-num').value.trim();
+    qty     = document.getElementById('man-qty').value.trim();
+  }
+  var subject = encodeURIComponent('הזמנת חלק — קריאה '+callNum+' — '+site);
+  var body = encodeURIComponent(
+    'שלום,\n\nאנא הזמינו את החלק הבא:\n\n' +
+    'מספר קריאה: ' + callNum + '\n' +
+    'אתר: ' + site + '\n' +
+    'שם חלק: ' + partName + '\n' +
+    'מקט: ' + partNum + '\n' +
+    'כמות: ' + qty + '\n\n' +
+    'תודה'
+  );
+  window.location.href = 'mailto:TKEIL_Warehouse@tkelevator.com?subject='+subject+'&body='+body;
 }
 
 // ─── PARAMETERS ───────────────────────────────────────
