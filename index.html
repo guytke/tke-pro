@@ -1865,26 +1865,26 @@ function handlePartsImage(input){
 }
 
 async function analyzeOrderImages(){
-  var apiKey = localStorage.getItem('tke_api_key') || localStorage.getItem('openai_key') || '';
-  if(!apiKey){ alert('הכנס מפתח API בטאב כלים'); return; }
+  var apiKey = localStorage.getItem('anthropic_api_key') || loadChatApiKey();
+  if(!apiKey){ showToast('⚠️ נא להגדיר מפתח API בטאב כלים'); return; }
   var status = document.getElementById('orders-ai-status');
   status.style.display='block'; status.textContent='🤖 מנתח תמונות...';
 
-  var messages = [{ role:'user', content:[] }];
-  var prompt = 'מתוך התמונות שסופקו, חלץ את המידע הבא ותחזיר JSON בלבד בפורמט:\n{"call_number":"...","site":"...","part_name":"...","part_number":"...","quantity":"..."}\nאם שדה לא נמצא השאר ריק.';
-  messages[0].content.push({ type:'text', text: prompt });
-  if(_callImgBase64) messages[0].content.push({ type:'image_url', image_url:{ url:'data:image/jpeg;base64,'+_callImgBase64 } });
-  if(_partsImgBase64) messages[0].content.push({ type:'image_url', image_url:{ url:'data:image/jpeg;base64,'+_partsImgBase64 } });
+  var content = [];
+  var prompt = 'מתוך התמונות שסופקו, חלץ את המידע הבא ותחזיר JSON בלבד בפורמט:\n{"call_number":"...","site":"...","part_name":"...","part_number":"...","quantity":"..."}\nאם שדה לא נמצא השאר ריק. אל תוסיף שום טקסט מחוץ ל-JSON.';
+  if(_callImgBase64) content.push({ type:'image', source:{ type:'base64', media_type:'image/jpeg', data:_callImgBase64 } });
+  if(_partsImgBase64) content.push({ type:'image', source:{ type:'base64', media_type:'image/jpeg', data:_partsImgBase64 } });
+  content.push({ type:'text', text: prompt });
 
   try {
-    var res = await fetch('https://api.openai.com/v1/chat/completions',{
+    var res = await fetch('https://tke-proxy.guyshtaiger.workers.dev', {
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body: JSON.stringify({ model:'gpt-4o', messages: messages, max_tokens:300 })
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+      body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:400, messages:[{ role:'user', content:content }] })
     });
     var data = await res.json();
-    if(data.error){ status.textContent='❌ שגיאה: '+data.error.message; return; }
-    var raw = data.choices[0].message.content.replace(/```json|```/g,'').trim();
+    if(data.error){ status.textContent='❌ שגיאה: '+(data.error.message||JSON.stringify(data.error)); return; }
+    var raw = (data.content&&data.content[0]) ? data.content[0].text.replace(/```json|```/g,'').trim() : '';
     var parsed = JSON.parse(raw);
     document.getElementById('ai-call-number').value = parsed.call_number||'';
     document.getElementById('ai-site').value = parsed.site||'';
