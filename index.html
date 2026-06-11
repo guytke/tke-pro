@@ -6,8 +6,13 @@
 
 
 
-<meta name="theme-color" content="#0a0a0a">
-<title>עדכן fault-book-41-3 בויולט — הוסף קופסא רביעית סה״כ יחידות</title>
+<meta name="theme-color" content="#ff6b00">
+<title>TKE Pro</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.jpg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TKE Pro">
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&display=swap');
@@ -2846,5 +2851,12 @@ function initChatTab(){
     <img id="page-image-img" src="" style="max-width:100%;border-radius:8px;display:block;margin-top:20px">
   </div>
 </div>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
+</script>
 </body>
 </html>
