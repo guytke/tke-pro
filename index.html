@@ -795,8 +795,12 @@ if('serviceWorker' in navigator){
           <input id="ai-qty" type="number" min="1" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none" placeholder="1">
         </div>
       </div>
+      <div style="margin-top:10px">
+        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">הערה למחסנאי (אופציונלי)</label>
+        <textarea id="ai-note" rows="2" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none;resize:none" placeholder="לדוגמה: דחוף, להביא לאתר ישירות..."></textarea>
+      </div>
       <button onclick="sendOrderEmail('auto')"
-        style="margin-top:14px;width:100%;padding:12px;border-radius:10px;border:none;background:var(--orange);color:#fff;font-family:Heebo,sans-serif;font-size:14px;font-weight:700;cursor:pointer">
+        style="margin-top:10px;width:100%;padding:12px;border-radius:10px;border:none;background:var(--orange);color:#fff;font-family:Heebo,sans-serif;font-size:14px;font-weight:700;cursor:pointer">
         📧 שלח הזמנה במייל
       </button>
     </div>
@@ -828,8 +832,12 @@ if('serviceWorker' in navigator){
           <input id="man-qty" type="number" min="1" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none" placeholder="1">
         </div>
       </div>
+      <div style="margin-top:10px">
+        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">הערה למחסנאי (אופציונלי)</label>
+        <textarea id="man-note" rows="2" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none;resize:none" placeholder="לדוגמה: דחוף, להביא לאתר ישירות..."></textarea>
+      </div>
       <button onclick="sendOrderEmail('manual')"
-        style="margin-top:14px;width:100%;padding:12px;border-radius:10px;border:none;background:var(--orange);color:#fff;font-family:Heebo,sans-serif;font-size:14px;font-weight:700;cursor:pointer">
+        style="margin-top:10px;width:100%;padding:12px;border-radius:10px;border:none;background:var(--orange);color:#fff;font-family:Heebo,sans-serif;font-size:14px;font-weight:700;cursor:pointer">
         📧 שלח הזמנה במייל
       </button>
     </div>
@@ -1920,19 +1928,21 @@ async function analyzeOrderImages(){
 }
 
 function sendOrderEmail(mode){
-  var callNum, site, partName, partNum, qty;
+  var callNum, site, partName, partNum, qty, note;
   if(mode==='auto'){
     callNum = document.getElementById('ai-call-number').value.trim();
     site    = document.getElementById('ai-site').value.trim();
     partName= document.getElementById('ai-part-name').value.trim();
     partNum = document.getElementById('ai-part-num').value.trim();
     qty     = document.getElementById('ai-qty').value.trim();
+    note    = document.getElementById('ai-note').value.trim();
   } else {
     callNum = document.getElementById('man-call-number').value.trim();
     site    = document.getElementById('man-site').value.trim();
     partName= document.getElementById('man-part-name').value.trim();
     partNum = document.getElementById('man-part-num').value.trim();
     qty     = document.getElementById('man-qty').value.trim();
+    note    = document.getElementById('man-note').value.trim();
   }
   var subject = encodeURIComponent('הזמנת חלק — קריאה '+callNum+' — '+site);
   var body = encodeURIComponent(
@@ -1941,8 +1951,9 @@ function sendOrderEmail(mode){
     'אתר: ' + site + '\n' +
     'שם חלק: ' + partName + '\n' +
     'מקט: ' + partNum + '\n' +
-    'כמות: ' + qty + '\n\n' +
-    'תודה'
+    'כמות: ' + qty +
+    (note ? '\n\nהערה למחסנאי: ' + note : '') +
+    '\n\nתודה'
   );
   window.location.href = 'mailto:TKEIL_Warehouse@tkelevator.com?subject='+subject+'&body='+body;
 }
