@@ -728,21 +728,33 @@ if('serviceWorker' in navigator){
       <!-- Image upload: service call -->
       <div style="margin-bottom:10px">
         <div style="font-size:12px;color:var(--text2);margin-bottom:6px">תמונת קריאה (מסיפון)</div>
-        <label style="display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px dashed var(--border);border-radius:10px;padding:12px;cursor:pointer">
-          <span style="font-size:22px">📄</span>
-          <span id="call-img-label" style="font-size:13px;color:var(--text2)">לחץ לבחירת תמונה</span>
-          <input type="file" accept="image/*" capture="environment" id="call-img-input" style="display:none" onchange="handleCallImage(this)">
-        </label>
+        <div id="call-img-label" style="font-size:12px;color:#10b981;margin-bottom:6px;display:none"></div>
+        <div style="display:flex;gap:8px">
+          <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--bg3);border:1px dashed var(--border);border-radius:10px;padding:11px 8px;cursor:pointer;font-size:13px;color:var(--text2);font-family:Heebo,sans-serif">
+            <span>📷</span> צלם עכשיו
+            <input type="file" accept="image/*" capture="environment" id="call-img-camera" style="display:none" onchange="handleCallImage(this,'call')">
+          </label>
+          <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--bg3);border:1px dashed var(--border);border-radius:10px;padding:11px 8px;cursor:pointer;font-size:13px;color:var(--text2);font-family:Heebo,sans-serif">
+            <span>🖼️</span> בחר מגלריה
+            <input type="file" accept="image/*" id="call-img-gallery" style="display:none" onchange="handleCallImage(this,'call')">
+          </label>
+        </div>
       </div>
 
       <!-- Image upload: parts -->
       <div style="margin-bottom:14px">
         <div style="font-size:12px;color:var(--text2);margin-bottom:6px">תמונת חלקים</div>
-        <label style="display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px dashed var(--border);border-radius:10px;padding:12px;cursor:pointer">
-          <span style="font-size:22px">🔩</span>
-          <span id="parts-img-label" style="font-size:13px;color:var(--text2)">לחץ לבחירת תמונה</span>
-          <input type="file" accept="image/*" capture="environment" id="parts-img-input" style="display:none" onchange="handlePartsImage(this)">
-        </label>
+        <div id="parts-img-label" style="font-size:12px;color:#10b981;margin-bottom:6px;display:none"></div>
+        <div style="display:flex;gap:8px">
+          <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--bg3);border:1px dashed var(--border);border-radius:10px;padding:11px 8px;cursor:pointer;font-size:13px;color:var(--text2);font-family:Heebo,sans-serif">
+            <span>📷</span> צלם עכשיו
+            <input type="file" accept="image/*" capture="environment" id="parts-img-camera" style="display:none" onchange="handlePartsImage(this,'parts')">
+          </label>
+          <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--bg3);border:1px dashed var(--border);border-radius:10px;padding:11px 8px;cursor:pointer;font-size:13px;color:var(--text2);font-family:Heebo,sans-serif">
+            <span>🖼️</span> בחר מגלריה
+            <input type="file" accept="image/*" id="parts-img-gallery" style="display:none" onchange="handlePartsImage(this,'parts')">
+          </label>
+        </div>
       </div>
 
       <button onclick="analyzeOrderImages()"
@@ -1850,7 +1862,9 @@ function setOrderMode(mode){
 
 function handleCallImage(input){
   if(!input.files||!input.files[0]) return;
-  document.getElementById('call-img-label').textContent = input.files[0].name;
+  var lbl = document.getElementById('call-img-label');
+  lbl.textContent = '✅ ' + input.files[0].name;
+  lbl.style.display = 'block';
   var reader = new FileReader();
   reader.onload = function(e){ _callImgBase64 = e.target.result.split(',')[1]; };
   reader.readAsDataURL(input.files[0]);
@@ -1858,7 +1872,9 @@ function handleCallImage(input){
 
 function handlePartsImage(input){
   if(!input.files||!input.files[0]) return;
-  document.getElementById('parts-img-label').textContent = input.files[0].name;
+  var lbl = document.getElementById('parts-img-label');
+  lbl.textContent = '✅ ' + input.files[0].name;
+  lbl.style.display = 'block';
   var reader = new FileReader();
   reader.onload = function(e){ _partsImgBase64 = e.target.result.split(',')[1]; };
   reader.readAsDataURL(input.files[0]);
