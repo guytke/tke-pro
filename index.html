@@ -163,6 +163,32 @@ textarea.field-area:focus{border-color:var(--green-border)}
 .fb-view-official{background:var(--orange-dim);border:1px solid var(--orange-border);border-radius:var(--radius-sm);padding:10px 12px;font-size:13px;color:var(--text);line-height:1.65;white-space:pre-wrap;margin-bottom:8px}
 .fb-add-note-hint{font-size:12px;color:var(--text3);font-style:italic;padding:8px 0}
 
+/* ── Catalog Light Mode ─────────────────────────────── */
+.cl{background:#F7F5F2;color:#2A1F33;border-radius:14px;padding:4px 0}
+.cl-card{background:#fff;border:1px solid #E8E2EC;border-radius:14px;padding:10px;cursor:pointer;position:relative;box-shadow:0 1px 4px rgba(91,42,140,0.07)}
+.cl-input{background:#fff;border:1px solid #E8E2EC;border-radius:8px;padding:9px 12px;font-size:14px;color:#2A1F33;font-family:Heebo,sans-serif;outline:none;width:100%}
+.cl-input:focus{border-color:#5B2A8C}
+.cl-search{background:#fff;border:1px solid #E8E2EC;border-radius:12px;padding:10px 14px 10px 40px;font-size:14px;color:#2A1F33;font-family:Heebo,sans-serif;outline:none;width:100%}
+.cl-search::placeholder{color:#B8B0C0}
+.cl-label{font-size:11px;color:#8A7F94;display:block;margin-bottom:4px}
+.cl-section-title{font-size:11px;color:#B8B0C0;margin-bottom:5px}
+.cl-chip-wrap{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px;scrollbar-width:none}
+.cl-picker{background:#fff;border:1px solid #E8E2EC;border-radius:10px;margin-top:8px;max-height:260px;overflow-y:auto;padding:10px}
+.cl-modal-inner{background:#F7F5F2;border-radius:14px;padding:18px;max-width:500px;margin:0 auto;position:relative}
+.cl-img-placeholder{width:100%;height:110px;background:#F0EBF4;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:8px}
+.cl-badge-model{background:#F0EBF4;border:1px solid #E8E2EC;border-radius:4px;padding:2px 5px;font-size:10px;color:#8A7F94}
+.cl-badge-shared{position:absolute;top:7px;right:7px;background:rgba(91,42,140,0.12);color:#5B2A8C;border:1px solid rgba(91,42,140,0.35);border-radius:10px;font-size:10px;padding:2px 7px}
+.cl-btn-primary{background:#5B2A8C;color:#fff;border:none;border-radius:10px;padding:11px;font-family:Heebo,sans-serif;font-size:14px;font-weight:700;cursor:pointer;width:100%}
+.cl-btn-ghost{background:#fff;color:#8A7F94;border:1px solid #E8E2EC;border-radius:8px;padding:8px;font-family:Heebo,sans-serif;font-size:13px;cursor:pointer;width:100%}
+.cl-btn-orange{background:#FF6B1A;color:#fff;border:none;border-radius:8px;padding:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:600;cursor:pointer;flex:1}
+.cl-btn-delete{background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:10px;font-family:Heebo,sans-serif;font-size:13px;cursor:pointer;flex:1}
+.cl-btn-edit{background:#fff;color:#8A7F94;border:1px solid #E8E2EC;border-radius:8px;padding:10px;font-family:Heebo,sans-serif;font-size:13px;cursor:pointer;flex:1}
+.cl-img-label{display:flex;align-items:center;justify-content:center;gap:6px;background:#fff;border:1px dashed #E8E2EC;border-radius:10px;padding:10px;cursor:pointer;font-size:13px;color:#8A7F94;font-family:Heebo,sans-serif;flex:1}
+.cl-model-chip{display:inline-flex;align-items:center;gap:4px;background:#F0EBF4;border:1px solid rgba(91,42,140,0.3);border-radius:12px;padding:3px 10px;font-size:12px;color:#5B2A8C;font-family:Heebo,sans-serif}
+.cl-model-chip button{background:none;border:none;color:#B8B0C0;cursor:pointer;font-size:14px;padding:0 0 0 2px}
+.cl-textarea{background:#fff;border:1px solid #E8E2EC;border-radius:8px;padding:9px 12px;font-size:14px;color:#2A1F33;font-family:Heebo,sans-serif;outline:none;resize:none;width:100%}
+.cl-notes-box{font-size:13px;color:#2A1F33;margin-bottom:10px;background:#fff;border-radius:8px;padding:8px 12px;border:1px solid #E8E2EC}
+
 </style>
 
 
@@ -240,7 +266,7 @@ if('serviceWorker' in navigator){
   <button id="main-tab-mfr" onclick="switchMainTab('mfr')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">📚 ספרי תקלות יצרן</button>
   <button id="main-tab-tools" onclick="switchMainTab('tools')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">🛠️ כלים</button>
   <button id="main-tab-chat" onclick="switchMainTab('chat')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">🤖 ייעוץ שטח</button>
-  <button id="main-tab-parts" onclick="switchMainTab('parts')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">🔩 חלקים</button>
+  <button id="main-tab-parts" onclick="switchMainTab('parts')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">🗂️ מאגר חלקים</button>
   <button id="main-tab-orders" onclick="switchMainTab('orders')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">📋 הזמנות</button>
 </div>
 <div id="section-tools" style="display:none">
@@ -722,28 +748,28 @@ if('serviceWorker' in navigator){
   </div><!-- end inventory subtab -->
 
   <!-- CATALOG sub-tab -->
-  <div id="parts-subtab-catalog" style="display:none">
+  <div id="parts-subtab-catalog" class="cl" style="display:none">
 
     <!-- Search bar + camera -->
     <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
-      <div class="search-wrap" style="flex:1;margin-bottom:0">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="catalog-search" placeholder="חפש שם, מק״ט..." oninput="renderCatalog()">
+      <div style="position:relative;flex:1">
+        <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#B8B0C0;pointer-events:none">🔍</span>
+        <input type="text" id="catalog-search" class="cl-search" style="padding-right:36px" placeholder="חפש שם, מק״ט..." oninput="renderCatalog()">
       </div>
-      <label style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px" title="חיפוש לפי תמונה">
+      <label style="background:#fff;border:1px solid #E8E2EC;border-radius:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;flex-shrink:0" title="חיפוש לפי תמונה">
         📷
         <input type="file" accept="image/*" capture="environment" id="catalog-img-search-input" style="display:none" onchange="catalogImageSearch(this)">
       </label>
-      <button class="btn btn-primary btn-sm" onclick="openCatalogAdd()" style="white-space:nowrap">+ חלק</button>
+      <button onclick="openCatalogAdd()" style="background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-family:Heebo,sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0">+ חלק</button>
     </div>
 
     <!-- Filter chips: By Model -->
-    <div style="font-size:11px;color:var(--text3);margin-bottom:5px">לפי דגם מעלית</div>
-    <div id="catalog-model-chips" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px;scrollbar-width:none"></div>
+    <div class="cl-section-title">לפי דגם מעלית</div>
+    <div id="catalog-model-chips" class="cl-chip-wrap"></div>
 
     <!-- Filter chips: By Category -->
-    <div style="font-size:11px;color:var(--text3);margin-bottom:5px">לפי סוג רכיב</div>
-    <div id="catalog-cat-chips" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:14px;scrollbar-width:none"></div>
+    <div class="cl-section-title">לפי סוג רכיב</div>
+    <div id="catalog-cat-chips" class="cl-chip-wrap" style="margin-bottom:14px"></div>
 
     <!-- Grid -->
     <div id="catalog-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
@@ -753,76 +779,55 @@ if('serviceWorker' in navigator){
 
 <!-- CATALOG ADD MODAL -->
 <div id="catalog-add-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:200;overflow-y:auto;padding:16px">
-  <div style="background:var(--bg2);border-radius:var(--radius);padding:18px;max-width:500px;margin:0 auto;position:relative">
-    <button onclick="closeModal('catalog-add-modal')" style="position:absolute;top:10px;left:10px;background:var(--bg3);border:none;border-radius:50%;width:30px;height:30px;color:var(--text);font-size:18px;cursor:pointer">×</button>
-    <div style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--text)">➕ חלק חדש למאגר</div>
+  <div class="cl-modal-inner">
+    <button onclick="closeModal('catalog-add-modal')" style="position:absolute;top:10px;left:10px;background:#E8E2EC;border:none;border-radius:50%;width:30px;height:30px;color:#2A1F33;font-size:18px;cursor:pointer">×</button>
+    <div style="font-size:15px;font-weight:700;margin-bottom:16px;color:#2A1F33">➕ חלק חדש למאגר</div>
 
     <!-- Image -->
     <div style="margin-bottom:12px">
-      <div style="font-size:12px;color:var(--text2);margin-bottom:6px">תמונה</div>
+      <div class="cl-label">תמונה</div>
       <div id="catalog-img-preview-wrap" style="display:none;margin-bottom:8px">
-        <img id="catalog-img-preview" style="width:100%;max-height:180px;object-fit:contain;border-radius:10px;background:var(--bg3)">
+        <img id="catalog-img-preview" style="width:100%;max-height:180px;object-fit:contain;border-radius:10px;background:#F0EBF4">
       </div>
       <div style="display:flex;gap:8px">
-        <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--bg3);border:1px dashed var(--border);border-radius:10px;padding:10px;cursor:pointer;font-size:13px;color:var(--text2);font-family:Heebo,sans-serif">
-          📷 צלם
-          <input type="file" accept="image/*" capture="environment" id="catalog-img-camera" style="display:none" onchange="handleCatalogImage(this)">
-        </label>
-        <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--bg3);border:1px dashed var(--border);border-radius:10px;padding:10px;cursor:pointer;font-size:13px;color:var(--text2);font-family:Heebo,sans-serif">
-          🖼️ גלריה
-          <input type="file" accept="image/*" id="catalog-img-gallery" style="display:none" onchange="handleCatalogImage(this)">
-        </label>
+        <label class="cl-img-label">📷 צלם<input type="file" accept="image/*" capture="environment" id="catalog-img-camera" style="display:none" onchange="handleCatalogImage(this)"></label>
+        <label class="cl-img-label">🖼️ גלריה<input type="file" accept="image/*" id="catalog-img-gallery" style="display:none" onchange="handleCatalogImage(this)"></label>
       </div>
     </div>
 
-    <!-- Name + SKU -->
+    <!-- Name + SKU + Notes -->
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px">
-      <div>
-        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">שם חלק</label>
-        <input id="catalog-add-name" type="text" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none" placeholder="שם החלק">
-      </div>
-      <div>
-        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">מק״ט (SKU)</label>
-        <input id="catalog-add-sku" type="text" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none" placeholder="מק״ט">
-      </div>
-      <div>
-        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">הערות (אופציונלי)</label>
-        <textarea id="catalog-add-notes" rows="2" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none;resize:none" placeholder="הערות נוספות..."></textarea>
-      </div>
+      <div><label class="cl-label">שם חלק</label><input id="catalog-add-name" type="text" class="cl-input" placeholder="שם החלק"></div>
+      <div><label class="cl-label">מק״ט (SKU)</label><input id="catalog-add-sku" type="text" class="cl-input" placeholder="מק״ט"></div>
+      <div><label class="cl-label">הערות (אופציונלי)</label><textarea id="catalog-add-notes" rows="2" class="cl-textarea" placeholder="הערות נוספות..."></textarea></div>
     </div>
 
     <!-- Category -->
     <div style="margin-bottom:12px">
-      <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:6px">קטגוריית רכיב</label>
+      <label class="cl-label" style="margin-bottom:6px">קטגוריית רכיב</label>
       <div id="catalog-cat-chips-add" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
       <div style="display:flex;gap:6px">
-        <input id="catalog-new-cat" type="text" style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;color:var(--text);font-family:Heebo,sans-serif;outline:none" placeholder="קטגוריה חדשה...">
-        <button onclick="addCustomCatalogCat()" style="background:var(--bg3);border:1px solid var(--orange-border);border-radius:8px;padding:7px 12px;color:var(--orange);font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">+ הוסף</button>
+        <input id="catalog-new-cat" type="text" class="cl-input" style="flex:1;width:auto" placeholder="קטגוריה חדשה...">
+        <button onclick="addCustomCatalogCat()" style="background:#fff;border:1px solid rgba(91,42,140,0.4);border-radius:8px;padding:7px 12px;color:#5B2A8C;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">+ הוסף</button>
       </div>
     </div>
 
-    <!-- Compatible Models multi-select -->
+    <!-- Compatible Models -->
     <div style="margin-bottom:16px">
-      <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:6px">דגמי מעלית תואמים</label>
+      <label class="cl-label" style="margin-bottom:6px">דגמי מעלית תואמים</label>
       <div id="catalog-selected-models" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:24px"></div>
-      <button onclick="toggleModelPicker()" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px;font-size:13px;color:var(--text2);cursor:pointer;font-family:Heebo,sans-serif">
-        ➕ בחר דגמים
-      </button>
-      <div id="catalog-model-picker" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:10px;margin-top:8px;max-height:260px;overflow-y:auto;padding:10px">
-        <!-- Groups injected by JS -->
-      </div>
+      <button onclick="toggleModelPicker()" class="cl-btn-ghost">➕ בחר דגמים נוספים...</button>
+      <div id="catalog-model-picker" class="cl-picker" style="display:none"></div>
     </div>
 
-    <button onclick="saveCatalogPart()" style="width:100%;padding:12px;border-radius:10px;border:none;background:var(--orange);color:#fff;font-family:Heebo,sans-serif;font-size:14px;font-weight:700;cursor:pointer">
-      💾 שמור במאגר
-    </button>
+    <button onclick="saveCatalogPart()" class="cl-btn-primary">💾 שמור במאגר</button>
   </div>
 </div>
 
 <!-- CATALOG DETAIL MODAL -->
 <div id="catalog-detail-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:200;overflow-y:auto;padding:16px">
-  <div style="background:var(--bg2);border-radius:var(--radius);padding:18px;max-width:500px;margin:0 auto;position:relative">
-    <button onclick="closeModal('catalog-detail-modal')" style="position:absolute;top:10px;left:10px;background:var(--bg3);border:none;border-radius:50%;width:30px;height:30px;color:var(--text);font-size:18px;cursor:pointer">×</button>
+  <div class="cl-modal-inner">
+    <button onclick="closeModal('catalog-detail-modal')" style="position:absolute;top:10px;left:10px;background:#E8E2EC;border:none;border-radius:50%;width:30px;height:30px;color:#2A1F33;font-size:18px;cursor:pointer">×</button>
     <div id="catalog-detail-content"></div>
   </div>
 </div>
@@ -1961,8 +1966,8 @@ function switchMainTab(tab){
   } else if(tab==='parts'){
     if(spt)spt.style.display='block';
     if(tpt){tpt.style.background='rgba(251,140,64,0.12)';tpt.style.borderColor='rgba(251,140,64,0.4)';tpt.style.color='#fb8c40';tpt.style.fontWeight='600';}
-    if(logoText){ logoText.textContent='חלקים'; logoText.style.color='#fb8c40'; }
-    if(logoIcon) logoIcon.textContent='🔩';
+    if(logoText){ logoText.textContent='מאגר חלקים'; logoText.style.color='#fb8c40'; }
+    if(logoIcon) logoIcon.textContent='🗂️';
     parts_list = loadParts();
     renderParts();
   } else if(tab==='orders'){
@@ -2988,18 +2993,25 @@ function initChatTab(){
 const CATALOG_KEY = 'tke_parts_catalog';
 
 const CATALOG_CATEGORIES = [
-  'Controllers','Contactors','Relays','Door Operators',
-  'COP / LOP Panels','Floor Indicators','Wiring / Cables',
-  'Sensors','Power Supplies','Hardware / Misc'
+  'בקרים','קונטקטורים','ממסרים','מפעילי דלת',
+  'כרטיסי לחצנים (COP/LOP)','מראות קומה','חיווט / כבלים',
+  'חיישנים','ספקי כוח','חומרה / שונות'
 ];
 
 const ELEVATOR_MODELS = [
-  { group:'Spanish (Orona/CMC)', models:['CMC4','CMC4+','CMC 20.50','CMC3','EOX'] },
-  { group:'German', models:['TCM MC1','TCM MC3','Synergy Blue e.cor','New German (TBD)'] },
-  { group:'Kone', models:['LCE','KCE'] },
-  { group:'Schindler', models:['Schindler 3000','BIO5-3300','BIO7-3300','Eurolift 5400','Schindler 5500'] },
-  { group:'Chinese (SJEC)', models:['SJEC','Orona Shahak','Arca','Arca 2','Arca 3'] },
-  { group:'Small Lifts', models:['Orion Lift','H200 Lift'] }
+  'CMC4','CMC4+','CMC 20.50','CMC3','EOX',
+  'TCM MC1','TCM MC3','Synergy Blue e.cor','גרמנית החדשה',
+  'קונה-LCE','קונה-KCE',
+  'סקלבל 3000','BIO5-3300','BIO7-3300','Eurolift 5400','5500',
+  'SJAK','אורונה-ארקה','אורונה-ארקה 2','אורונה-ארקה 3',
+  'TKE- מעלון אוריון','מעלון H200 TKE',
+  'אוטיס- LCB2','אוטיס- NE300','אוטיס- GEN2 Confort','אוטיס- GEN2 -220',
+  'אוטיס- GEN2 DUBAI','אוטיס- GEN2 GCS200','אוטיס- GEN2 MADRID','אוטיס- GEN2 GCS 222',
+  'מעלון טיסן-SRL','מעלון שחק- MSTK3 GMV','אינטר-אפ מיצובישי',
+  'ארקל-ARCODE','ארקל-ADrive','משיק מעליות- NG120','מעליות-MP',
+  'אדל-EDEL K1','אדל-EDEL K2','אדל-EDEL K3',
+  'עידן מעליות-Hidra CRONO',
+  'קוריאה- EVOLUTION 1','קוריאה- EVOLUTION 2','קוריאה- TK50 ה.אנרגיה'
 ];
 
 var _catalogImgBase64 = null;
@@ -3032,9 +3044,9 @@ function switchPartsSubTab(tab){
 
 function chipBtn(label, val, active, type){
   var isActive = (val===active);
-  var bg = isActive ? 'var(--orange)' : 'var(--bg2)';
-  var col = isActive ? '#fff' : 'var(--text2)';
-  var bc = isActive ? 'var(--orange)' : 'var(--border)';
+  var bg = isActive ? '#5B2A8C' : '#fff';
+  var col = isActive ? '#fff' : '#8A7F94';
+  var bc = isActive ? '#5B2A8C' : '#E8E2EC';
   var valStr = val===null ? 'null' : '\''+val.replace(/'/g,"\\'")+'\'';
   return '<button onclick="setCatalogFilter(\''+type+'\','+valStr+')" style="background:'+bg+';color:'+col+';border:1px solid '+bc+';border-radius:20px;padding:5px 12px;font-size:12px;font-family:Heebo,sans-serif;cursor:pointer;white-space:nowrap;flex-shrink:0">'+label+'</button>';
 }
@@ -3070,22 +3082,22 @@ function renderCatalog(){
   var grid = document.getElementById('catalog-grid');
   if(!grid) return;
   if(!filtered.length){
-    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text3);padding:40px;font-size:14px">אין חלקים תואמים</div>';
+    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:#B8B0C0;padding:40px;font-size:14px">אין חלקים תואמים</div>';
     return;
   }
   grid.innerHTML = filtered.map(function(p){
     var shared = (p.compatible_with||[]).length > 1;
     var badges = (p.compatible_with||[]).slice(0,3).map(function(m){
-      return '<span style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:2px 5px;font-size:10px;color:var(--text2)">'+m+'</span>';
+      return '<span class="cl-badge-model">'+m+'</span>';
     }).join('');
     var imgHtml = p.image
       ? '<img src="'+p.image+'" style="width:100%;height:110px;object-fit:cover;border-radius:8px;display:block;margin-bottom:8px">'
-      : '<div style="width:100%;height:110px;background:var(--bg3);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:8px">🔩</div>';
-    return '<div onclick="openCatalogDetail(\''+p.id+'\')" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:10px;cursor:pointer;position:relative">'+
-      (shared?'<span style="position:absolute;top:7px;right:7px;background:rgba(99,102,241,0.2);color:#818cf8;border:1px solid rgba(99,102,241,0.4);border-radius:10px;font-size:10px;padding:2px 7px">🔗 Shared</span>':'')+
+      : '<div class="cl-img-placeholder">🔩</div>';
+    return '<div onclick="openCatalogDetail(\''+p.id+'\')" class="cl-card">'+
+      (shared?'<span class="cl-badge-shared">🔗 Shared</span>':'')+
       imgHtml+
-      '<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;line-height:1.3">'+p.name+'</div>'+
-      '<div style="font-size:11px;color:var(--text3);margin-bottom:6px">'+p.sku+'</div>'+
+      '<div style="font-size:13px;font-weight:600;color:#2A1F33;margin-bottom:3px;line-height:1.3">'+p.name+'</div>'+
+      '<div style="font-size:11px;color:#8A7F94;margin-bottom:6px">'+p.sku+'</div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:4px">'+badges+'</div>'+
     '</div>';
   }).join('');
@@ -3129,7 +3141,10 @@ function renderCatalogCatChipsAdd(){
   if(!el) return;
   el.innerHTML = cats.map(function(c){
     var active = _catalogSelectedCat===c;
-    return '<button onclick="selectCatalogCat(\''+c.replace(/'/g,"\\'")+'\''+')" style="'+(active?'background:var(--orange);color:#fff;border-color:var(--orange);':'background:var(--bg3);color:var(--text2);border-color:var(--border);')+'border:1px solid;border-radius:20px;padding:5px 12px;font-size:12px;font-family:Heebo,sans-serif;cursor:pointer">'+c+'</button>';
+    var bg = active ? '#5B2A8C' : '#fff';
+    var col = active ? '#fff' : '#8A7F94';
+    var bc = active ? '#5B2A8C' : '#E8E2EC';
+    return '<button onclick="selectCatalogCat(\''+c.replace(/'/g,"\\'")+'\''+')" style="background:'+bg+';color:'+col+';border:1px solid '+bc+';border-radius:20px;padding:5px 12px;font-size:12px;font-family:Heebo,sans-serif;cursor:pointer">'+c+'</button>';
   }).join('');
 }
 
@@ -3142,13 +3157,10 @@ function addCustomCatalogCat(){
 
 function buildModelPicker(){
   var el=document.getElementById('catalog-model-picker'); if(!el) return;
-  el.innerHTML = ELEVATOR_MODELS.map(function(g){
-    var rows=g.models.map(function(m){
-      var chk=_catalogSelectedModels.includes(m)?'checked':'';
-      return '<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px;color:var(--text);font-family:Heebo,sans-serif">'+
-        '<input type="checkbox" '+chk+' onchange="toggleModelSelect(\''+m.replace(/'/g,"\\'")+'\''+')" style="width:16px;height:16px;accent-color:var(--orange)">'+m+'</label>';
-    }).join('');
-    return '<div style="margin-bottom:10px"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">'+g.group+'</div>'+rows+'</div>';
+  el.innerHTML = ELEVATOR_MODELS.map(function(m){
+    var chk=_catalogSelectedModels.includes(m)?'checked':'';
+    return '<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px;color:#2A1F33;font-family:Heebo,sans-serif;border-bottom:1px solid #F0EBF4">'+
+      '<input type="checkbox" '+chk+' onchange="toggleModelSelect(\''+m.replace(/'/g,"\\'")+'\''+')" style="width:16px;height:16px;accent-color:#5B2A8C">'+m+'</label>';
   }).join('');
 }
 
@@ -3162,10 +3174,10 @@ function toggleModelSelect(m){
 
 function renderSelectedModels(){
   var el=document.getElementById('catalog-selected-models'); if(!el) return;
-  if(!_catalogSelectedModels.length){ el.innerHTML='<span style="font-size:12px;color:var(--text3)">לא נבחרו דגמים</span>'; return; }
+  if(!_catalogSelectedModels.length){ el.innerHTML='<span style="font-size:12px;color:#B8B0C0">לא נבחרו דגמים</span>'; return; }
   el.innerHTML=_catalogSelectedModels.map(function(m){
-    return '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--orange-border);border-radius:12px;padding:3px 10px;font-size:12px;color:var(--orange);font-family:Heebo,sans-serif">'+m+
-      '<button onclick="toggleModelSelect(\''+m.replace(/'/g,"\\'")+'\');buildModelPicker();" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0 0 0 2px">×</button></span>';
+    return '<span class="cl-model-chip">'+m+
+      '<button onclick="toggleModelSelect(\''+m.replace(/'/g,"\\'")+'\');buildModelPicker();">×</button></span>';
   }).join('');
 }
 
@@ -3187,19 +3199,19 @@ function saveCatalogPart(){
 function openCatalogDetail(id){
   var p=loadCatalog().find(function(x){ return x.id===id; }); if(!p) return;
   var shared=(p.compatible_with||[]).length>1;
-  var badges=(p.compatible_with||[]).map(function(m){ return '<span style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:12px;color:var(--text2)">'+m+'</span>'; }).join('');
+  var badges=(p.compatible_with||[]).map(function(m){ return '<span class="cl-badge-model" style="border-radius:6px;padding:3px 10px;font-size:12px">'+m+'</span>'; }).join('');
   document.getElementById('catalog-detail-content').innerHTML=
-    (p.image?'<img src="'+p.image+'" style="width:100%;max-height:220px;object-fit:contain;border-radius:10px;margin-bottom:14px;background:var(--bg3)">':'')+
-    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:17px;font-weight:700;color:var(--text)">'+p.name+'</span>'+(shared?'<span style="background:rgba(99,102,241,0.2);color:#818cf8;border:1px solid rgba(99,102,241,0.4);border-radius:10px;font-size:11px;padding:2px 8px">🔗 Shared</span>':'')+'</div>'+
-    '<div style="font-size:13px;color:var(--text3);margin-bottom:4px">מק״ט: <span style="color:var(--text)">'+p.sku+'</span></div>'+
-    '<div style="font-size:13px;color:var(--text3);margin-bottom:10px">קטגוריה: <span style="color:var(--orange)">'+p.category+'</span></div>'+
-    (p.notes?'<div style="font-size:13px;color:var(--text2);margin-bottom:10px;background:var(--bg3);border-radius:8px;padding:8px 12px">'+p.notes+'</div>':'')+
-    '<div style="font-size:12px;color:var(--text3);margin-bottom:6px">דגמים תואמים:</div>'+
+    (p.image?'<img src="'+p.image+'" style="width:100%;max-height:220px;object-fit:contain;border-radius:10px;margin-bottom:14px;background:#F0EBF4">':'')+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:17px;font-weight:700;color:#2A1F33">'+p.name+'</span>'+(shared?'<span class="cl-badge-shared" style="position:static">🔗 Shared</span>':'')+'</div>'+
+    '<div style="font-size:13px;color:#8A7F94;margin-bottom:4px">מק״ט: <span style="color:#2A1F33">'+p.sku+'</span></div>'+
+    '<div style="font-size:13px;color:#8A7F94;margin-bottom:10px">קטגוריה: <span style="color:#5B2A8C;font-weight:600">'+p.category+'</span></div>'+
+    (p.notes?'<div class="cl-notes-box">'+p.notes+'</div>':'')+
+    '<div style="font-size:12px;color:#B8B0C0;margin-bottom:6px">דגמים תואמים:</div>'+
     '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">'+badges+'</div>'+
     '<div style="display:flex;gap:8px">'+
-      '<button onclick="editCatalogPart(\''+id+'\')" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-family:Heebo,sans-serif;font-size:13px;cursor:pointer">✏️ ערוך</button>'+
-      '<button onclick="deleteCatalogPart(\''+id+'\')" style="flex:1;padding:10px;border-radius:8px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:#f87171;font-family:Heebo,sans-serif;font-size:13px;cursor:pointer">🗑️ מחק</button>'+
-      '<button onclick="orderFromCatalog(\''+id+'\')" style="flex:1;padding:10px;border-radius:8px;border:none;background:var(--orange);color:#fff;font-family:Heebo,sans-serif;font-size:13px;font-weight:600;cursor:pointer">📋 הזמן</button>'+
+      '<button onclick="editCatalogPart(\''+id+'\')" class="cl-btn-edit">✏️ ערוך</button>'+
+      '<button onclick="deleteCatalogPart(\''+id+'\')" class="cl-btn-delete">🗑️ מחק</button>'+
+      '<button onclick="orderFromCatalog(\''+id+'\')" class="cl-btn-orange">📋 הזמן</button>'+
     '</div>';
   document.getElementById('catalog-detail-modal').style.display='block';
 }
