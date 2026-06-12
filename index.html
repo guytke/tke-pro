@@ -121,7 +121,7 @@ textarea.field-area:focus{border-color:var(--green-border)}
 .section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}
 .section-label.book{color:#fb8c40}
 .section-label.field{color:#34d399}
-.section-box{border-radius:var(--radius-sm);padding:11px 12px;font-size:13px;line-height:1.75;white-space:pre-wrap;margin-bottom:12px}
+.section-box{border-radius:var(--radius-sm);padding:11px 12px;font-size:13px;line-height:1.75;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;max-width:100%;box-sizing:border-box;margin-bottom:12px}
 .section-box.book{background:var(--orange-dim);border:1px solid var(--orange-border);color:var(--text)}
 .section-box.field{background:var(--green-dim);border:1px solid var(--green-border);color:var(--text)}
 .section-box.empty-box{color:var(--text3);font-style:italic;background:var(--bg3);border:1px solid var(--border)}
@@ -1151,6 +1151,7 @@ function saveFault(){
       faults[faults.findIndex(f=>f.id===duplicate.id)]=fault;
       save(faults); closeModal('form-modal'); refresh(); renderParams();
       setTimeout(function(){ flashSavedCard(fault.code); },280);
+      if(typeof resetHScrollAll==='function') resetHScrollAll();
       showToast('✅ עודכן!'); return;
     }
   }
@@ -1168,6 +1169,7 @@ function saveFault(){
   if(idx>=0) faults[idx]=fault; else faults.unshift(fault);
   save(faults); closeModal('form-modal'); refresh(); renderParams();
   setTimeout(function(){ flashSavedCard(fault.code); },280);
+  if(typeof resetHScrollAll==='function') resetHScrollAll();
   showToast('✅ נשמר!');
 }
 
@@ -1221,6 +1223,7 @@ function viewFault(id){
       '<button class="btn btn-delete" onclick="deleteFault(\''+f.id+'\')">🗑</button>'+
     '</div>';
   openModal('view-modal');
+  if(typeof resetHScrollAll==='function') resetHScrollAll();
 }
 
 // ─── SHARE ────────────────────────────────────────────
