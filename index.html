@@ -3552,32 +3552,6 @@ document.addEventListener('DOMContentLoaded',resetHScrollAll);
 window.addEventListener('load',resetHScrollAll);
 window.addEventListener('pageshow',resetHScrollAll);
 
-// ─── PULL-TO-REFRESH BLOCK (iOS / old browsers fallback) ───
-(function(){
-  var startY=0;
-  document.addEventListener('touchstart',function(e){
-    startY=e.touches[0].clientY;
-  },{passive:true});
-  document.addEventListener('touchmove',function(e){
-    var y=e.touches[0].clientY;
-    var pullingDown=y>startY;
-    if(!pullingDown) return;
-    // find nearest scrollable ancestor of the touch target
-    var el=e.target;
-    while(el&&el!==document.body&&el!==document.documentElement){
-      var st=getComputedStyle(el);
-      var scrollable=(st.overflowY==='auto'||st.overflowY==='scroll')&&el.scrollHeight>el.clientHeight;
-      if(scrollable){
-        if(el.scrollTop>0) return; // inner list still has room to scroll up — allow
-        break;
-      }
-      el=el.parentElement;
-    }
-    // at top of page (or top of inner scroller) and dragging down → block refresh
-    var pageTop=(document.scrollingElement||document.documentElement).scrollTop<=0;
-    if(pageTop) e.preventDefault();
-  },{passive:false});
-})();
 
 // ─── FORM DRAFT AUTOSAVE (sessionStorage) ──────────────
 var DRAFT_FIELDS=[
