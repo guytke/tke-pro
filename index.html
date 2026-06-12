@@ -26,7 +26,7 @@
   --text:#f0f0f0;--text2:#aaa;--text3:#555;
   --radius:14px;--radius-sm:8px;
 }
-html,body{overscroll-behavior-y:none;overscroll-behavior:none}
+html,body{overscroll-behavior-y:none;overscroll-behavior:none;overflow-x:hidden}
 body{background:var(--bg);color:var(--text);font-family:'Heebo',sans-serif;min-height:100vh;overflow-x:hidden}
 .modal,.overlay{overscroll-behavior:contain}
 
@@ -1982,6 +1982,7 @@ function switchMainTab(tab){
     if(logoText){ logoText.textContent='הזמנות'; logoText.style.color='#818cf8'; }
     if(logoIcon) logoIcon.textContent='📋';
   }
+  if(typeof resetHScrollAll==='function') resetHScrollAll();
 }
 
 // ─── ORDERS ───────────────────────────────────────────
@@ -3528,6 +3529,28 @@ function openCatalogAddWithPN(pn){
     await refreshCatalogCache();
   }catch(e){ console.error('catalog init',e); }
 })();
+
+// ─── RTL INITIAL SCROLL FIX ────────────────────────────
+function resetHScroll(){
+  // reset page horizontal position, keep vertical
+  window.scrollTo(0, window.scrollY);
+  var se=document.scrollingElement||document.documentElement;
+  if(se.scrollLeft!==0) se.scrollLeft=0;
+  // reset every horizontal scroller to its RTL start (right edge)
+  var els=document.querySelectorAll('.model-tabs,.cl-chip-wrap,#chat-session-tabs');
+  els.forEach(function(el){
+    el.scrollLeft=0;
+    if(el.scrollLeft!==0) el.scrollLeft=el.scrollWidth;
+  });
+}
+function resetHScrollAll(){
+  resetHScroll();
+  requestAnimationFrame(resetHScroll);
+  setTimeout(resetHScroll,300);
+}
+document.addEventListener('DOMContentLoaded',resetHScrollAll);
+window.addEventListener('load',resetHScrollAll);
+window.addEventListener('pageshow',resetHScrollAll);
 
 // ─── PULL-TO-REFRESH BLOCK (iOS / old browsers fallback) ───
 (function(){
