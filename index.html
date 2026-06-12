@@ -670,6 +670,21 @@ if('serviceWorker' in navigator){
 
 <!-- PARTS SECTION -->
 <div id="section-parts" style="display:none">
+
+  <!-- Parts sub-tab toggle -->
+  <div style="display:flex;gap:8px;margin-bottom:14px">
+    <button id="parts-subtab-btn-inventory" onclick="switchPartsSubTab('inventory')"
+      style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid rgba(251,140,64,0.5);background:rgba(251,140,64,0.15);color:#fb8c40;font-family:Heebo,sans-serif;font-size:12px;font-weight:600;cursor:pointer">
+      📦 מלאי
+    </button>
+    <button id="parts-subtab-btn-catalog" onclick="switchPartsSubTab('catalog')"
+      style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">
+      🗂️ מאגר חלקים
+    </button>
+  </div>
+
+  <!-- INVENTORY sub-tab -->
+  <div id="parts-subtab-inventory">
   <!-- 4 stat boxes -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center">
@@ -704,6 +719,112 @@ if('serviceWorker' in navigator){
   </div>
 
   <div id="parts-list"></div>
+  </div><!-- end inventory subtab -->
+
+  <!-- CATALOG sub-tab -->
+  <div id="parts-subtab-catalog" style="display:none">
+
+    <!-- Search bar + camera -->
+    <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+      <div class="search-wrap" style="flex:1;margin-bottom:0">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="catalog-search" placeholder="חפש שם, מק״ט..." oninput="renderCatalog()">
+      </div>
+      <label style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px" title="חיפוש לפי תמונה">
+        📷
+        <input type="file" accept="image/*" capture="environment" id="catalog-img-search-input" style="display:none" onchange="catalogImageSearch(this)">
+      </label>
+      <button class="btn btn-primary btn-sm" onclick="openCatalogAdd()" style="white-space:nowrap">+ חלק</button>
+    </div>
+
+    <!-- Filter chips: By Model -->
+    <div style="font-size:11px;color:var(--text3);margin-bottom:5px">לפי דגם מעלית</div>
+    <div id="catalog-model-chips" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px;scrollbar-width:none"></div>
+
+    <!-- Filter chips: By Category -->
+    <div style="font-size:11px;color:var(--text3);margin-bottom:5px">לפי סוג רכיב</div>
+    <div id="catalog-cat-chips" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:14px;scrollbar-width:none"></div>
+
+    <!-- Grid -->
+    <div id="catalog-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+  </div><!-- end catalog subtab -->
+
+</div>
+
+<!-- CATALOG ADD MODAL -->
+<div id="catalog-add-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:200;overflow-y:auto;padding:16px">
+  <div style="background:var(--bg2);border-radius:var(--radius);padding:18px;max-width:500px;margin:0 auto;position:relative">
+    <button onclick="closeModal('catalog-add-modal')" style="position:absolute;top:10px;left:10px;background:var(--bg3);border:none;border-radius:50%;width:30px;height:30px;color:var(--text);font-size:18px;cursor:pointer">×</button>
+    <div style="font-size:15px;font-weight:700;margin-bottom:16px;color:var(--text)">➕ חלק חדש למאגר</div>
+
+    <!-- Image -->
+    <div style="margin-bottom:12px">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:6px">תמונה</div>
+      <div id="catalog-img-preview-wrap" style="display:none;margin-bottom:8px">
+        <img id="catalog-img-preview" style="width:100%;max-height:180px;object-fit:contain;border-radius:10px;background:var(--bg3)">
+      </div>
+      <div style="display:flex;gap:8px">
+        <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--bg3);border:1px dashed var(--border);border-radius:10px;padding:10px;cursor:pointer;font-size:13px;color:var(--text2);font-family:Heebo,sans-serif">
+          📷 צלם
+          <input type="file" accept="image/*" capture="environment" id="catalog-img-camera" style="display:none" onchange="handleCatalogImage(this)">
+        </label>
+        <label style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--bg3);border:1px dashed var(--border);border-radius:10px;padding:10px;cursor:pointer;font-size:13px;color:var(--text2);font-family:Heebo,sans-serif">
+          🖼️ גלריה
+          <input type="file" accept="image/*" id="catalog-img-gallery" style="display:none" onchange="handleCatalogImage(this)">
+        </label>
+      </div>
+    </div>
+
+    <!-- Name + SKU -->
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px">
+      <div>
+        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">שם חלק</label>
+        <input id="catalog-add-name" type="text" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none" placeholder="שם החלק">
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">מק״ט (SKU)</label>
+        <input id="catalog-add-sku" type="text" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none" placeholder="מק״ט">
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">הערות (אופציונלי)</label>
+        <textarea id="catalog-add-notes" rows="2" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none;resize:none" placeholder="הערות נוספות..."></textarea>
+      </div>
+    </div>
+
+    <!-- Category -->
+    <div style="margin-bottom:12px">
+      <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:6px">קטגוריית רכיב</label>
+      <div id="catalog-cat-chips-add" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+      <div style="display:flex;gap:6px">
+        <input id="catalog-new-cat" type="text" style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;color:var(--text);font-family:Heebo,sans-serif;outline:none" placeholder="קטגוריה חדשה...">
+        <button onclick="addCustomCatalogCat()" style="background:var(--bg3);border:1px solid var(--orange-border);border-radius:8px;padding:7px 12px;color:var(--orange);font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">+ הוסף</button>
+      </div>
+    </div>
+
+    <!-- Compatible Models multi-select -->
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:6px">דגמי מעלית תואמים</label>
+      <div id="catalog-selected-models" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:24px"></div>
+      <button onclick="toggleModelPicker()" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px;font-size:13px;color:var(--text2);cursor:pointer;font-family:Heebo,sans-serif">
+        ➕ בחר דגמים
+      </button>
+      <div id="catalog-model-picker" style="display:none;background:var(--bg3);border:1px solid var(--border);border-radius:10px;margin-top:8px;max-height:260px;overflow-y:auto;padding:10px">
+        <!-- Groups injected by JS -->
+      </div>
+    </div>
+
+    <button onclick="saveCatalogPart()" style="width:100%;padding:12px;border-radius:10px;border:none;background:var(--orange);color:#fff;font-family:Heebo,sans-serif;font-size:14px;font-weight:700;cursor:pointer">
+      💾 שמור במאגר
+    </button>
+  </div>
+</div>
+
+<!-- CATALOG DETAIL MODAL -->
+<div id="catalog-detail-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:200;overflow-y:auto;padding:16px">
+  <div style="background:var(--bg2);border-radius:var(--radius);padding:18px;max-width:500px;margin:0 auto;position:relative">
+    <button onclick="closeModal('catalog-detail-modal')" style="position:absolute;top:10px;left:10px;background:var(--bg3);border:none;border-radius:50%;width:30px;height:30px;color:var(--text);font-size:18px;cursor:pointer">×</button>
+    <div id="catalog-detail-content"></div>
+  </div>
 </div>
 
 <!-- ORDERS SECTION -->
@@ -2863,9 +2984,289 @@ function initChatTab(){
   </div>
 </div>
 <script>
+// ─── PARTS CATALOG ────────────────────────────────────
+const CATALOG_KEY = 'tke_parts_catalog';
+
+const CATALOG_CATEGORIES = [
+  'Controllers','Contactors','Relays','Door Operators',
+  'COP / LOP Panels','Floor Indicators','Wiring / Cables',
+  'Sensors','Power Supplies','Hardware / Misc'
+];
+
+const ELEVATOR_MODELS = [
+  { group:'Spanish (Orona/CMC)', models:['CMC4','CMC4+','CMC 20.50','CMC3','EOX'] },
+  { group:'German', models:['TCM MC1','TCM MC3','Synergy Blue e.cor','New German (TBD)'] },
+  { group:'Kone', models:['LCE','KCE'] },
+  { group:'Schindler', models:['Schindler 3000','BIO5-3300','BIO7-3300','Eurolift 5400','Schindler 5500'] },
+  { group:'Chinese (SJEC)', models:['SJEC','Orona Shahak','Arca','Arca 2','Arca 3'] },
+  { group:'Small Lifts', models:['Orion Lift','H200 Lift'] }
+];
+
+var _catalogImgBase64 = null;
+var _catalogSelectedCat = null;
+var _catalogSelectedModels = [];
+var _catalogFilterModel = null;
+var _catalogFilterCat = null;
+var _catalogEditId = null;
+
+function loadCatalog(){ try{ return JSON.parse(localStorage.getItem(CATALOG_KEY))||[]; }catch(e){ return []; } }
+function saveCatalog(d){ localStorage.setItem(CATALOG_KEY, JSON.stringify(d)); }
+
+function switchPartsSubTab(tab){
+  var inv = document.getElementById('parts-subtab-inventory');
+  var cat = document.getElementById('parts-subtab-catalog');
+  var btnI = document.getElementById('parts-subtab-btn-inventory');
+  var btnC = document.getElementById('parts-subtab-btn-catalog');
+  if(tab==='inventory'){
+    inv.style.display='block'; cat.style.display='none';
+    btnI.style.background='rgba(251,140,64,0.15)'; btnI.style.borderColor='rgba(251,140,64,0.5)'; btnI.style.color='#fb8c40'; btnI.style.fontWeight='600';
+    btnC.style.background='var(--bg2)'; btnC.style.borderColor='var(--border)'; btnC.style.color='var(--text2)'; btnC.style.fontWeight='500';
+  } else {
+    inv.style.display='none'; cat.style.display='block';
+    btnC.style.background='rgba(251,140,64,0.15)'; btnC.style.borderColor='rgba(251,140,64,0.5)'; btnC.style.color='#fb8c40'; btnC.style.fontWeight='600';
+    btnI.style.background='var(--bg2)'; btnI.style.borderColor='var(--border)'; btnI.style.color='var(--text2)'; btnI.style.fontWeight='500';
+    _catalogFilterModel=null; _catalogFilterCat=null;
+    renderCatalogChips(); renderCatalog();
+  }
+}
+
+function chipBtn(label, val, active, type){
+  var isActive = (val===active);
+  var bg = isActive ? 'var(--orange)' : 'var(--bg2)';
+  var col = isActive ? '#fff' : 'var(--text2)';
+  var bc = isActive ? 'var(--orange)' : 'var(--border)';
+  var valStr = val===null ? 'null' : '\''+val.replace(/'/g,"\\'")+'\'';
+  return '<button onclick="setCatalogFilter(\''+type+'\','+valStr+')" style="background:'+bg+';color:'+col+';border:1px solid '+bc+';border-radius:20px;padding:5px 12px;font-size:12px;font-family:Heebo,sans-serif;cursor:pointer;white-space:nowrap;flex-shrink:0">'+label+'</button>';
+}
+
+function renderCatalogChips(){
+  var parts = loadCatalog();
+  var allModels = [], allCats = [];
+  parts.forEach(function(p){
+    (p.compatible_with||[]).forEach(function(m){ if(!allModels.includes(m)) allModels.push(m); });
+    if(p.category && !allCats.includes(p.category)) allCats.push(p.category);
+  });
+  var mc = document.getElementById('catalog-model-chips');
+  var cc = document.getElementById('catalog-cat-chips');
+  if(mc) mc.innerHTML = chipBtn('הכל',null,_catalogFilterModel,'model') + allModels.map(function(m){ return chipBtn(m,m,_catalogFilterModel,'model'); }).join('');
+  if(cc) cc.innerHTML = chipBtn('הכל',null,_catalogFilterCat,'cat') + allCats.map(function(c){ return chipBtn(c,c,_catalogFilterCat,'cat'); }).join('');
+}
+
+function setCatalogFilter(type, val){
+  if(type==='model') _catalogFilterModel = val;
+  else _catalogFilterCat = val;
+  renderCatalogChips(); renderCatalog();
+}
+
+function renderCatalog(){
+  var parts = loadCatalog();
+  var q = ((document.getElementById('catalog-search')||{}).value||'').toLowerCase().trim();
+  var filtered = parts.filter(function(p){
+    if(_catalogFilterModel && !(p.compatible_with||[]).includes(_catalogFilterModel)) return false;
+    if(_catalogFilterCat && p.category !== _catalogFilterCat) return false;
+    if(q && !(p.name||'').toLowerCase().includes(q) && !(p.sku||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  var grid = document.getElementById('catalog-grid');
+  if(!grid) return;
+  if(!filtered.length){
+    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text3);padding:40px;font-size:14px">אין חלקים תואמים</div>';
+    return;
+  }
+  grid.innerHTML = filtered.map(function(p){
+    var shared = (p.compatible_with||[]).length > 1;
+    var badges = (p.compatible_with||[]).slice(0,3).map(function(m){
+      return '<span style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:2px 5px;font-size:10px;color:var(--text2)">'+m+'</span>';
+    }).join('');
+    var imgHtml = p.image
+      ? '<img src="'+p.image+'" style="width:100%;height:110px;object-fit:cover;border-radius:8px;display:block;margin-bottom:8px">'
+      : '<div style="width:100%;height:110px;background:var(--bg3);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:8px">🔩</div>';
+    return '<div onclick="openCatalogDetail(\''+p.id+'\')" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:10px;cursor:pointer;position:relative">'+
+      (shared?'<span style="position:absolute;top:7px;right:7px;background:rgba(99,102,241,0.2);color:#818cf8;border:1px solid rgba(99,102,241,0.4);border-radius:10px;font-size:10px;padding:2px 7px">🔗 Shared</span>':'')+
+      imgHtml+
+      '<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;line-height:1.3">'+p.name+'</div>'+
+      '<div style="font-size:11px;color:var(--text3);margin-bottom:6px">'+p.sku+'</div>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:4px">'+badges+'</div>'+
+    '</div>';
+  }).join('');
+}
+
+function openCatalogAdd(){
+  _catalogImgBase64=null; _catalogSelectedCat=null; _catalogSelectedModels=[]; _catalogEditId=null;
+  document.getElementById('catalog-add-name').value='';
+  document.getElementById('catalog-add-sku').value='';
+  document.getElementById('catalog-add-notes').value='';
+  document.getElementById('catalog-img-preview-wrap').style.display='none';
+  document.getElementById('catalog-model-picker').style.display='none';
+  renderCatalogCatChipsAdd(); renderSelectedModels(); buildModelPicker();
+  document.getElementById('catalog-add-modal').style.display='block';
+}
+
+function handleCatalogImage(input){
+  if(!input.files||!input.files[0]) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var img = new Image();
+    img.onload = function(){
+      var canvas = document.createElement('canvas');
+      var scale = img.width > 400 ? 400/img.width : 1;
+      canvas.width=img.width*scale; canvas.height=img.height*scale;
+      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+      _catalogImgBase64 = canvas.toDataURL('image/jpeg',0.8);
+      document.getElementById('catalog-img-preview').src = _catalogImgBase64;
+      document.getElementById('catalog-img-preview-wrap').style.display='block';
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function renderCatalogCatChipsAdd(){
+  var extra = loadCatalog().map(function(p){ return p.category; })
+    .filter(function(c,i,a){ return c && a.indexOf(c)===i && !CATALOG_CATEGORIES.includes(c); });
+  var cats = CATALOG_CATEGORIES.concat(extra);
+  var el = document.getElementById('catalog-cat-chips-add');
+  if(!el) return;
+  el.innerHTML = cats.map(function(c){
+    var active = _catalogSelectedCat===c;
+    return '<button onclick="selectCatalogCat(\''+c.replace(/'/g,"\\'")+'\''+')" style="'+(active?'background:var(--orange);color:#fff;border-color:var(--orange);':'background:var(--bg3);color:var(--text2);border-color:var(--border);')+'border:1px solid;border-radius:20px;padding:5px 12px;font-size:12px;font-family:Heebo,sans-serif;cursor:pointer">'+c+'</button>';
+  }).join('');
+}
+
+function selectCatalogCat(c){ _catalogSelectedCat=c; renderCatalogCatChipsAdd(); }
+
+function addCustomCatalogCat(){
+  var inp=document.getElementById('catalog-new-cat'); var val=inp.value.trim();
+  if(!val) return; _catalogSelectedCat=val; inp.value=''; renderCatalogCatChipsAdd();
+}
+
+function buildModelPicker(){
+  var el=document.getElementById('catalog-model-picker'); if(!el) return;
+  el.innerHTML = ELEVATOR_MODELS.map(function(g){
+    var rows=g.models.map(function(m){
+      var chk=_catalogSelectedModels.includes(m)?'checked':'';
+      return '<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px;color:var(--text);font-family:Heebo,sans-serif">'+
+        '<input type="checkbox" '+chk+' onchange="toggleModelSelect(\''+m.replace(/'/g,"\\'")+'\''+')" style="width:16px;height:16px;accent-color:var(--orange)">'+m+'</label>';
+    }).join('');
+    return '<div style="margin-bottom:10px"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">'+g.group+'</div>'+rows+'</div>';
+  }).join('');
+}
+
+function toggleModelPicker(){ var el=document.getElementById('catalog-model-picker'); if(!el) return; el.style.display=el.style.display==='none'?'block':'none'; if(el.style.display==='block') buildModelPicker(); }
+
+function toggleModelSelect(m){
+  var idx=_catalogSelectedModels.indexOf(m);
+  if(idx===-1) _catalogSelectedModels.push(m); else _catalogSelectedModels.splice(idx,1);
+  renderSelectedModels();
+}
+
+function renderSelectedModels(){
+  var el=document.getElementById('catalog-selected-models'); if(!el) return;
+  if(!_catalogSelectedModels.length){ el.innerHTML='<span style="font-size:12px;color:var(--text3)">לא נבחרו דגמים</span>'; return; }
+  el.innerHTML=_catalogSelectedModels.map(function(m){
+    return '<span style="display:inline-flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--orange-border);border-radius:12px;padding:3px 10px;font-size:12px;color:var(--orange);font-family:Heebo,sans-serif">'+m+
+      '<button onclick="toggleModelSelect(\''+m.replace(/'/g,"\\'")+'\');buildModelPicker();" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0 0 0 2px">×</button></span>';
+  }).join('');
+}
+
+function saveCatalogPart(){
+  var name=document.getElementById('catalog-add-name').value.trim();
+  var sku=document.getElementById('catalog-add-sku').value.trim();
+  var notes=document.getElementById('catalog-add-notes').value.trim();
+  if(!name){ showToast('⚠️ נא למלא שם חלק'); return; }
+  var parts=loadCatalog();
+  if(_catalogEditId){
+    var idx=parts.findIndex(function(p){ return p.id===_catalogEditId; });
+    if(idx>-1){ parts[idx].name=name; parts[idx].sku=sku; parts[idx].notes=notes; parts[idx].category=_catalogSelectedCat||''; parts[idx].compatible_with=_catalogSelectedModels.slice(); if(_catalogImgBase64) parts[idx].image=_catalogImgBase64; }
+  } else {
+    parts.push({ id:Date.now().toString(36)+Math.random().toString(36).slice(2,6), name:name, sku:sku, notes:notes, category:_catalogSelectedCat||'', compatible_with:_catalogSelectedModels.slice(), image:_catalogImgBase64||'', created_at:new Date().toISOString() });
+  }
+  saveCatalog(parts); closeModal('catalog-add-modal'); renderCatalogChips(); renderCatalog(); showToast('✅ חלק נשמר במאגר');
+}
+
+function openCatalogDetail(id){
+  var p=loadCatalog().find(function(x){ return x.id===id; }); if(!p) return;
+  var shared=(p.compatible_with||[]).length>1;
+  var badges=(p.compatible_with||[]).map(function(m){ return '<span style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:12px;color:var(--text2)">'+m+'</span>'; }).join('');
+  document.getElementById('catalog-detail-content').innerHTML=
+    (p.image?'<img src="'+p.image+'" style="width:100%;max-height:220px;object-fit:contain;border-radius:10px;margin-bottom:14px;background:var(--bg3)">':'')+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:17px;font-weight:700;color:var(--text)">'+p.name+'</span>'+(shared?'<span style="background:rgba(99,102,241,0.2);color:#818cf8;border:1px solid rgba(99,102,241,0.4);border-radius:10px;font-size:11px;padding:2px 8px">🔗 Shared</span>':'')+'</div>'+
+    '<div style="font-size:13px;color:var(--text3);margin-bottom:4px">מק״ט: <span style="color:var(--text)">'+p.sku+'</span></div>'+
+    '<div style="font-size:13px;color:var(--text3);margin-bottom:10px">קטגוריה: <span style="color:var(--orange)">'+p.category+'</span></div>'+
+    (p.notes?'<div style="font-size:13px;color:var(--text2);margin-bottom:10px;background:var(--bg3);border-radius:8px;padding:8px 12px">'+p.notes+'</div>':'')+
+    '<div style="font-size:12px;color:var(--text3);margin-bottom:6px">דגמים תואמים:</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">'+badges+'</div>'+
+    '<div style="display:flex;gap:8px">'+
+      '<button onclick="editCatalogPart(\''+id+'\')" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-family:Heebo,sans-serif;font-size:13px;cursor:pointer">✏️ ערוך</button>'+
+      '<button onclick="deleteCatalogPart(\''+id+'\')" style="flex:1;padding:10px;border-radius:8px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:#f87171;font-family:Heebo,sans-serif;font-size:13px;cursor:pointer">🗑️ מחק</button>'+
+      '<button onclick="orderFromCatalog(\''+id+'\')" style="flex:1;padding:10px;border-radius:8px;border:none;background:var(--orange);color:#fff;font-family:Heebo,sans-serif;font-size:13px;font-weight:600;cursor:pointer">📋 הזמן</button>'+
+    '</div>';
+  document.getElementById('catalog-detail-modal').style.display='block';
+}
+
+function editCatalogPart(id){
+  var p=loadCatalog().find(function(x){ return x.id===id; }); if(!p) return;
+  closeModal('catalog-detail-modal');
+  _catalogEditId=id; _catalogImgBase64=p.image||null; _catalogSelectedCat=p.category||null; _catalogSelectedModels=(p.compatible_with||[]).slice();
+  document.getElementById('catalog-add-name').value=p.name||'';
+  document.getElementById('catalog-add-sku').value=p.sku||'';
+  document.getElementById('catalog-add-notes').value=p.notes||'';
+  if(p.image){ document.getElementById('catalog-img-preview').src=p.image; document.getElementById('catalog-img-preview-wrap').style.display='block'; }
+  else document.getElementById('catalog-img-preview-wrap').style.display='none';
+  document.getElementById('catalog-model-picker').style.display='none';
+  renderCatalogCatChipsAdd(); renderSelectedModels(); buildModelPicker();
+  document.getElementById('catalog-add-modal').style.display='block';
+}
+
+function deleteCatalogPart(id){
+  if(!confirm('למחוק חלק זה מהמאגר?')) return;
+  saveCatalog(loadCatalog().filter(function(p){ return p.id!==id; }));
+  closeModal('catalog-detail-modal'); renderCatalogChips(); renderCatalog(); showToast('🗑️ חלק נמחק');
+}
+
+function orderFromCatalog(id){
+  var p=loadCatalog().find(function(x){ return x.id===id; }); if(!p) return;
+  closeModal('catalog-detail-modal');
+  switchMainTab('orders'); setOrderMode('manual');
+  setTimeout(function(){ var n=document.getElementById('man-part-name'); var s=document.getElementById('man-part-num'); if(n) n.value=p.name; if(s) s.value=p.sku; },100);
+}
+
+async function catalogImageSearch(input){
+  if(!input.files||!input.files[0]) return;
+  var apiKey=localStorage.getItem('anthropic_api_key')||loadChatApiKey();
+  if(!apiKey){ showToast('⚠️ נא להגדיר מפתח API'); return; }
+  showToast('🤖 מחפש לפי תמונה...');
+  var reader=new FileReader();
+  reader.onload=async function(e){
+    var b64=e.target.result.split(',')[1];
+    var parts=loadCatalog();
+    if(!parts.length){ showToast('המאגר ריק'); return; }
+    var desc=parts.map(function(p){ return JSON.stringify({id:p.id,name:p.name,sku:p.sku,category:p.category}); }).join(',');
+    var prompt='The user photographed an elevator part. Match it to the best entry in this catalog:\n['+desc+']\nReturn JSON only: {"id":"...","confidence":0-100} or {"id":"no_match","confidence":0}. No extra text.';
+    try{
+      var res=await fetch('https://tke-proxy.guyshtaiger.workers.dev',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:100,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:prompt}]}]})});
+      var data=await res.json();
+      if(data.error){ showToast('❌ '+data.error.message); return; }
+      var raw=(data.content&&data.content[0])?data.content[0].text.replace(/```json|```/g,'').trim():'';
+      var match=JSON.parse(raw);
+      if(!match.id||match.id==='no_match'||match.confidence<30){ showToast('לא נמצא חלק תואם'); return; }
+      _catalogFilterModel=null; _catalogFilterCat=null;
+      document.getElementById('catalog-search').value='';
+      renderCatalogChips(); renderCatalog();
+      openCatalogDetail(match.id);
+      showToast('🎯 התאמה '+match.confidence+'%');
+    }catch(err){ showToast('❌ שגיאה בחיפוש'); }
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+</script>
+
+<script>
 if('serviceWorker' in navigator){
   window.addEventListener('load', function(){
     navigator.serviceWorker.register('sw.js').catch(function(){});
+
   });
 }
 </script>
