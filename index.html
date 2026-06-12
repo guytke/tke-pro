@@ -26,7 +26,9 @@
   --text:#f0f0f0;--text2:#aaa;--text3:#555;
   --radius:14px;--radius-sm:8px;
 }
+html,body{overscroll-behavior-y:none;overscroll-behavior:none}
 body{background:var(--bg);color:var(--text);font-family:'Heebo',sans-serif;min-height:100vh;overflow-x:hidden}
+.modal,.overlay{overscroll-behavior:contain}
 
 /* HEADER */
 .header{background:rgba(10,10,10,0.96);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:12px 16px;position:sticky;top:0;z-index:50}
@@ -2084,6 +2086,7 @@ function sendOrderEmail(mode){
     '\n\nתודה'
   );
   window.location.href = 'mailto:TKEIL_Warehouse@tkelevator.com?subject='+subject+'&body='+body;
+  if(typeof clearDrafts==='function') clearDrafts(mode==='auto'?'ai-':'man-');
 }
 
 // ─── PARAMETERS ───────────────────────────────────────
@@ -3304,6 +3307,7 @@ async function saveCatalogPart(){
     await refreshCatalogCache();
     renderCatalogChips(); renderCatalog();
     showToast('✅ חלק נשמר במאגר');
+    if(typeof clearDrafts==='function') clearDrafts('catalog-add-');
     if(part.imageBlob&&!part.fingerprint) generateFingerprint(id,part.imageBlob);
   }catch(e){ showToast('❌ שגיאה בשמירה: '+e.message); }
 }
@@ -3524,6 +3528,74 @@ function openCatalogAddWithPN(pn){
     await refreshCatalogCache();
   }catch(e){ console.error('catalog init',e); }
 })();
+
+// ─── PULL-TO-REFRESH BLOCK (iOS / old browsers fallback) ───
+(function(){
+  var startY=0;
+  document.addEventListener('touchstart',function(e){
+    startY=e.touches[0].clientY;
+  },{passive:true});
+  document.addEventListener('touchmove',function(e){
+    var y=e.touches[0].clientY;
+    var pullingDown=y>startY;
+    if(!pullingDown) return;
+    // find nearest scrollable ancestor of the touch target
+    var el=e.target;
+    while(el&&el!==document.body&&el!==document.documentElement){
+      var st=getComputedStyle(el);
+      var scrollable=(st.overflowY==='auto'||st.overflowY==='scroll')&&el.scrollHeight>el.clientHeight;
+      if(scrollable){
+        if(el.scrollTop>0) return; // inner list still has room to scroll up — allow
+        break;
+      }
+      el=el.parentElement;
+    }
+    // at top of page (or top of inner scroller) and dragging down → block refresh
+    var pageTop=(document.scrollingElement||document.documentElement).scrollTop<=0;
+    if(pageTop) e.preventDefault();
+  },{passive:false});
+})();
+
+// ─── FORM DRAFT AUTOSAVE (sessionStorage) ──────────────
+var DRAFT_FIELDS=[
+  'catalog-add-name','catalog-add-sku','catalog-add-notes',
+  'man-call-number','man-site','man-part-name','man-part-num','man-qty','man-note',
+  'ai-call-number','ai-site','ai-part-name','ai-part-num','ai-qty','ai-note'
+];
+var _draftTimer=null;
+function saveDrafts(){
+  var d={};
+  DRAFT_FIELDS.forEach(function(id){
+    var el=document.getElementById(id);
+    if(el&&el.value) d[id]=el.value;
+  });
+  try{ sessionStorage.setItem('tke_form_drafts',JSON.stringify(d)); }catch(e){}
+}
+function restoreDrafts(){
+  try{
+    var d=JSON.parse(sessionStorage.getItem('tke_form_drafts')||'{}');
+    Object.keys(d).forEach(function(id){
+      var el=document.getElementById(id);
+      if(el&&!el.value) el.value=d[id];
+    });
+  }catch(e){}
+}
+function clearDrafts(prefix){
+  try{
+    var d=JSON.parse(sessionStorage.getItem('tke_form_drafts')||'{}');
+    Object.keys(d).forEach(function(id){ if(!prefix||id.indexOf(prefix)===0) delete d[id]; });
+    sessionStorage.setItem('tke_form_drafts',JSON.stringify(d));
+  }catch(e){}
+}
+DRAFT_FIELDS.forEach(function(id){
+  var el=document.getElementById(id);
+  if(!el) return;
+  el.addEventListener('input',function(){
+    clearTimeout(_draftTimer);
+    _draftTimer=setTimeout(saveDrafts,500);
+  });
+});
+restoreDrafts();
 </script>
 
 <script>
