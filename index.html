@@ -231,7 +231,7 @@ if('serviceWorker' in navigator){
   pushState();
   window.addEventListener('popstate', function(){
     pushState();
-    var modalIds = ['form-modal','view-modal','import-modal','param-form-modal','param-view-modal','mfr-form-modal','mfr-view-modal','page-image-modal'];
+    var modalIds = ['form-modal','view-modal','import-modal','param-form-modal','param-view-modal','mfr-form-modal','mfr-view-modal','page-image-modal','catalog-add-modal','catalog-detail-modal','part-form-modal'];
     for(var i = modalIds.length-1; i >= 0; i--){
       var el = document.getElementById(modalIds[i]);
       if(el && el.classList.contains('open')){
@@ -778,7 +778,7 @@ if('serviceWorker' in navigator){
 </div>
 
 <!-- CATALOG ADD MODAL -->
-<div id="catalog-add-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:200;overflow-y:auto;padding:16px">
+<div id="catalog-add-modal" class="overlay" style="z-index:200;overflow-y:auto;padding:16px;align-items:flex-start">
   <div class="cl-modal-inner">
     <button onclick="closeModal('catalog-add-modal')" style="position:absolute;top:10px;left:10px;background:#E8E2EC;border:none;border-radius:50%;width:30px;height:30px;color:#2A1F33;font-size:18px;cursor:pointer">×</button>
     <div style="font-size:15px;font-weight:700;margin-bottom:16px;color:#2A1F33">➕ חלק חדש למאגר</div>
@@ -825,7 +825,7 @@ if('serviceWorker' in navigator){
 </div>
 
 <!-- CATALOG DETAIL MODAL -->
-<div id="catalog-detail-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:200;overflow-y:auto;padding:16px">
+<div id="catalog-detail-modal" class="overlay" style="z-index:200;overflow-y:auto;padding:16px;align-items:flex-start">
   <div class="cl-modal-inner">
     <button onclick="closeModal('catalog-detail-modal')" style="position:absolute;top:10px;left:10px;background:#E8E2EC;border:none;border-radius:50%;width:30px;height:30px;color:#2A1F33;font-size:18px;cursor:pointer">×</button>
     <div id="catalog-detail-content"></div>
@@ -3111,7 +3111,7 @@ function openCatalogAdd(){
   document.getElementById('catalog-img-preview-wrap').style.display='none';
   document.getElementById('catalog-model-picker').style.display='none';
   renderCatalogCatChipsAdd(); renderSelectedModels(); buildModelPicker();
-  document.getElementById('catalog-add-modal').style.display='block';
+  document.getElementById('catalog-add-modal').classList.add('open');
 }
 
 function handleCatalogImage(input){
@@ -3213,7 +3213,7 @@ function openCatalogDetail(id){
       '<button onclick="deleteCatalogPart(\''+id+'\')" class="cl-btn-delete">🗑️ מחק</button>'+
       '<button onclick="orderFromCatalog(\''+id+'\')" class="cl-btn-orange">📋 הזמן</button>'+
     '</div>';
-  document.getElementById('catalog-detail-modal').style.display='block';
+  document.getElementById('catalog-detail-modal').classList.add('open');
 }
 
 function editCatalogPart(id){
@@ -3227,7 +3227,7 @@ function editCatalogPart(id){
   else document.getElementById('catalog-img-preview-wrap').style.display='none';
   document.getElementById('catalog-model-picker').style.display='none';
   renderCatalogCatChipsAdd(); renderSelectedModels(); buildModelPicker();
-  document.getElementById('catalog-add-modal').style.display='block';
+  document.getElementById('catalog-add-modal').classList.add('open');
 }
 
 function deleteCatalogPart(id){
