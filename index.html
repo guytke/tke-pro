@@ -773,6 +773,8 @@ if('serviceWorker' in navigator){
 
     <!-- Grid -->
     <div id="catalog-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+    <!-- Image search results -->
+    <div id="catalog-search-results" style="display:none"></div>
   </div><!-- end catalog subtab -->
 
 </div>
@@ -2989,8 +2991,7 @@ function initChatTab(){
   </div>
 </div>
 <script>
-// ─── PARTS CATALOG ────────────────────────────────────
-const CATALOG_KEY = 'tke_parts_catalog';
+// ─── PARTS CATALOG (IndexedDB) ────────────────────────
 
 const CATALOG_CATEGORIES = [
   'בקרים','קונטקטורים','ממסרים','מפעילי דלת',
@@ -3014,21 +3015,143 @@ const ELEVATOR_MODELS = [
   'קוריאה- EVOLUTION 1','קוריאה- EVOLUTION 2','קוריאה- TK50 ה.אנרגיה'
 ];
 
-var _catalogImgBase64 = null;
+// ── IndexedDB ──────────────────────────────────────────
+var _idb = null;
+function openIDB(){
+  return new Promise(function(resolve,reject){
+    if(_idb){ resolve(_idb); return; }
+    var req=indexedDB.open('tke-pro-db',1);
+    req.onupgradeneeded=function(e){
+      var db=e.target.result;
+      if(!db.objectStoreNames.contains('parts')) db.createObjectStore('parts',{keyPath:'id'});
+    };
+    req.onsuccess=function(e){ _idb=e.target.result; resolve(_idb); };
+    req.onerror=function(e){ reject(e.target.error); };
+  });
+}
+function idbGetAll(){
+  return openIDB().then(function(db){
+    return new Promise(function(resolve,reject){
+      var req=db.transaction('parts','readonly').objectStore('parts').getAll();
+      req.onsuccess=function(){ resolve(req.result); };
+      req.onerror=function(){ reject(req.error); };
+    });
+  });
+}
+function idbPut(part){
+  return openIDB().then(function(db){
+    return new Promise(function(resolve,reject){
+      var req=db.transaction('parts','readwrite').objectStore('parts').put(part);
+      req.onsuccess=function(){ resolve(req.result); };
+      req.onerror=function(){ reject(req.error); };
+    });
+  });
+}
+function idbGet(id){
+  return openIDB().then(function(db){
+    return new Promise(function(resolve,reject){
+      var req=db.transaction('parts','readonly').objectStore('parts').get(id);
+      req.onsuccess=function(){ resolve(req.result); };
+      req.onerror=function(){ reject(req.error); };
+    });
+  });
+}
+function idbDelete(id){
+  return openIDB().then(function(db){
+    return new Promise(function(resolve,reject){
+      var req=db.transaction('parts','readwrite').objectStore('parts').delete(id);
+      req.onsuccess=function(){ resolve(); };
+      req.onerror=function(){ reject(req.error); };
+    });
+  });
+}
+
+// ── Image helpers ──────────────────────────────────────
+function compressImage(file){
+  return new Promise(function(resolve){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      var img=new Image();
+      img.onload=function(){
+        var canvas=document.createElement('canvas');
+        var maxW=800, scale=img.width>maxW?maxW/img.width:1;
+        canvas.width=img.width*scale; canvas.height=img.height*scale;
+        canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+        canvas.toBlob(function(blob){ resolve(blob); },'image/jpeg',0.7);
+      };
+      img.src=e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+function blobToBase64(blob){
+  return new Promise(function(resolve){
+    var reader=new FileReader();
+    reader.onload=function(e){ resolve(e.target.result.split(',')[1]); };
+    reader.readAsDataURL(blob);
+  });
+}
+function dataURLtoBlob(dataURL){
+  var parts=dataURL.split(','), mime=parts[0].match(/:(.*?);/)[1];
+  var binary=atob(parts[1]), arr=new Uint8Array(binary.length);
+  for(var i=0;i<binary.length;i++) arr[i]=binary.charCodeAt(i);
+  return new Blob([arr],{type:mime});
+}
+
+// ── In-memory cache + object URLs ─────────────────────
+var _catalogParts = [];
+var _catalogObjURLs = {};
+
+async function refreshCatalogCache(){
+  var parts=await idbGetAll();
+  // revoke URLs for deleted parts
+  Object.keys(_catalogObjURLs).forEach(function(id){
+    if(!parts.find(function(p){ return p.id===id; })){ URL.revokeObjectURL(_catalogObjURLs[id]); delete _catalogObjURLs[id]; }
+  });
+  // create URLs for new parts with blobs
+  for(var i=0;i<parts.length;i++){
+    var p=parts[i];
+    if(p.imageBlob && !_catalogObjURLs[p.id]) _catalogObjURLs[p.id]=URL.createObjectURL(p.imageBlob);
+  }
+  _catalogParts=parts;
+}
+
+// ── Migration from localStorage ────────────────────────
+async function migrateCatalogLS(){
+  var old=localStorage.getItem('tke_parts_catalog');
+  if(!old) return;
+  try{
+    var arr=JSON.parse(old)||[];
+    for(var i=0;i<arr.length;i++){
+      var p=arr[i];
+      var blob=null;
+      if(p.image&&p.image.startsWith('data:')) blob=dataURLtoBlob(p.image);
+      await idbPut({
+        id:p.id,name:p.name||'',partNumber:p.sku||'',quantity:0,
+        models:p.compatible_with||[],category:p.category||'',
+        imageBlob:blob,notes:p.notes||'',fingerprint:null,
+        createdAt:p.created_at?new Date(p.created_at).getTime():Date.now()
+      });
+    }
+    localStorage.removeItem('tke_parts_catalog');
+    if(arr.length) showToast('✅ '+arr.length+' חלקים הועברו למאגר');
+  }catch(e){ console.error('catalog migration failed',e); }
+}
+
+// ── State ──────────────────────────────────────────────
+var _catalogImgBlob = null;
 var _catalogSelectedCat = null;
 var _catalogSelectedModels = [];
 var _catalogFilterModel = null;
 var _catalogFilterCat = null;
 var _catalogEditId = null;
 
-function loadCatalog(){ try{ return JSON.parse(localStorage.getItem(CATALOG_KEY))||[]; }catch(e){ return []; } }
-function saveCatalog(d){ localStorage.setItem(CATALOG_KEY, JSON.stringify(d)); }
-
+// ── Sub-tab switch ─────────────────────────────────────
 function switchPartsSubTab(tab){
-  var inv = document.getElementById('parts-subtab-inventory');
-  var cat = document.getElementById('parts-subtab-catalog');
-  var btnI = document.getElementById('parts-subtab-btn-inventory');
-  var btnC = document.getElementById('parts-subtab-btn-catalog');
+  var inv=document.getElementById('parts-subtab-inventory');
+  var cat=document.getElementById('parts-subtab-catalog');
+  var btnI=document.getElementById('parts-subtab-btn-inventory');
+  var btnC=document.getElementById('parts-subtab-btn-catalog');
   if(tab==='inventory'){
     inv.style.display='block'; cat.style.display='none';
     btnI.style.background='rgba(251,140,64,0.15)'; btnI.style.borderColor='rgba(251,140,64,0.5)'; btnI.style.color='#fb8c40'; btnI.style.fontWeight='600';
@@ -3038,73 +3161,73 @@ function switchPartsSubTab(tab){
     btnC.style.background='rgba(251,140,64,0.15)'; btnC.style.borderColor='rgba(251,140,64,0.5)'; btnC.style.color='#fb8c40'; btnC.style.fontWeight='600';
     btnI.style.background='var(--bg2)'; btnI.style.borderColor='var(--border)'; btnI.style.color='var(--text2)'; btnI.style.fontWeight='500';
     _catalogFilterModel=null; _catalogFilterCat=null;
-    renderCatalogChips(); renderCatalog();
+    refreshCatalogCache().then(function(){ renderCatalogChips(); renderCatalog(); });
   }
 }
 
-function chipBtn(label, val, active, type){
-  var isActive = (val===active);
-  var bg = isActive ? '#5B2A8C' : '#fff';
-  var col = isActive ? '#fff' : '#8A7F94';
-  var bc = isActive ? '#5B2A8C' : '#E8E2EC';
-  var valStr = val===null ? 'null' : '\''+val.replace(/'/g,"\\'")+'\'';
+// ── Chip filters ───────────────────────────────────────
+function chipBtn(label,val,active,type){
+  var isActive=(val===active);
+  var bg=isActive?'#5B2A8C':'#fff', col=isActive?'#fff':'#8A7F94', bc=isActive?'#5B2A8C':'#E8E2EC';
+  var valStr=val===null?'null':'\''+val.replace(/'/g,"\\'")+'\'';
   return '<button onclick="setCatalogFilter(\''+type+'\','+valStr+')" style="background:'+bg+';color:'+col+';border:1px solid '+bc+';border-radius:20px;padding:5px 12px;font-size:12px;font-family:Heebo,sans-serif;cursor:pointer;white-space:nowrap;flex-shrink:0">'+label+'</button>';
 }
-
 function renderCatalogChips(){
-  var parts = loadCatalog();
-  var allModels = [], allCats = [];
-  parts.forEach(function(p){
-    (p.compatible_with||[]).forEach(function(m){ if(!allModels.includes(m)) allModels.push(m); });
-    if(p.category && !allCats.includes(p.category)) allCats.push(p.category);
+  var allModels=[],allCats=[];
+  _catalogParts.forEach(function(p){
+    (p.models||p.compatible_with||[]).forEach(function(m){ if(!allModels.includes(m)) allModels.push(m); });
+    if(p.category&&!allCats.includes(p.category)) allCats.push(p.category);
   });
-  var mc = document.getElementById('catalog-model-chips');
-  var cc = document.getElementById('catalog-cat-chips');
-  if(mc) mc.innerHTML = chipBtn('הכל',null,_catalogFilterModel,'model') + allModels.map(function(m){ return chipBtn(m,m,_catalogFilterModel,'model'); }).join('');
-  if(cc) cc.innerHTML = chipBtn('הכל',null,_catalogFilterCat,'cat') + allCats.map(function(c){ return chipBtn(c,c,_catalogFilterCat,'cat'); }).join('');
+  var mc=document.getElementById('catalog-model-chips'), cc=document.getElementById('catalog-cat-chips');
+  if(mc) mc.innerHTML=chipBtn('הכל',null,_catalogFilterModel,'model')+allModels.map(function(m){ return chipBtn(m,m,_catalogFilterModel,'model'); }).join('');
+  if(cc) cc.innerHTML=chipBtn('הכל',null,_catalogFilterCat,'cat')+allCats.map(function(c){ return chipBtn(c,c,_catalogFilterCat,'cat'); }).join('');
 }
-
-function setCatalogFilter(type, val){
-  if(type==='model') _catalogFilterModel = val;
-  else _catalogFilterCat = val;
+function setCatalogFilter(type,val){
+  if(type==='model') _catalogFilterModel=val; else _catalogFilterCat=val;
   renderCatalogChips(); renderCatalog();
 }
 
+// ── Grid render ────────────────────────────────────────
 function renderCatalog(){
-  var parts = loadCatalog();
-  var q = ((document.getElementById('catalog-search')||{}).value||'').toLowerCase().trim();
-  var filtered = parts.filter(function(p){
-    if(_catalogFilterModel && !(p.compatible_with||[]).includes(_catalogFilterModel)) return false;
-    if(_catalogFilterCat && p.category !== _catalogFilterCat) return false;
-    if(q && !(p.name||'').toLowerCase().includes(q) && !(p.sku||'').toLowerCase().includes(q)) return false;
+  var q=((document.getElementById('catalog-search')||{}).value||'').toLowerCase().trim();
+  var filtered=_catalogParts.filter(function(p){
+    var models=p.models||p.compatible_with||[];
+    if(_catalogFilterModel&&!models.includes(_catalogFilterModel)) return false;
+    if(_catalogFilterCat&&p.category!==_catalogFilterCat) return false;
+    var pn=p.partNumber||p.sku||'';
+    if(q&&!(p.name||'').toLowerCase().includes(q)&&!pn.toLowerCase().includes(q)) return false;
     return true;
   });
-  var grid = document.getElementById('catalog-grid');
-  if(!grid) return;
+  var grid=document.getElementById('catalog-grid'); if(!grid) return;
   if(!filtered.length){
-    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:#B8B0C0;padding:40px;font-size:14px">אין חלקים תואמים</div>';
+    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:#B8B0C0;padding:40px;font-size:14px">'+(_catalogParts.length===0?'המאגר ריק — לחץ "+ חלק" להוספה':'אין חלקים תואמים')+'</div>';
     return;
   }
-  grid.innerHTML = filtered.map(function(p){
-    var shared = (p.compatible_with||[]).length > 1;
-    var badges = (p.compatible_with||[]).slice(0,3).map(function(m){
-      return '<span class="cl-badge-model">'+m+'</span>';
-    }).join('');
-    var imgHtml = p.image
-      ? '<img src="'+p.image+'" style="width:100%;height:110px;object-fit:cover;border-radius:8px;display:block;margin-bottom:8px">'
-      : '<div class="cl-img-placeholder">🔩</div>';
+  grid.innerHTML=filtered.map(function(p){
+    var models=p.models||p.compatible_with||[];
+    var shared=models.length>1;
+    var badges=models.slice(0,2).map(function(m){ return '<span class="cl-badge-model">'+m+'</span>'; }).join('');
+    var objURL=_catalogObjURLs[p.id];
+    var imgHtml=objURL
+      ?'<img src="'+objURL+'" style="width:100%;height:110px;object-fit:cover;border-radius:8px;display:block;margin-bottom:8px">'
+      :'<div class="cl-img-placeholder">🔩</div>';
+    var pendingBadge=(!p.fingerprint&&p.imageBlob)
+      ?'<span id="fp-spinner-'+p.id+'" onclick="event.stopPropagation();retryFingerprint(\''+p.id+'\')" style="position:absolute;top:7px;left:7px;font-size:11px;background:rgba(91,42,140,0.1);color:#5B2A8C;border:1px solid rgba(91,42,140,0.3);border-radius:8px;padding:2px 6px;cursor:pointer">⏳ ניתוח</span>'
+      :'';
+    var pn=p.partNumber||p.sku||'';
     return '<div onclick="openCatalogDetail(\''+p.id+'\')" class="cl-card">'+
       (shared?'<span class="cl-badge-shared">🔗 Shared</span>':'')+
-      imgHtml+
+      pendingBadge+imgHtml+
       '<div style="font-size:13px;font-weight:600;color:#2A1F33;margin-bottom:3px;line-height:1.3">'+p.name+'</div>'+
-      '<div style="font-size:11px;color:#8A7F94;margin-bottom:6px">'+p.sku+'</div>'+
+      '<div style="font-size:11px;color:#8A7F94;margin-bottom:6px">'+pn+'</div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:4px">'+badges+'</div>'+
     '</div>';
   }).join('');
 }
 
+// ── Add form ───────────────────────────────────────────
 function openCatalogAdd(){
-  _catalogImgBase64=null; _catalogSelectedCat=null; _catalogSelectedModels=[]; _catalogEditId=null;
+  _catalogImgBlob=null; _catalogSelectedCat=null; _catalogSelectedModels=[]; _catalogEditId=null;
   document.getElementById('catalog-add-name').value='';
   document.getElementById('catalog-add-sku').value='';
   document.getElementById('catalog-add-notes').value='';
@@ -3114,97 +3237,137 @@ function openCatalogAdd(){
   document.getElementById('catalog-add-modal').classList.add('open');
 }
 
-function handleCatalogImage(input){
+async function handleCatalogImage(input){
   if(!input.files||!input.files[0]) return;
-  var reader = new FileReader();
-  reader.onload = function(e){
-    var img = new Image();
-    img.onload = function(){
-      var canvas = document.createElement('canvas');
-      var scale = img.width > 400 ? 400/img.width : 1;
-      canvas.width=img.width*scale; canvas.height=img.height*scale;
-      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-      _catalogImgBase64 = canvas.toDataURL('image/jpeg',0.8);
-      document.getElementById('catalog-img-preview').src = _catalogImgBase64;
-      document.getElementById('catalog-img-preview-wrap').style.display='block';
-    };
-    img.src=e.target.result;
-  };
-  reader.readAsDataURL(input.files[0]);
+  var blob=await compressImage(input.files[0]);
+  _catalogImgBlob=blob;
+  document.getElementById('catalog-img-preview').src=URL.createObjectURL(blob);
+  document.getElementById('catalog-img-preview-wrap').style.display='block';
 }
 
 function renderCatalogCatChipsAdd(){
-  var extra = loadCatalog().map(function(p){ return p.category; })
-    .filter(function(c,i,a){ return c && a.indexOf(c)===i && !CATALOG_CATEGORIES.includes(c); });
-  var cats = CATALOG_CATEGORIES.concat(extra);
-  var el = document.getElementById('catalog-cat-chips-add');
-  if(!el) return;
-  el.innerHTML = cats.map(function(c){
-    var active = _catalogSelectedCat===c;
-    var bg = active ? '#5B2A8C' : '#fff';
-    var col = active ? '#fff' : '#8A7F94';
-    var bc = active ? '#5B2A8C' : '#E8E2EC';
+  var extra=_catalogParts.map(function(p){ return p.category; })
+    .filter(function(c,i,a){ return c&&a.indexOf(c)===i&&!CATALOG_CATEGORIES.includes(c); });
+  var cats=CATALOG_CATEGORIES.concat(extra);
+  var el=document.getElementById('catalog-cat-chips-add'); if(!el) return;
+  el.innerHTML=cats.map(function(c){
+    var active=_catalogSelectedCat===c;
+    var bg=active?'#5B2A8C':'#fff', col=active?'#fff':'#8A7F94', bc=active?'#5B2A8C':'#E8E2EC';
     return '<button onclick="selectCatalogCat(\''+c.replace(/'/g,"\\'")+'\''+')" style="background:'+bg+';color:'+col+';border:1px solid '+bc+';border-radius:20px;padding:5px 12px;font-size:12px;font-family:Heebo,sans-serif;cursor:pointer">'+c+'</button>';
   }).join('');
 }
-
 function selectCatalogCat(c){ _catalogSelectedCat=c; renderCatalogCatChipsAdd(); }
-
 function addCustomCatalogCat(){
-  var inp=document.getElementById('catalog-new-cat'); var val=inp.value.trim();
+  var inp=document.getElementById('catalog-new-cat'), val=inp.value.trim();
   if(!val) return; _catalogSelectedCat=val; inp.value=''; renderCatalogCatChipsAdd();
 }
-
 function buildModelPicker(){
   var el=document.getElementById('catalog-model-picker'); if(!el) return;
-  el.innerHTML = ELEVATOR_MODELS.map(function(m){
+  el.innerHTML=ELEVATOR_MODELS.map(function(m){
     var chk=_catalogSelectedModels.includes(m)?'checked':'';
     return '<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px;color:#2A1F33;font-family:Heebo,sans-serif;border-bottom:1px solid #F0EBF4">'+
       '<input type="checkbox" '+chk+' onchange="toggleModelSelect(\''+m.replace(/'/g,"\\'")+'\''+')" style="width:16px;height:16px;accent-color:#5B2A8C">'+m+'</label>';
   }).join('');
 }
-
 function toggleModelPicker(){ var el=document.getElementById('catalog-model-picker'); if(!el) return; el.style.display=el.style.display==='none'?'block':'none'; if(el.style.display==='block') buildModelPicker(); }
-
 function toggleModelSelect(m){
   var idx=_catalogSelectedModels.indexOf(m);
   if(idx===-1) _catalogSelectedModels.push(m); else _catalogSelectedModels.splice(idx,1);
   renderSelectedModels();
 }
-
 function renderSelectedModels(){
   var el=document.getElementById('catalog-selected-models'); if(!el) return;
   if(!_catalogSelectedModels.length){ el.innerHTML='<span style="font-size:12px;color:#B8B0C0">לא נבחרו דגמים</span>'; return; }
   el.innerHTML=_catalogSelectedModels.map(function(m){
-    return '<span class="cl-model-chip">'+m+
-      '<button onclick="toggleModelSelect(\''+m.replace(/'/g,"\\'")+'\');buildModelPicker();">×</button></span>';
+    return '<span class="cl-model-chip">'+m+'<button onclick="toggleModelSelect(\''+m.replace(/'/g,"\\'")+'\');buildModelPicker();">×</button></span>';
   }).join('');
 }
 
-function saveCatalogPart(){
+async function saveCatalogPart(){
   var name=document.getElementById('catalog-add-name').value.trim();
   var sku=document.getElementById('catalog-add-sku').value.trim();
   var notes=document.getElementById('catalog-add-notes').value.trim();
   if(!name){ showToast('⚠️ נא למלא שם חלק'); return; }
-  var parts=loadCatalog();
-  if(_catalogEditId){
-    var idx=parts.findIndex(function(p){ return p.id===_catalogEditId; });
-    if(idx>-1){ parts[idx].name=name; parts[idx].sku=sku; parts[idx].notes=notes; parts[idx].category=_catalogSelectedCat||''; parts[idx].compatible_with=_catalogSelectedModels.slice(); if(_catalogImgBase64) parts[idx].image=_catalogImgBase64; }
-  } else {
-    parts.push({ id:Date.now().toString(36)+Math.random().toString(36).slice(2,6), name:name, sku:sku, notes:notes, category:_catalogSelectedCat||'', compatible_with:_catalogSelectedModels.slice(), image:_catalogImgBase64||'', created_at:new Date().toISOString() });
-  }
-  saveCatalog(parts); closeModal('catalog-add-modal'); renderCatalogChips(); renderCatalog(); showToast('✅ חלק נשמר במאגר');
+  var existing=_catalogEditId?_catalogParts.find(function(p){ return p.id===_catalogEditId; }):null;
+  var id=_catalogEditId||(Date.now().toString(36)+Math.random().toString(36).slice(2,6));
+  var part={
+    id:id, name:name, partNumber:sku, quantity:existing?existing.quantity||0:0,
+    models:_catalogSelectedModels.slice(), category:_catalogSelectedCat||'',
+    imageBlob:_catalogImgBlob||(existing?existing.imageBlob:null),
+    notes:notes, fingerprint:existing?existing.fingerprint:null,
+    createdAt:existing?existing.createdAt:Date.now()
+  };
+  if(_catalogImgBlob&&existing) part.fingerprint=null; // re-analyze new image
+  try{
+    await idbPut(part);
+    closeModal('catalog-add-modal');
+    await refreshCatalogCache();
+    renderCatalogChips(); renderCatalog();
+    showToast('✅ חלק נשמר במאגר');
+    if(part.imageBlob&&!part.fingerprint) generateFingerprint(id,part.imageBlob);
+  }catch(e){ showToast('❌ שגיאה בשמירה: '+e.message); }
 }
 
+// ── Fingerprint ────────────────────────────────────────
+async function generateFingerprint(partId,imageBlob){
+  var apiKey=localStorage.getItem('anthropic_api_key')||loadChatApiKey();
+  if(!apiKey) return;
+  var badge=document.getElementById('fp-spinner-'+partId);
+  if(badge) badge.textContent='🔄 מנתח...';
+  try{
+    var b64=await blobToBase64(imageBlob);
+    var sys='אתה מזהה חלקי חילוף של מעליות. נתח את התמונה והחזר JSON בלבד, ללא markdown וללא טקסט נוסף:\n{"type":"","manufacturer":"","printedPN":"","labels":[],"color":"","connectors":"","shape":"","summary":""}\nעדיפות עליונה: קרא בקפידה כל מק"ט/P/N/דגם שמודפס על תוויות או על המעגל (OCR). אם לא נראה מק"ט — printedPN ריק. אל תנחש.';
+    var res=await fetch('https://tke-proxy.guyshtaiger.workers.dev',{method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,system:sys,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},
+          {type:'text',text:'נתח את החלק בתמונה.'}
+        ]}]
+      })
+    });
+    var data=await res.json();
+    if(data.error) throw new Error(data.error.message||JSON.stringify(data.error));
+    var fp=JSON.parse(data.content[0].text.replace(/```json|```/g,'').trim());
+    var part=await idbGet(partId);
+    if(part){ part.fingerprint=fp; await idbPut(part); }
+    await refreshCatalogCache(); renderCatalog();
+    var b2=document.getElementById('fp-spinner-'+partId);
+    if(b2) b2.style.display='none';
+  }catch(e){
+    var b3=document.getElementById('fp-spinner-'+partId);
+    if(b3){ b3.textContent='❌ נסה שוב'; b3.style.background='rgba(239,68,68,0.1)'; b3.style.borderColor='rgba(239,68,68,0.3)'; b3.style.color='#ef4444'; }
+  }
+}
+async function retryFingerprint(partId){
+  var part=await idbGet(partId);
+  if(part&&part.imageBlob) generateFingerprint(partId,part.imageBlob);
+}
+
+// ── Detail modal ───────────────────────────────────────
 function openCatalogDetail(id){
-  var p=loadCatalog().find(function(x){ return x.id===id; }); if(!p) return;
-  var shared=(p.compatible_with||[]).length>1;
-  var badges=(p.compatible_with||[]).map(function(m){ return '<span class="cl-badge-model" style="border-radius:6px;padding:3px 10px;font-size:12px">'+m+'</span>'; }).join('');
+  var p=_catalogParts.find(function(x){ return x.id===id; }); if(!p) return;
+  var models=p.models||p.compatible_with||[];
+  var shared=models.length>1;
+  var pn=p.partNumber||p.sku||'';
+  var badges=models.map(function(m){ return '<span class="cl-badge-model" style="border-radius:6px;padding:3px 10px;font-size:12px">'+m+'</span>'; }).join('');
+  var objURL=_catalogObjURLs[p.id];
+  var fp=p.fingerprint;
+  var fpHtml=fp?
+    '<div style="background:#fff;border:1px solid #E8E2EC;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:#2A1F33">'+
+      (fp.type?'<div><b>סוג:</b> '+fp.type+'</div>':'')+
+      (fp.manufacturer?'<div><b>יצרן:</b> '+fp.manufacturer+'</div>':'')+
+      (fp.printedPN?'<div><b>מק"ט זוהה (OCR):</b> <span style="color:#5B2A8C;font-weight:700">'+fp.printedPN+'</span></div>':'')+
+      (fp.color?'<div><b>צבע:</b> '+fp.color+'</div>':'')+
+      (fp.summary?'<div style="margin-top:6px;color:#8A7F94">'+fp.summary+'</div>':'')+
+    '</div>'
+    :(p.imageBlob?'<div style="font-size:12px;color:#8A7F94;margin-bottom:10px">⏳ טביעת אצבע בניתוח... <button onclick="retryFingerprint(\''+id+'\')" style="background:none;border:none;color:#5B2A8C;cursor:pointer;font-size:12px">נסה שוב</button></div>':'');
   document.getElementById('catalog-detail-content').innerHTML=
-    (p.image?'<img src="'+p.image+'" style="width:100%;max-height:220px;object-fit:contain;border-radius:10px;margin-bottom:14px;background:#F0EBF4">':'')+
+    (objURL?'<img src="'+objURL+'" style="width:100%;max-height:220px;object-fit:contain;border-radius:10px;margin-bottom:14px;background:#F0EBF4">':'')+
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:17px;font-weight:700;color:#2A1F33">'+p.name+'</span>'+(shared?'<span class="cl-badge-shared" style="position:static">🔗 Shared</span>':'')+'</div>'+
-    '<div style="font-size:13px;color:#8A7F94;margin-bottom:4px">מק״ט: <span style="color:#2A1F33">'+p.sku+'</span></div>'+
+    '<div style="font-size:13px;color:#8A7F94;margin-bottom:4px">מק״ט: <span style="color:#2A1F33">'+pn+'</span></div>'+
     '<div style="font-size:13px;color:#8A7F94;margin-bottom:10px">קטגוריה: <span style="color:#5B2A8C;font-weight:600">'+p.category+'</span></div>'+
+    fpHtml+
     (p.notes?'<div class="cl-notes-box">'+p.notes+'</div>':'')+
     '<div style="font-size:12px;color:#B8B0C0;margin-bottom:6px">דגמים תואמים:</div>'+
     '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">'+badges+'</div>'+
@@ -3216,62 +3379,151 @@ function openCatalogDetail(id){
   document.getElementById('catalog-detail-modal').classList.add('open');
 }
 
-function editCatalogPart(id){
-  var p=loadCatalog().find(function(x){ return x.id===id; }); if(!p) return;
+async function editCatalogPart(id){
+  var p=_catalogParts.find(function(x){ return x.id===id; }); if(!p) return;
   closeModal('catalog-detail-modal');
-  _catalogEditId=id; _catalogImgBase64=p.image||null; _catalogSelectedCat=p.category||null; _catalogSelectedModels=(p.compatible_with||[]).slice();
+  _catalogEditId=id; _catalogImgBlob=null; _catalogSelectedCat=p.category||null;
+  _catalogSelectedModels=(p.models||p.compatible_with||[]).slice();
+  var pn=p.partNumber||p.sku||'';
   document.getElementById('catalog-add-name').value=p.name||'';
-  document.getElementById('catalog-add-sku').value=p.sku||'';
+  document.getElementById('catalog-add-sku').value=pn;
   document.getElementById('catalog-add-notes').value=p.notes||'';
-  if(p.image){ document.getElementById('catalog-img-preview').src=p.image; document.getElementById('catalog-img-preview-wrap').style.display='block'; }
+  var objURL=_catalogObjURLs[p.id];
+  if(objURL){ document.getElementById('catalog-img-preview').src=objURL; document.getElementById('catalog-img-preview-wrap').style.display='block'; }
   else document.getElementById('catalog-img-preview-wrap').style.display='none';
   document.getElementById('catalog-model-picker').style.display='none';
   renderCatalogCatChipsAdd(); renderSelectedModels(); buildModelPicker();
   document.getElementById('catalog-add-modal').classList.add('open');
 }
 
-function deleteCatalogPart(id){
+async function deleteCatalogPart(id){
   if(!confirm('למחוק חלק זה מהמאגר?')) return;
-  saveCatalog(loadCatalog().filter(function(p){ return p.id!==id; }));
-  closeModal('catalog-detail-modal'); renderCatalogChips(); renderCatalog(); showToast('🗑️ חלק נמחק');
+  await idbDelete(id);
+  if(_catalogObjURLs[id]){ URL.revokeObjectURL(_catalogObjURLs[id]); delete _catalogObjURLs[id]; }
+  closeModal('catalog-detail-modal');
+  await refreshCatalogCache(); renderCatalogChips(); renderCatalog(); showToast('🗑️ חלק נמחק');
 }
 
 function orderFromCatalog(id){
-  var p=loadCatalog().find(function(x){ return x.id===id; }); if(!p) return;
+  var p=_catalogParts.find(function(x){ return x.id===id; }); if(!p) return;
   closeModal('catalog-detail-modal');
   switchMainTab('orders'); setOrderMode('manual');
-  setTimeout(function(){ var n=document.getElementById('man-part-name'); var s=document.getElementById('man-part-num'); if(n) n.value=p.name; if(s) s.value=p.sku; },100);
+  setTimeout(function(){
+    var n=document.getElementById('man-part-name'), s=document.getElementById('man-part-num');
+    if(n) n.value=p.name; if(s) s.value=p.partNumber||p.sku||'';
+  },100);
 }
 
+// ── Image search (two-phase) ───────────────────────────
 async function catalogImageSearch(input){
   if(!input.files||!input.files[0]) return;
+  if(!_catalogParts.length){ showToast('המאגר ריק — הוסף חלקים תחילה'); return; }
   var apiKey=localStorage.getItem('anthropic_api_key')||loadChatApiKey();
-  if(!apiKey){ showToast('⚠️ נא להגדיר מפתח API'); return; }
-  showToast('🤖 מחפש לפי תמונה...');
-  var reader=new FileReader();
-  reader.onload=async function(e){
-    var b64=e.target.result.split(',')[1];
-    var parts=loadCatalog();
-    if(!parts.length){ showToast('המאגר ריק'); return; }
-    var desc=parts.map(function(p){ return JSON.stringify({id:p.id,name:p.name,sku:p.sku,category:p.category}); }).join(',');
-    var prompt='The user photographed an elevator part. Match it to the best entry in this catalog:\n['+desc+']\nReturn JSON only: {"id":"...","confidence":0-100} or {"id":"no_match","confidence":0}. No extra text.';
-    try{
-      var res=await fetch('https://tke-proxy.guyshtaiger.workers.dev',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
-        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:100,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},{type:'text',text:prompt}]}]})});
-      var data=await res.json();
-      if(data.error){ showToast('❌ '+data.error.message); return; }
-      var raw=(data.content&&data.content[0])?data.content[0].text.replace(/```json|```/g,'').trim():'';
-      var match=JSON.parse(raw);
-      if(!match.id||match.id==='no_match'||match.confidence<30){ showToast('לא נמצא חלק תואם'); return; }
-      _catalogFilterModel=null; _catalogFilterCat=null;
-      document.getElementById('catalog-search').value='';
-      renderCatalogChips(); renderCatalog();
-      openCatalogDetail(match.id);
-      showToast('🎯 התאמה '+match.confidence+'%');
-    }catch(err){ showToast('❌ שגיאה בחיפוש'); }
-  };
-  reader.readAsDataURL(input.files[0]);
+  if(!apiKey){ showToast('⚠️ נא להגדיר מפתח API בטאב כלים'); return; }
+  var resultsDiv=document.getElementById('catalog-search-results');
+  if(resultsDiv){ resultsDiv.style.display='block'; resultsDiv.innerHTML='<div style="text-align:center;padding:24px;color:#8A7F94;font-size:14px">🔍 מחפש התאמה...</div>'; }
+  try{
+    var queryBlob=await compressImage(input.files[0]);
+    var queryB64=await blobToBase64(queryBlob);
+    // Phase 1 — text filter
+    var catalogDesc=JSON.stringify(_catalogParts.map(function(p){
+      return {id:p.id,name:p.name,partNumber:p.partNumber||p.sku||'',category:p.category,fingerprint:p.fingerprint};
+    }));
+    var sys1='אתה מזהה חלקי מעליות. מצורפת תמונה של חלק ורשימת מאגר. מצא את ההתאמות הסבירות ביותר.\nתעדף התאמת מק"ט מודפס (printedPN) על פני דמיון צורני.\nהחזר JSON בלבד: {"matches":[{"id":"","confidence":0-100,"reason":""}],"detectedPN":""}\nעד 3 התאמות, ממוין לפי confidence. אם אין התאמה סבירה — matches ריק.';
+    var res1=await fetch('https://tke-proxy.guyshtaiger.workers.dev',{method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:500,system:sys1,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:'image/jpeg',data:queryB64}},
+          {type:'text',text:'מאגר החלקים:\n'+catalogDesc}
+        ]}]
+      })
+    });
+    var d1=await res1.json();
+    if(d1.error) throw new Error(d1.error.message||JSON.stringify(d1.error));
+    var r1=JSON.parse(d1.content[0].text.replace(/```json|```/g,'').trim());
+    var matches=r1.matches||[], detectedPN=r1.detectedPN||'';
+    // Phase 2 — visual verification if top confidence < 70 with multiple candidates
+    if(matches.length>=2&&matches[0].confidence<70){
+      if(resultsDiv) resultsDiv.innerHTML='<div style="text-align:center;padding:10px;color:#8A7F94;font-size:13px">🔬 אימות חזותי...</div>';
+      var content2=[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:queryB64}},{type:'text',text:'תמונת החלק שחיפשתי:'}];
+      for(var ci=0;ci<Math.min(matches.length,3);ci++){
+        var cp=_catalogParts.find(function(x){ return x.id===matches[ci].id; });
+        if(cp&&cp.imageBlob){
+          var cpB64=await blobToBase64(cp.imageBlob);
+          content2.push({type:'text',text:'מועמד '+(ci+1)+' (id:'+cp.id+'):'});
+          content2.push({type:'image',source:{type:'base64',media_type:'image/jpeg',data:cpB64}});
+        }
+      }
+      content2.push({type:'text',text:'דרג מחדש את ההתאמות. החזר JSON בלבד: {"matches":[{"id":"","confidence":0-100,"reason":""}],"detectedPN":""}'});
+      try{
+        var res2=await fetch('https://tke-proxy.guyshtaiger.workers.dev',{method:'POST',
+          headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+          body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:500,messages:[{role:'user',content:content2}]})
+        });
+        var d2=await res2.json();
+        if(!d2.error){
+          var r2=JSON.parse(d2.content[0].text.replace(/```json|```/g,'').trim());
+          if(r2.matches&&r2.matches.length) matches=r2.matches;
+          if(r2.detectedPN) detectedPN=r2.detectedPN;
+        }
+      }catch(e2){ /* keep phase-1 results */ }
+    }
+    renderCatalogSearchResults(matches,detectedPN);
+  }catch(e){
+    if(resultsDiv) resultsDiv.innerHTML='<div style="background:#fff;border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:16px;margin-top:14px;text-align:center;font-size:14px;color:#ef4444">❌ שגיאת רשת<br><button onclick="document.getElementById(\'catalog-img-search-input\').click()" style="margin-top:8px;background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">נסה שוב</button></div>';
+  }
 }
+
+function renderCatalogSearchResults(matches,detectedPN){
+  var rd=document.getElementById('catalog-search-results'); if(!rd) return;
+  rd.style.display='block';
+  var html='<div style="border-top:2px solid #E8E2EC;margin-top:14px;padding-top:14px">';
+  html+='<div style="font-size:13px;font-weight:700;color:#2A1F33;margin-bottom:10px">תוצאות חיפוש תמונה</div>';
+  // PN found but not in catalog
+  if(detectedPN){
+    var pnExists=_catalogParts.find(function(p){ return (p.partNumber===detectedPN||p.sku===detectedPN); });
+    if(!pnExists) html+='<div style="background:#fff;border:1px solid rgba(91,42,140,0.3);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:13px;color:#2A1F33">🔍 זוהה מק"ט <strong style="color:#5B2A8C">'+detectedPN+'</strong> — לא נמצא במאגר. <button onclick="openCatalogAddWithPN(\''+detectedPN.replace(/'/g,"\\'")+'\')" style="background:#5B2A8C;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif">הוסף כחלק חדש</button></div>';
+  }
+  if(!matches.length){
+    html+='<div style="text-align:center;color:#B8B0C0;padding:20px;font-size:14px">לא נמצאה התאמה<br><button onclick="openCatalogAdd()" style="margin-top:8px;background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">➕ הוסף כחלק חדש</button></div>';
+  } else {
+    matches.forEach(function(m){
+      var p=_catalogParts.find(function(x){ return x.id===m.id; }); if(!p) return;
+      var objURL=_catalogObjURLs[p.id];
+      var pn=p.partNumber||p.sku||'';
+      var cc=m.confidence>=80?'#10b981':m.confidence>=50?'#FB8C40':'#8A7F94';
+      html+='<div style="background:#fff;border:1px solid #E8E2EC;border-radius:12px;padding:12px;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start">'+
+        (objURL?'<img src="'+objURL+'" style="width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0">':'<div style="width:60px;height:60px;background:#F0EBF4;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🔩</div>')+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-size:13px;font-weight:600;color:#2A1F33">'+p.name+'</div>'+
+          '<div style="font-size:11px;color:#8A7F94;margin-bottom:4px">'+pn+'</div>'+
+          '<div style="font-size:12px;color:'+cc+';font-weight:600;margin-bottom:4px">התאמה '+m.confidence+'%</div>'+
+          (m.reason?'<div style="font-size:11px;color:#B8B0C0">'+m.reason+'</div>':'')+
+        '</div>'+
+        '<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">'+
+          '<button onclick="orderFromCatalog(\''+p.id+'\')" style="background:#FF6B1A;color:#fff;border:none;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif">➕ הזמן</button>'+
+          '<button onclick="openCatalogDetail(\''+p.id+'\')" style="background:#fff;color:#5B2A8C;border:1px solid rgba(91,42,140,0.3);border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif">פרטים</button>'+
+        '</div>'+
+      '</div>';
+    });
+  }
+  html+='</div>';
+  rd.innerHTML=html;
+}
+
+function openCatalogAddWithPN(pn){
+  openCatalogAdd();
+  setTimeout(function(){ var el=document.getElementById('catalog-add-sku'); if(el) el.value=pn; },50);
+}
+
+// ── Init ───────────────────────────────────────────────
+(async function(){
+  try{
+    await migrateCatalogLS();
+    await refreshCatalogCache();
+  }catch(e){ console.error('catalog init',e); }
+})();
 </script>
 
 <script>
