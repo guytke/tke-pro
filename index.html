@@ -425,6 +425,19 @@ if('serviceWorker' in navigator){
       <label>הערות שטח</label>
       <textarea id="pm-notes" rows="2" placeholder="הערות נוספות..."></textarea>
     </div>
+    <div class="form-col">
+      <label>תמונה (אופציונלי)</label>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button type="button" onclick="document.getElementById('pm-img-camera').click()" style="flex:1;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;cursor:pointer;font-family:Heebo,sans-serif">📷 צלם תמונה</button>
+        <button type="button" onclick="document.getElementById('pm-img-gallery').click()" style="flex:1;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;cursor:pointer;font-family:Heebo,sans-serif">🖼️ בחר מגלריה</button>
+      </div>
+      <input type="file" id="pm-img-camera" accept="image/*" capture="environment" style="display:none" onchange="pmPickImage(event)">
+      <input type="file" id="pm-img-gallery" accept="image/*" style="display:none" onchange="pmPickImage(event)">
+      <div id="pm-img-preview" style="display:none;position:relative;display:inline-block">
+        <img id="pm-img-thumb" style="width:100px;height:100px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">
+        <button type="button" onclick="pmClearImage()" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#ef4444;color:#fff;font-size:13px;line-height:1;cursor:pointer;padding:0">×</button>
+      </div>
+    </div>
     <div class="form-actions">
       <button class="btn btn-primary" onclick="pmSave()">💾 שמור</button>
       <button class="btn btn-cancel" onclick="pmClose()">ביטול</button>
@@ -2490,11 +2503,13 @@ function pmRenderList(){
 
 function pmOpenAdd(){
   _pmSelected=[];
+  _pmImageBlob=null;
   document.getElementById('pm-title').textContent='⚙️ פרמטר חדש';
   document.getElementById('pm-edit-id').value='';
   ['pm-code','pm-name','pm-desc','pm-range','pm-default','pm-notes'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
   });
+  pmClearImage();
   pmRenderChips();
   openModal('pm-modal');
 }
@@ -2537,6 +2552,7 @@ async function pmSave(){
     range: (document.getElementById('pm-range').value||'').trim(),
     defaultValue: (document.getElementById('pm-default').value||'').trim(),
     notes: (document.getElementById('pm-notes').value||'').trim(),
+    image: _pmImageBlob||null,
     createdAt: Date.now()
   };
   try{
@@ -2548,6 +2564,40 @@ async function pmSave(){
 }
 
 function pmClose(){ closeModal('pm-modal'); }
+
+var _pmImageBlob = null;
+
+function pmPickImage(e){
+  var file = e.target.files&&e.target.files[0]; if(!file) return;
+  e.target.value='';
+  var img = new Image();
+  var url = URL.createObjectURL(file);
+  img.onload = function(){
+    var MAX=800, w=img.width, h=img.height;
+    if(w>MAX||h>MAX){ if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;} }
+    var canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+    canvas.getContext('2d').drawImage(img,0,0,w,h);
+    canvas.toBlob(function(blob){
+      _pmImageBlob=blob;
+      var thumb=document.getElementById('pm-img-thumb');
+      var prev=document.getElementById('pm-img-preview');
+      if(thumb) thumb.src=URL.createObjectURL(blob);
+      if(prev) prev.style.display='inline-block';
+    },'image/jpeg',0.7);
+    URL.revokeObjectURL(url);
+  };
+  img.src=url;
+}
+
+function pmClearImage(){
+  _pmImageBlob=null;
+  var thumb=document.getElementById('pm-img-thumb');
+  var prev=document.getElementById('pm-img-preview');
+  if(thumb) thumb.src='';
+  if(prev) prev.style.display='none';
+  var c=document.getElementById('pm-img-camera'); if(c) c.value='';
+  var g=document.getElementById('pm-img-gallery'); if(g) g.value='';
+}
 
 // init on tab switch (called from switchMainTab via renderParams)
 function renderParams(){
