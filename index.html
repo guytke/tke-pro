@@ -377,52 +377,7 @@ if('serviceWorker' in navigator){
 
 <!-- PARAMS SECTION -->
 <div id="section-params" style="display:none">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-    <div style="display:flex;align-items:center;gap:8px">
-      <div class="stat" id="params-count">0 פרמטרים</div>
-      <button id="params-delete-mode-btn" onclick="toggleParamsDeleteMode()" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif">🗑 מחיקה מרובה</button>
-    </div>
-    <button class="btn btn-primary btn-sm" onclick="openParamAdd()">+ פרמטר חדש</button>
-  </div>
-  <div id="params-delete-bar" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:8px 12px;margin-bottom:10px;display:none;align-items:center;justify-content:space-between">
-    <span id="params-del-count" style="color:#f87171;font-size:12px;font-family:Heebo,sans-serif">0 נבחרו</span>
-    <div style="display:flex;gap:8px">
-      <button onclick="selectAllParams()" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--text);cursor:pointer">✅ בחר הכל</button>
-      <button onclick="deleteSelectedParams()" style="background:#ef4444;border:none;border-radius:6px;padding:4px 10px;font-size:11px;color:#fff;cursor:pointer">🗑 מחק נבחרים</button>
-    </div>
-  </div>
-  <div class="search-wrap" style="margin-bottom:10px">
-    <span class="search-icon">🔍</span>
-    <input type="text" id="params-search" placeholder="חפש פרמטר, דגם, ערך..." oninput="renderParams()">
-  </div>
-  <div class="model-tabs" id="params-model-tabs"></div>
-  <div id="params-list"></div>
-
-  <!-- סריקת דפי פרמטרים -->
-  <div style="margin-top:20px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px">
-    <div style="font-size:13px;font-weight:700;color:#60a5fa;margin-bottom:10px">📷 סריקת דף פרמטרים</div>
-    <div style="display:flex;gap:8px;margin-bottom:10px">
-      <button onclick="document.getElementById('params-scan-gallery').click()" style="flex:1;padding:9px 4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;cursor:pointer;font-family:Heebo,sans-serif">🖼️ גלריה</button>
-      <button onclick="document.getElementById('params-scan-camera').click()" style="flex:1;padding:9px 4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;cursor:pointer;font-family:Heebo,sans-serif">📸 מצלמה</button>
-      <button onclick="document.getElementById('params-scan-pdf').click()" style="flex:1;padding:9px 4px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;cursor:pointer;font-family:Heebo,sans-serif">📄 PDF</button>
-    </div>
-    <input type="file" id="params-scan-gallery" accept="image/*" multiple style="display:none" onchange="scanParamsImages(event)">
-    <input type="file" id="params-scan-camera" accept="image/*" capture="environment" style="display:none" onchange="scanParamsImages(event)">
-    <input type="file" id="params-scan-pdf" accept=".pdf" style="display:none" onchange="scanParamsPdf(event)">
-    <div id="params-scan-status" style="display:none;margin-top:8px">
-      <div id="params-scan-status-text" style="font-size:12px;color:var(--text2);font-family:Heebo,sans-serif"></div>
-    </div>
-    <div id="params-scan-results-list" style="margin-top:4px;max-height:300px;overflow-y:auto;text-align:right;font-size:12px;color:var(--text2);line-height:1.8"></div>
-    <button id="params-save-btn" onclick="saveParamsScanResults()" style="display:none;margin-top:10px;background:#3b82f6;border:none;border-radius:var(--radius-sm);padding:10px 20px;color:#fff;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif;width:100%">💾 שמור פרמטרים</button>
-  </div>
-
-  <!-- דפים סרוקים של פרמטרים -->
-  <div style="margin-top:12px">
-    <button onclick="toggleParamsScannedPages()" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;color:var(--text2);font-size:13px;cursor:pointer;font-family:Heebo,sans-serif;width:100%;text-align:right">
-      🗂️ דפים סרוקים <span id="params-scanned-count"></span>
-    </button>
-    <div id="params-scanned-list" style="display:none;margin-top:8px"></div>
-  </div>
+  <div style="padding:20px;color:white">פרמטרים — בקרוב</div>
 </div>
 
 
@@ -2059,7 +2014,7 @@ function saveParams(p){ localStorage.setItem(PARAMS_KEY, JSON.stringify(p)); }
 let params = loadParams();
 let paramsActiveModel = '';
 
-function renderParams(){
+function renderParams(){ return; /* placeholder — content coming in next step */
   const q = document.getElementById('params-search').value.toLowerCase().trim();
   let filtered = params.filter(p=>{
     const txt = [p.model,p.name,p.desc,p.value,p.location,p.notes].join(' ').toLowerCase();
