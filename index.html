@@ -545,9 +545,11 @@ if('serviceWorker' in navigator){
       </div>
       <div style="display:flex;gap:8px;margin-bottom:12px">
         <button type="button" onclick="document.getElementById('pm-scan-camera').click()" style="flex:1;padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">📷 צלם מסמך</button>
+        <button type="button" onclick="document.getElementById('pm-scan-gallery').click()" style="flex:1;padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">🖼️ בחר מגלריה</button>
         <button type="button" onclick="document.getElementById('pm-scan-file').click()" style="flex:1;padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">📁 בחר קובץ</button>
       </div>
       <input type="file" id="pm-scan-camera" accept="image/*" capture="environment" style="display:none" onchange="pmScanFile(event)">
+      <input type="file" id="pm-scan-gallery" accept="image/*" style="display:none" onchange="pmScanFile(event)">
       <input type="file" id="pm-scan-file" accept=".pdf,image/*" style="display:none" onchange="pmScanFile(event)">
     </div>
     <div id="pm-scan-spinner" style="display:none;text-align:center;padding:20px">
@@ -2736,6 +2738,7 @@ function pmOpenScan(){
   document.getElementById('pm-scan-results').style.display='none';
   document.getElementById('pm-scan-input-wrap').style.display='block';
   document.getElementById('pm-scan-camera').value='';
+  document.getElementById('pm-scan-gallery').value='';
   document.getElementById('pm-scan-file').value='';
   _pmScanParsed=[]; _pmScanLastFile=null;
   openModal('pm-scan-modal');
