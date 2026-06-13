@@ -224,6 +224,10 @@ textarea.field-area:focus{border-color:var(--green-border)}
 if('serviceWorker' in navigator){
   window.addEventListener('load',function(){
     navigator.serviceWorker.register('/sw.js').catch(function(){});
+    // Auto-reload when a new SW takes control
+    navigator.serviceWorker.addEventListener('controllerchange',function(){
+      window.location.reload();
+    });
   });
 }
 </script>
