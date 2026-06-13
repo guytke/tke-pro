@@ -3254,6 +3254,21 @@ async function saveCatalogPart(){
   var sku=document.getElementById('catalog-add-sku').value.trim();
   var notes=document.getElementById('catalog-add-notes').value.trim();
   if(!name){ showToast('⚠️ נא למלא שם חלק'); return; }
+  // duplicate check (only on new parts, not edits)
+  if(!_catalogEditId){
+    var normName=name.toLowerCase().trim();
+    var normSku=sku.toLowerCase().trim();
+    var dup=_catalogParts.find(function(p){
+      var pn=(p.partNumber||p.sku||'').toLowerCase().trim();
+      var pname=(p.name||'').toLowerCase().trim();
+      return (normSku&&pn&&pn===normSku)||(pname===normName);
+    });
+    if(dup){
+      var dupPn=dup.partNumber||dup.sku||'';
+      var msg='החלק "'+dup.name+'"'+(dupPn?' (מק"ט: '+dupPn+')':'')+' כבר קיים במאגר.';
+      if(!confirm(msg+'\n\nלהוסיף בכל זאת?')) return;
+    }
+  }
   var existing=_catalogEditId?_catalogParts.find(function(p){ return p.id===_catalogEditId; }):null;
   var id=_catalogEditId||(Date.now().toString(36)+Math.random().toString(36).slice(2,6));
   var part={
