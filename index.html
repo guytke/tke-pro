@@ -549,8 +549,9 @@ if('serviceWorker' in navigator){
         <button type="button" onclick="document.getElementById('pm-scan-file').click()" style="flex:1;padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">📁 בחר קובץ</button>
       </div>
       <input type="file" id="pm-scan-camera" accept="image/*" capture="environment" style="display:none" onchange="pmScanFile(event)">
-      <input type="file" id="pm-scan-gallery" accept="image/*" style="display:none" onchange="pmScanFile(event)">
-      <input type="file" id="pm-scan-file" accept=".pdf,image/*" style="display:none" onchange="pmScanFile(event)">
+      <input type="file" id="pm-scan-gallery" accept="image/*" multiple style="display:none" onchange="pmScanFile(event)">
+      <input type="file" id="pm-scan-file" accept=".pdf,image/*" multiple style="display:none" onchange="pmScanFile(event)">
+      <div id="pm-scan-filelist" style="display:none;font-size:12px;color:var(--text2);font-family:Heebo,sans-serif;margin-top:4px"></div>
     </div>
     <div id="pm-scan-spinner" style="display:none;text-align:center;padding:20px">
       <div style="font-size:22px;margin-bottom:6px">⏳</div>
@@ -2740,6 +2741,7 @@ function pmOpenScan(){
   document.getElementById('pm-scan-camera').value='';
   document.getElementById('pm-scan-gallery').value='';
   document.getElementById('pm-scan-file').value='';
+  var fl=document.getElementById('pm-scan-filelist'); if(fl) fl.style.display='none';
   _pmScanParsed=[]; _pmScanLastFile=null;
   openModal('pm-scan-modal');
 }
@@ -2747,75 +2749,94 @@ function pmOpenScan(){
 function pmScanClose(){ closeModal('pm-scan-modal'); }
 
 async function pmScanFile(e){
-  var file=e.target.files&&e.target.files[0]; if(!file) return;
+  var files=Array.from(e.target.files||[]); if(!files.length) return;
   e.target.value='';
-  _pmScanLastFile=file;
-  await pmScanRun(file);
+  _pmScanLastFile=files;
+  var fl=document.getElementById('pm-scan-filelist');
+  if(fl){ fl.style.display='block'; fl.textContent=files.length===1?files[0].name:files.length+' קבצים נבחרו'; }
+  await pmScanRun(files);
 }
 
 function pmScanRetry(){
   if(_pmScanLastFile) pmScanRun(_pmScanLastFile);
 }
 
-async function pmScanRun(file){
+async function pmScanRun(files){
+  if(!Array.isArray(files)) files=[files];
   var apiKey=localStorage.getItem('anthropic_api_key')||loadChatApiKey();
   if(!apiKey){ showToast('⚠️ נא להגדיר מפתח API בטאב כלים'); return; }
   var modelName=(document.getElementById('pm-scan-model').value||'').trim();
-  var isPdf=file.type==='application/pdf';
+  var sys='סרוק את המסמך וחלץ את כל פרמטרי התכנות של בקר המעלית. החזר JSON בלבד, ללא markdown:\n[{"paramCode":"","paramName":"","description":"","range":"","defaultValue":"","notes":""}]\nחלץ כמה שיותר פרמטרים. אל תדלג על אף פרמטר שרואים.';
 
   document.getElementById('pm-scan-input-wrap').style.display='none';
   document.getElementById('pm-scan-error').style.display='none';
   document.getElementById('pm-scan-results').style.display='none';
-  document.getElementById('pm-scan-filename').textContent=file.name;
   document.getElementById('pm-scan-spinner').style.display='block';
 
-  try{
-    var b64=await new Promise(function(res,rej){
-      var r=new FileReader();
-      r.onload=function(){ res(r.result.split(',')[1]); };
-      r.onerror=function(){ rej(new Error('שגיאת קריאת קובץ')); };
-      r.readAsDataURL(file);
-    });
+  var allParams=[];
+  var errors=[];
 
-    var contentBlock=isPdf
-      ?{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}}
-      :{type:'image',source:{type:'base64',media_type:file.type,data:b64}};
+  for(var fi=0;fi<files.length;fi++){
+    var file=files[fi];
+    document.getElementById('pm-scan-filename').textContent=
+      files.length>1?'סורק קובץ '+(fi+1)+' מתוך '+files.length+' — '+file.name:file.name;
 
-    var sys='סרוק את המסמך וחלץ את כל פרמטרי התכנות של בקר המעלית. החזר JSON בלבד, ללא markdown:\n[{"paramCode":"","paramName":"","description":"","range":"","defaultValue":"","notes":""}]\nחלץ כמה שיותר פרמטרים. אל תדלג על אף פרמטר שרואים.';
+    try{
+      var b64=await new Promise(function(res,rej){
+        var r=new FileReader();
+        r.onload=function(){ res(r.result.split(',')[1]); };
+        r.onerror=function(){ rej(new Error('שגיאת קריאת קובץ')); };
+        r.readAsDataURL(file);
+      });
+      var isPdf=file.type==='application/pdf';
+      var contentBlock=isPdf
+        ?{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}}
+        :{type:'image',source:{type:'base64',media_type:file.type,data:b64}};
 
-    var resp=await fetch('https://tke-proxy.guyshtaiger.workers.dev',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,system:sys,
-        messages:[{role:'user',content:[contentBlock,{type:'text',text:'חלץ את כל הפרמטרים מהמסמך.'}]}]})
-    });
-    var data=await resp.json();
-    if(data.error) throw new Error(data.error.message||JSON.stringify(data.error));
-    var raw=((data.content||[])[0]||{}).text||'';
-    var arr=JSON.parse(raw.replace(/```json|```/g,'').trim());
-    if(!Array.isArray(arr)||!arr.length) throw new Error('לא נמצאו פרמטרים במסמך');
-
-    if(modelName) arr=arr.map(function(p){ return Object.assign({},p,{models:[modelName]}); });
-    else arr=arr.map(function(p){ return Object.assign({},p,{models:[]}); });
-
-    _pmScanParsed=arr;
-    document.getElementById('pm-scan-spinner').style.display='none';
-    document.getElementById('pm-scan-found').textContent='✅ נמצאו '+arr.length+' פרמטרים:';
-    document.getElementById('pm-scan-list').innerHTML=arr.map(function(p,i){
-      return '<label style="display:flex;align-items:center;gap:10px;padding:8px;border-bottom:1px solid var(--border);cursor:pointer;font-family:Heebo,sans-serif">'+
-        '<input type="checkbox" class="pm-scan-cb" data-idx="'+i+'" checked style="width:16px;height:16px;accent-color:#3b82f6;flex-shrink:0">'+
-        '<div style="min-width:0">'+
-          '<span style="font-family:monospace;font-size:13px;font-weight:700;color:#60a5fa">'+esc(p.paramCode)+'</span>'+
-          (p.description?' <span style="font-size:11px;color:var(--text2)">'+esc(p.description.slice(0,60))+(p.description.length>60?'…':'')+'</span>':'')+
-        '</div>'+
-      '</label>';
-    }).join('');
-    document.getElementById('pm-scan-results').style.display='block';
-  }catch(err){
-    document.getElementById('pm-scan-spinner').style.display='none';
-    document.getElementById('pm-scan-error-msg').textContent='❌ '+((err&&err.message)||String(err));
-    document.getElementById('pm-scan-error').style.display='block';
+      var resp=await fetch('https://tke-proxy.guyshtaiger.workers.dev',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+        body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,system:sys,
+          messages:[{role:'user',content:[contentBlock,{type:'text',text:'חלץ את כל הפרמטרים מהמסמך.'}]}]})
+      });
+      var data=await resp.json();
+      if(data.error) throw new Error(data.error.message||JSON.stringify(data.error));
+      var raw=((data.content||[])[0]||{}).text||'';
+      var arr=JSON.parse(raw.replace(/```json|```/g,'').trim());
+      if(!Array.isArray(arr)) throw new Error('תשובה לא תקינה מה-AI');
+      allParams=allParams.concat(arr);
+    }catch(err){
+      errors.push(file.name+': '+((err&&err.message)||String(err)));
+    }
   }
+
+  document.getElementById('pm-scan-spinner').style.display='none';
+
+  if(!allParams.length){
+    var msg=errors.length?errors.join('\n'):'לא נמצאו פרמטרים במסמכים';
+    document.getElementById('pm-scan-error-msg').textContent='❌ '+msg;
+    document.getElementById('pm-scan-error').style.display='block';
+    return;
+  }
+
+  if(modelName) allParams=allParams.map(function(p){ return Object.assign({},p,{models:[modelName]}); });
+  else allParams=allParams.map(function(p){ return Object.assign({},p,{models:[]}); });
+
+  _pmScanParsed=allParams;
+  var foundTxt='✅ נמצאו '+allParams.length+' פרמטרים';
+  if(files.length>1) foundTxt+=' מ-'+files.length+' קבצים';
+  if(errors.length) foundTxt+=' ('+errors.length+' קבצים נכשלו)';
+  document.getElementById('pm-scan-found').textContent=foundTxt;
+  document.getElementById('pm-scan-list').innerHTML=allParams.map(function(p,i){
+    return '<label style="display:flex;align-items:center;gap:10px;padding:8px;border-bottom:1px solid var(--border);cursor:pointer;font-family:Heebo,sans-serif">'+
+      '<input type="checkbox" class="pm-scan-cb" data-idx="'+i+'" checked style="width:16px;height:16px;accent-color:#3b82f6;flex-shrink:0">'+
+      '<div style="min-width:0">'+
+        '<span style="font-family:monospace;font-size:13px;font-weight:700;color:#60a5fa">'+esc(p.paramCode)+'</span>'+
+        (p.description?' <span style="font-size:11px;color:var(--text2)">'+esc(p.description.slice(0,60))+(p.description.length>60?'…':'')+'</span>':'')+
+      '</div>'+
+    '</label>';
+  }).join('');
+  document.getElementById('pm-scan-results').style.display='block';
 }
 
 function pmScanCheckAll(v){
