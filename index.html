@@ -381,7 +381,8 @@ if('serviceWorker' in navigator){
 
 <!-- PARAMS SECTION -->
 <div id="section-params" style="display:none">
-  <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px">
+    <button class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2)" onclick="pmOpenPaste()">📋 הדבק טקסט</button>
     <button class="btn btn-primary btn-sm" onclick="pmOpenAdd()">+ הוסף פרמטר</button>
   </div>
   <div id="pm-list"></div>
@@ -503,6 +504,33 @@ if('serviceWorker' in navigator){
   <div class="modal" id="param-view-content"><div class="modal-handle"></div></div>
 </div>
 
+
+<!-- PARAMS PASTE MODAL -->
+<div class="overlay" id="pm-paste-modal" onclick="if(event.target.id==='pm-paste-modal')pmPasteClose()">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📋 הדבק טקסט לניתוח AI</div>
+    <div id="pm-paste-input-wrap">
+      <div class="form-col">
+        <textarea id="pm-paste-text" rows="8" placeholder="הדבק כאן טקסט חופשי עם פרמטרים — מתוך מדריך, הערות שטח, או כל פורמט אחר..."></textarea>
+      </div>
+      <button onclick="pmParseAI()" style="width:100%;padding:11px;background:#3b82f6;border:none;border-radius:var(--radius-sm);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif;margin-bottom:10px">⚡ פרק עם AI</button>
+    </div>
+    <div id="pm-paste-spinner" style="display:none;text-align:center;padding:20px;font-size:13px;color:var(--text2);font-family:Heebo,sans-serif">⏳ מנתח...</div>
+    <div id="pm-paste-error" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:12px;margin-bottom:10px">
+      <div id="pm-paste-error-msg" style="color:#f87171;font-size:13px;font-family:Heebo,sans-serif;margin-bottom:8px"></div>
+      <button onclick="pmParseAI()" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:12px;color:var(--text);cursor:pointer;font-family:Heebo,sans-serif">🔄 נסה שוב</button>
+    </div>
+    <div id="pm-paste-results" style="display:none">
+      <div style="font-size:12px;color:#10b981;margin-bottom:10px;font-family:Heebo,sans-serif" id="pm-paste-found"></div>
+      <div id="pm-paste-list" style="max-height:300px;overflow-y:auto;margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px">
+        <button onclick="pmSaveSelected()" style="flex:1;padding:10px;background:var(--orange);border:none;border-radius:var(--radius-sm);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif">💾 שמור נבחרים</button>
+        <button onclick="pmPasteClose()" class="btn btn-cancel" style="flex:1">ביטול</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- MFR SECTION -->
 <div id="section-mfr" style="display:none">
@@ -2564,6 +2592,94 @@ async function pmSave(){
 }
 
 function pmClose(){ closeModal('pm-modal'); }
+
+// ── Paste + AI modal ────────────────────────────────────
+var _pmAIParsed = [];
+
+function pmOpenPaste(){
+  document.getElementById('pm-paste-text').value='';
+  document.getElementById('pm-paste-spinner').style.display='none';
+  document.getElementById('pm-paste-error').style.display='none';
+  document.getElementById('pm-paste-results').style.display='none';
+  document.getElementById('pm-paste-input-wrap').style.display='block';
+  _pmAIParsed=[];
+  openModal('pm-paste-modal');
+}
+
+function pmPasteClose(){ closeModal('pm-paste-modal'); }
+
+async function pmParseAI(){
+  var txt=(document.getElementById('pm-paste-text').value||'').trim();
+  if(!txt){ showToast('⚠️ נא להדביק טקסט תחילה'); return; }
+  var apiKey=localStorage.getItem('anthropic_api_key')||loadChatApiKey();
+  if(!apiKey){ showToast('⚠️ נא להגדיר מפתח API בטאב כלים'); return; }
+
+  document.getElementById('pm-paste-spinner').style.display='block';
+  document.getElementById('pm-paste-error').style.display='none';
+  document.getElementById('pm-paste-results').style.display='none';
+
+  var sys='אתה מחלץ פרמטרי תכנות של בקרי מעליות מטקסט חופשי בעברית/אנגלית. החזר JSON בלבד, ללא markdown, ללא טקסט נוסף:\n[{"paramCode":"","paramName":"","description":"","models":[],"range":"","defaultValue":"","notes":""}]\nזהה דגמים: NICE3000, NICE900, CMC4+, CMC3, SJEC M300, PENTA-C, Orion, DITEC SPRINT EL38, 20.50.\nאם לא ידוע — השאר ריק. חלץ כמה שיותר פרמטרים.';
+
+  try{
+    var res=await fetch('https://tke-proxy.guyshtaiger.workers.dev',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2000,
+        system:sys,messages:[{role:'user',content:txt}]})
+    });
+    var data=await res.json();
+    if(data.error) throw new Error(data.error.message||JSON.stringify(data.error));
+    var raw=(data.content[0].text||'').replace(/```json|```/g,'').trim();
+    var arr=JSON.parse(raw);
+    if(!Array.isArray(arr)||!arr.length) throw new Error('לא חולצו פרמטרים מהטקסט');
+    _pmAIParsed=arr;
+    document.getElementById('pm-paste-spinner').style.display='none';
+    document.getElementById('pm-paste-input-wrap').style.display='none';
+    document.getElementById('pm-paste-found').textContent='✅ חולצו '+arr.length+' פרמטרים:';
+    document.getElementById('pm-paste-list').innerHTML=arr.map(function(p,i){
+      var models=(p.models||[]).join(', ')||'—';
+      return '<label style="display:flex;align-items:center;gap:10px;padding:8px;border-bottom:1px solid var(--border);cursor:pointer;font-family:Heebo,sans-serif">'+
+        '<input type="checkbox" data-idx="'+i+'" checked style="width:16px;height:16px;accent-color:#3b82f6;flex-shrink:0">'+
+        '<div style="min-width:0">'+
+          '<span style="font-family:monospace;font-size:13px;font-weight:700;color:#60a5fa">'+esc(p.paramCode)+'</span>'+
+          (p.paramName?' <span style="font-size:12px;color:var(--text2)">'+esc(p.paramName)+'</span>':'')+
+          '<div style="font-size:11px;color:var(--text3)">'+esc(models)+'</div>'+
+        '</div>'+
+      '</label>';
+    }).join('');
+    document.getElementById('pm-paste-results').style.display='block';
+  }catch(e){
+    document.getElementById('pm-paste-spinner').style.display='none';
+    document.getElementById('pm-paste-error-msg').textContent='❌ שגיאה: '+e.message;
+    document.getElementById('pm-paste-error').style.display='block';
+  }
+}
+
+async function pmSaveSelected(){
+  var cbs=document.querySelectorAll('#pm-paste-list input[type=checkbox]:checked');
+  if(!cbs.length){ showToast('לא נבחרו פרמטרים'); return; }
+  var saved=0;
+  for(var i=0;i<cbs.length;i++){
+    var idx=parseInt(cbs[i].dataset.idx);
+    var p=_pmAIParsed[idx]; if(!p) continue;
+    await _pmIdbPut({
+      id:Date.now().toString(36)+Math.random().toString(36).slice(2,5)+'_'+i,
+      paramCode:p.paramCode||'',
+      paramName:p.paramName||'',
+      description:p.description||'',
+      models:p.models||[],
+      range:p.range||'',
+      defaultValue:p.defaultValue||'',
+      notes:p.notes||'',
+      image:null,
+      createdAt:Date.now()
+    });
+    saved++;
+  }
+  pmPasteClose();
+  await pmRefresh();
+  showToast('✅ נשמרו '+saved+' פרמטרים!');
+}
 
 var _pmImageBlob = null;
 
