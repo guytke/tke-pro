@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -381,7 +381,55 @@ if('serviceWorker' in navigator){
 
 <!-- PARAMS SECTION -->
 <div id="section-params" style="display:none">
-  <div style="padding:20px;color:white">פרמטרים — בקרוב</div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+    <button class="btn btn-primary btn-sm" onclick="pmOpenAdd()">+ הוסף פרמטר</button>
+  </div>
+  <div id="pm-list"></div>
+</div>
+
+<!-- PARAMS ADD MODAL -->
+<div class="overlay" id="pm-modal" onclick="if(event.target.id==='pm-modal')pmClose()">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="pm-title">⚙️ פרמטר חדש</div>
+    <input type="hidden" id="pm-edit-id">
+    <div class="form-row">
+      <div>
+        <label>קוד פרמטר *</label>
+        <input type="text" id="pm-code" placeholder="F605, P-12, 3001...">
+      </div>
+      <div>
+        <label>שם / כינוי</label>
+        <input type="text" id="pm-name" placeholder="שם קצר...">
+      </div>
+    </div>
+    <div class="form-col">
+      <label>תיאור — מה הפרמטר עושה</label>
+      <textarea id="pm-desc" rows="3" placeholder="תפקיד הפרמטר..."></textarea>
+    </div>
+    <div class="form-col">
+      <label>דגמים</label>
+      <div id="pm-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px"></div>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>טווח ערכים</label>
+        <input type="text" id="pm-range" placeholder="0–255, ON/OFF...">
+      </div>
+      <div>
+        <label>ערך יצרן</label>
+        <input type="text" id="pm-default" placeholder="ברירת מחדל...">
+      </div>
+    </div>
+    <div class="form-col">
+      <label>הערות שטח</label>
+      <textarea id="pm-notes" rows="2" placeholder="הערות נוספות..."></textarea>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" onclick="pmSave()">💾 שמור</button>
+      <button class="btn btn-cancel" onclick="pmClose()">ביטול</button>
+    </div>
+  </div>
 </div>
 
 
@@ -2018,78 +2066,6 @@ function saveParams(p){ localStorage.setItem(PARAMS_KEY, JSON.stringify(p)); }
 let params = loadParams();
 let paramsActiveModel = '';
 
-function renderParams(){ return; /* placeholder — content coming in next step */
-  const q = document.getElementById('params-search').value.toLowerCase().trim();
-  let filtered = params.filter(p=>{
-    const txt = [p.model,p.name,p.desc,p.value,p.location,p.notes].join(' ').toLowerCase();
-    return(!q||txt.includes(q))&&(!paramsActiveModel||p.model===paramsActiveModel);
-  }).sort((a,b)=>(a.model+a.name).localeCompare(b.model+b.name));
-
-  document.getElementById('params-count').textContent = filtered.length + ' פרמטרים';
-
-  // Update model tabs
-  const models = [...new Set(params.map(p=>p.model).filter(Boolean))].sort();
-  const bar = document.getElementById('params-model-tabs');
-  if(bar){
-    bar.innerHTML = '';
-    var allBtn = document.createElement('button');
-    allBtn.className = 'model-tab' + (paramsActiveModel==='' ? ' active' : '');
-    allBtn.textContent = 'כולם';
-    allBtn.onclick = function(){ filterParamsModel(''); };
-    bar.appendChild(allBtn);
-    models.forEach(function(m){
-      var btn = document.createElement('button');
-      btn.className = 'model-tab' + (paramsActiveModel===m ? ' active' : '');
-      btn.textContent = m;
-      btn.onclick = (function(model){ return function(){ filterParamsModel(model); }; })(m);
-      bar.appendChild(btn);
-    });
-  }
-
-  // Update datalist
-  const dl = document.getElementById('p-models-list');
-  if(dl) dl.innerHTML = models.map(m=>'<option value="'+esc(m)+'">').join('');
-
-  const list = document.getElementById('params-list');
-  if(!filtered.length){
-    list.innerHTML = '<div class="empty"><div class="empty-icon">⚙️</div><p>'+(params.length===0?'אין פרמטרים עדיין<br>לחץ "+ פרמטר חדש"':'לא נמצאו תוצאות')+'</p></div>';
-    return;
-  }
-  list.innerHTML = '';
-  filtered.forEach(function(p){
-    var card = document.createElement('div');
-    card.className = 'card';
-    card.onclick = (function(pid){ return function(){ viewParam(pid); }; })(p.id);
-    var top = '<div class="card-top">'
-      +'<div class="card-code" style="color:#60a5fa">'+esc(p.name)+'</div>'
-      +'<div class="card-name">'+esc(p.desc||'—')+'</div>'
-      +'<div class="card-model">'+esc(p.model)+'</div>'
-      +'</div>'
-      +(p.value?'<div class="card-preview">ערך: <strong style="color:#60a5fa">'+esc(p.value)+'</strong>'+(p.default?' | ברירת מחדל: '+esc(p.default):'')+'</div>':'')
-      +(p.location?'<div class="card-meta"><span>📍 '+esc(p.location)+'</span></div>':'');
-    if(paramsDeleteMode){
-      var cbWrap = document.createElement('label');
-      cbWrap.style.cssText = 'display:flex;align-items:center;gap:10px;cursor:pointer;width:100%';
-      var cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.className = 'params-del-cb';
-      cb.dataset.id = p.id;
-      cb.style.cssText = 'width:18px;height:18px;accent-color:#ef4444;flex-shrink:0';
-      cb.onchange = updateParamsDelCount;
-      var inner = document.createElement('div');
-      inner.style.flex = '1';
-      inner.innerHTML = top;
-      cbWrap.appendChild(cb);
-      cbWrap.appendChild(inner);
-      card.appendChild(cbWrap);
-    } else {
-      card.innerHTML = top;
-    }
-    list.appendChild(card);
-  });
-}
-
-
 let paramsDeleteMode = false;
 
 function toggleParamsDeleteMode(){
@@ -2464,6 +2440,120 @@ function deleteParamsScannedPage(id){
   renderParamsScannedPages();
   showToast('🗑 נמחק');
 }
+
+// ─── PARAMS MODULE ────────────────────────────────────
+var PM_MODELS = ['NICE3000','NICE900','CMC4+','CMC3','SJEC M300','PENTA-C','Orion','DITEC SPRINT EL38','20.50'];
+var _pmSelected = [];
+var _pmList = [];
+
+function _pmIdbGetAll(){
+  return openIDB().then(function(db){
+    return new Promise(function(res,rej){
+      var r=db.transaction('params','readonly').objectStore('params').getAll();
+      r.onsuccess=function(){ res(r.result||[]); };
+      r.onerror=function(){ rej(r.error); };
+    });
+  });
+}
+function _pmIdbPut(p){
+  return openIDB().then(function(db){
+    return new Promise(function(res,rej){
+      var r=db.transaction('params','readwrite').objectStore('params').put(p);
+      r.onsuccess=function(){ res(); };
+      r.onerror=function(){ rej(r.error); };
+    });
+  });
+}
+
+async function pmRefresh(){
+  _pmList = await _pmIdbGetAll();
+  pmRenderList();
+}
+
+function pmRenderList(){
+  var el=document.getElementById('pm-list'); if(!el) return;
+  if(!_pmList.length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">⚙️</div><p>אין פרמטרים עדיין</p></div>';
+    return;
+  }
+  el.innerHTML=_pmList.map(function(p){
+    var models=(p.models||[]).join(', ')||'—';
+    return '<div class="card">'+
+      '<div class="card-top">'+
+        '<div style="font-family:monospace;font-size:14px;font-weight:700;color:#60a5fa">'+esc(p.paramCode)+'</div>'+
+        (p.paramName?'<div class="card-name">'+esc(p.paramName)+'</div>':'')+
+      '</div>'+
+      '<div style="font-size:11px;color:var(--text3);margin-top:4px">'+esc(models)+'</div>'+
+    '</div>';
+  }).join('');
+}
+
+function pmOpenAdd(){
+  _pmSelected=[];
+  document.getElementById('pm-title').textContent='⚙️ פרמטר חדש';
+  document.getElementById('pm-edit-id').value='';
+  ['pm-code','pm-name','pm-desc','pm-range','pm-default','pm-notes'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  pmRenderChips();
+  openModal('pm-modal');
+}
+
+function pmRenderChips(){
+  var el=document.getElementById('pm-chips'); if(!el) return;
+  el.innerHTML=PM_MODELS.map(function(m){
+    var on=_pmSelected.includes(m);
+    return '<button onclick="pmToggleChip(\''+m.replace(/'/g,"\\'")+'\')" style="padding:4px 10px;border-radius:14px;border:1px solid '+(on?'rgba(59,130,246,0.5)':'var(--border)')+';background:'+(on?'rgba(59,130,246,0.15)':'var(--bg3)')+';color:'+(on?'#60a5fa':'var(--text2)')+';font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:'+(on?'700':'400')+'">'+esc(m)+'</button>';
+  }).join('');
+}
+
+function pmToggleChip(m){
+  if(_pmSelected.includes(m)) _pmSelected=_pmSelected.filter(function(x){return x!==m;});
+  else _pmSelected.push(m);
+  pmRenderChips();
+}
+
+async function pmSave(){
+  var code=(document.getElementById('pm-code').value||'').trim();
+  if(!code){ showToast('⚠️ נא למלא קוד פרמטר'); return; }
+  var models=_pmSelected.slice();
+  // duplicate check
+  var dup=_pmList.find(function(p){
+    if(p.id===(document.getElementById('pm-edit-id').value||'')) return false;
+    if(p.paramCode.toLowerCase()!==code.toLowerCase()) return false;
+    return models.some(function(m){return (p.models||[]).includes(m);});
+  });
+  if(dup){
+    var dupM=models.find(function(m){return (dup.models||[]).includes(m);});
+    showToast('⚠️ פרמטר '+code+' כבר קיים לדגם '+dupM);
+    return;
+  }
+  var p={
+    id: (document.getElementById('pm-edit-id').value)||Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+    paramCode: code,
+    paramName: (document.getElementById('pm-name').value||'').trim(),
+    description: (document.getElementById('pm-desc').value||'').trim(),
+    models: models,
+    range: (document.getElementById('pm-range').value||'').trim(),
+    defaultValue: (document.getElementById('pm-default').value||'').trim(),
+    notes: (document.getElementById('pm-notes').value||'').trim(),
+    createdAt: Date.now()
+  };
+  try{
+    await _pmIdbPut(p);
+    pmClose();
+    await pmRefresh();
+    showToast('✅ נשמר!');
+  }catch(e){ showToast('❌ שגיאה: '+e.message); }
+}
+
+function pmClose(){ closeModal('pm-modal'); }
+
+// init on tab switch (called from switchMainTab via renderParams)
+function renderParams(){
+  pmRefresh();
+}
+
 function renderToolsStats(){
   var statsDiv = document.getElementById('tools-stats');
   if(!statsDiv) return;
@@ -2945,10 +3035,11 @@ var _idb = null;
 function openIDB(){
   return new Promise(function(resolve,reject){
     if(_idb){ resolve(_idb); return; }
-    var req=indexedDB.open('tke-pro-db',1);
+    var req=indexedDB.open('tke-pro-db',2);
     req.onupgradeneeded=function(e){
       var db=e.target.result;
       if(!db.objectStoreNames.contains('parts')) db.createObjectStore('parts',{keyPath:'id'});
+      if(!db.objectStoreNames.contains('params')) db.createObjectStore('params',{keyPath:'id'});
     };
     req.onsuccess=function(e){ _idb=e.target.result; resolve(_idb); };
     req.onerror=function(e){ reject(e.target.error); };
