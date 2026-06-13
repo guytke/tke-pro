@@ -233,7 +233,7 @@ if('serviceWorker' in navigator){
   pushState();
   window.addEventListener('popstate', function(){
     pushState();
-    var modalIds = ['form-modal','view-modal','import-modal','param-form-modal','param-view-modal','mfr-form-modal','mfr-view-modal','page-image-modal','catalog-add-modal','catalog-detail-modal','part-form-modal'];
+    var modalIds = ['form-modal','view-modal','param-form-modal','param-view-modal','mfr-form-modal','mfr-view-modal','page-image-modal','catalog-add-modal','catalog-detail-modal','part-form-modal'];
     for(var i = modalIds.length-1; i >= 0; i--){
       var el = document.getElementById(modalIds[i]);
       if(el && el.classList.contains('open')){
@@ -253,7 +253,7 @@ if('serviceWorker' in navigator){
     <div class="logo" id="main-logo">🛗 <span id="logo-icon"></span><span id="logo-text" style="color:var(--orange)">ספר תקלות</span></div>
     <div class="header-btns">
       <input type="file" id="restore-input" accept=".json" style="display:none" onchange="importBackup(event)">
-      <button class="btn btn-ghost btn-sm" onclick="openImport()">📋 ייבוא</button>
+      <button class="btn btn-ghost btn-sm" onclick="refreshApp()">🔄 רענון</button>
       <button class="btn btn-ghost btn-sm" onclick="switchMainTab('faults')">🏠 בית</button>
       <button class="btn btn-primary btn-sm" onclick="openAdd()">+ חדש</button>
     </div>
@@ -372,38 +372,6 @@ if('serviceWorker' in navigator){
 </div>
 
 <!-- IMPORT MODAL -->
-<div class="overlay" id="import-modal" onclick="if(event.target.id==='import-modal')closeModal('import-modal')">
-  <div class="modal">
-    <div style="position:relative"><button onclick="closeAllModals();switchMainTab('faults')" style="position:absolute;top:14px;left:14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px;color:var(--text2);cursor:pointer;font-family:Heebo,sans-serif">🏠</button></div>
-    <div class="modal-handle"></div>
-    <div class="modal-title">📋 ייבוא תקלות</div>
-    <div class="import-hint">
-      💡 הדבק את החומר שלך. כל <strong>שורה ריקה</strong> בין קטעים = תקלה נפרדת.<br>
-      לאחר הייבוא תוכל לערוך כל תקלה בנפרד.
-    </div>
-    <div class="form-row">
-      <div>
-        <label>דגם מעלית *</label>
-        <input type="text" id="imp-model" placeholder="NICE3000, Evolution...">
-      </div>
-      <div>
-        <label>סוג תוכן</label>
-        <select id="imp-type">
-          <option value="field">ניסיון שטח</option>
-          <option value="book">ספר תקלות</option>
-        </select>
-      </div>
-    </div>
-    <div class="form-col">
-      <label>הטקסט שלך</label>
-      <textarea id="imp-text" rows="10" placeholder="הדבק כאן...&#10;&#10;שורה ריקה בין תקלות = תקלה נפרדת"></textarea>
-    </div>
-    <div class="form-actions">
-      <button class="btn btn-primary" onclick="importFaults()" style="background:var(--green)">✅ ייבא</button>
-      <button class="btn btn-cancel" onclick="closeModal('import-modal')">ביטול</button>
-    </div>
-  </div>
-</div>
 
 </div><!-- end section-faults -->
 
@@ -1242,35 +1210,28 @@ function shareFault(id){
   window.open('https://wa.me/?text='+encodeURIComponent(lines),'_blank');
 }
 
-// ─── IMPORT ───────────────────────────────────────────
-function openImport(){openModal('import-modal');}
-
-function importFaults(){
-  const model = document.getElementById('imp-model').value.trim();
-  const text = document.getElementById('imp-text').value.trim();
-  const type = document.getElementById('imp-type').value;
-  if(!model||!text){showToast('⚠️ נא למלא דגם וטקסט');return;}
-  const blocks = text.split(/\n\n+/).map(b=>b.trim()).filter(Boolean);
-  const imported = blocks.map((block,i)=>{
-    // Try to extract code from first line
-    const firstLine = block.split('\n')[0];
-    const codeMatch = firstLine.match(/^([A-Za-z]+\d+|\d+[A-Za-z]*\d*|\d+)/);
-    const code = codeMatch ? codeMatch[1].toUpperCase() : 'IMP'+(i+1);
-    const rest = block;
-    return {
-      id: (Date.now()+i).toString(),
-      model, code,
-      name: '',
-      level: '',
-      book: type==='book' ? rest : '',
-      field: type==='field' ? rest : '',
-      date: new Date().toISOString().split('T')[0]
-    };
-  });
-  faults = [...imported, ...faults];
-  save(faults); closeModal('import-modal');
-  document.getElementById('imp-text').value='';
-  refresh(); showToast('✅ יובאו '+imported.length+' תקלות!');
+// ─── REFRESH ───────────────────────────────────────────
+async function refreshApp(){
+  var hasDraft = false;
+  try{
+    var d = JSON.parse(sessionStorage.getItem('tke_form_drafts')||'{}');
+    hasDraft = Object.keys(d).some(function(k){ return d[k] && d[k].trim(); });
+  }catch(e){}
+  if(hasDraft){
+    if(!confirm('יש טיוטה שמורה — היא תשוחזר אוטומטית אחרי הרענון.\nלרענן?')) return;
+  }
+  showToast('🔄 מרענן...');
+  try{
+    if('caches' in window){
+      var keys = await caches.keys();
+      await Promise.all(keys.map(function(k){ return caches.delete(k); }));
+    }
+    if('serviceWorker' in navigator){
+      var regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(function(r){ return r.update(); }));
+    }
+  }catch(e){}
+  window.location.reload();
 }
 
 // ─── BACKUP ───────────────────────────────────────────
@@ -1913,7 +1874,7 @@ function toggleNoteField(){
 // ─── MAIN TAB SWITCH ──────────────────────────────────
 
 function closeAllModals(){
-  var ids = ['form-modal','view-modal','import-modal','param-form-modal','param-view-modal','mfr-form-modal','mfr-view-modal','page-image-modal','part-form-modal'];
+  var ids = ['form-modal','view-modal','param-form-modal','param-view-modal','mfr-form-modal','mfr-view-modal','page-image-modal','part-form-modal'];
   ids.forEach(function(id){ closeModal(id); });
 }
 function switchMainTab(tab){
