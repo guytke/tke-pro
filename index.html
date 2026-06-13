@@ -381,19 +381,28 @@ if('serviceWorker' in navigator){
 
 <!-- PARAMS SECTION -->
 <div id="section-params" style="display:none">
-  <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-    <button class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2)" onclick="pmOpenScan()">📄 סרוק PDF/תמונה</button>
-    <button class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2)" onclick="pmOpenPaste()">📋 הדבק טקסט</button>
-    <button class="btn btn-primary btn-sm" onclick="pmOpenAdd()">+ הוסף פרמטר</button>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+    <div style="display:flex;gap:6px">
+      <button id="pm-view-all-btn" onclick="pmSetView('all')" style="padding:5px 10px;border-radius:8px;border:1px solid rgba(59,130,246,0.4);background:rgba(59,130,246,0.12);color:#60a5fa;font-size:12px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif">📃 כל הפרמטרים</button>
+      <button id="pm-view-model-btn" onclick="pmSetView('model')" style="padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-size:12px;cursor:pointer;font-family:Heebo,sans-serif">📋 לפי דגם</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2)" onclick="pmOpenScan()">📄 סרוק PDF/תמונה</button>
+      <button class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2)" onclick="pmOpenPaste()">📋 הדבק טקסט</button>
+      <button class="btn btn-primary btn-sm" onclick="pmOpenAdd()">+ הוסף פרמטר</button>
+    </div>
   </div>
   <div id="pm-list"></div>
 </div>
 
 <!-- PARAMS ADD MODAL -->
 <div class="overlay" id="pm-modal" onclick="if(event.target.id==='pm-modal')pmClose()">
-  <div class="modal">
+  <div class="modal" style="overflow-y:auto;max-height:90vh">
     <div class="modal-handle"></div>
-    <div class="modal-title" id="pm-title">⚙️ פרמטר חדש</div>
+    <div style="position:relative">
+      <div class="modal-title" id="pm-title">⚙️ פרמטר חדש</div>
+      <button onclick="pmClose()" style="position:absolute;top:0;left:0;background:var(--bg3);border:1px solid var(--border);border-radius:8px;width:32px;height:32px;font-size:18px;color:var(--text2);cursor:pointer;line-height:1">×</button>
+    </div>
     <input type="hidden" id="pm-edit-id">
     <div class="form-row">
       <div>
@@ -508,9 +517,12 @@ if('serviceWorker' in navigator){
 
 <!-- PARAMS PASTE MODAL -->
 <div class="overlay" id="pm-paste-modal" onclick="if(event.target.id==='pm-paste-modal')pmPasteClose()">
-  <div class="modal">
+  <div class="modal" style="overflow-y:auto;max-height:90vh">
     <div class="modal-handle"></div>
-    <div class="modal-title">📋 הדבק טקסט לניתוח AI</div>
+    <div style="position:relative">
+      <div class="modal-title">📋 הדבק טקסט לניתוח AI</div>
+      <button onclick="pmPasteClose()" style="position:absolute;top:0;left:0;background:var(--bg3);border:1px solid var(--border);border-radius:8px;width:32px;height:32px;font-size:18px;color:var(--text2);cursor:pointer;line-height:1">×</button>
+    </div>
     <div id="pm-paste-input-wrap">
       <div class="form-col">
         <textarea id="pm-paste-text" rows="8" placeholder="הדבק כאן טקסט חופשי עם פרמטרים — מתוך מדריך, הערות שטח, או כל פורמט אחר..."></textarea>
@@ -535,9 +547,12 @@ if('serviceWorker' in navigator){
 
 <!-- PARAMS SCAN MODAL -->
 <div class="overlay" id="pm-scan-modal" onclick="if(event.target.id==='pm-scan-modal')pmScanClose()">
-  <div class="modal">
+  <div class="modal" style="overflow-y:auto;max-height:90vh">
     <div class="modal-handle"></div>
-    <div class="modal-title">📄 סריקת PDF / תמונה</div>
+    <div style="position:relative">
+      <div class="modal-title">📄 סריקת PDF / תמונה</div>
+      <button onclick="pmScanClose()" style="position:absolute;top:0;left:0;background:var(--bg3);border:1px solid var(--border);border-radius:8px;width:32px;height:32px;font-size:18px;color:var(--text2);cursor:pointer;line-height:1">×</button>
+    </div>
     <div id="pm-scan-input-wrap">
       <div class="form-col">
         <label>שם הדגם / פיקוד (אופציונלי)</label>
@@ -2533,6 +2548,9 @@ function deleteParamsScannedPage(id){
 var PM_MODELS = ['NICE3000','NICE900','CMC4+','CMC3','SJEC M300','PENTA-C','Orion','DITEC SPRINT EL38','20.50'];
 var _pmSelected = [];
 var _pmList = [];
+var _pmView = 'all';
+var _pmEditMode = 'idb'; // 'idb' | 'scan'
+var _pmEditScanIdx = -1;
 
 function _pmIdbGetAll(){
   return openIDB().then(function(db){
@@ -2558,35 +2576,95 @@ async function pmRefresh(){
   pmRenderList();
 }
 
+function pmSetView(v){
+  _pmView=v;
+  var ab=document.getElementById('pm-view-all-btn'), mb=document.getElementById('pm-view-model-btn');
+  if(ab){ ab.style.background=v==='all'?'rgba(59,130,246,0.12)':'var(--bg2)'; ab.style.borderColor=v==='all'?'rgba(59,130,246,0.4)':'var(--border)'; ab.style.color=v==='all'?'#60a5fa':'var(--text2)'; ab.style.fontWeight=v==='all'?'600':'400'; }
+  if(mb){ mb.style.background=v==='model'?'rgba(59,130,246,0.12)':'var(--bg2)'; mb.style.borderColor=v==='model'?'rgba(59,130,246,0.4)':'var(--border)'; mb.style.color=v==='model'?'#60a5fa':'var(--text2)'; mb.style.fontWeight=v==='model'?'600':'400'; }
+  pmRenderList();
+}
+
+function pmCardHTML(p){
+  return '<div class="card" style="position:relative">'+
+    '<button onclick="pmOpenEditIdb(\''+p.id+'\')" style="position:absolute;top:8px;left:8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--text2);cursor:pointer">✏️</button>'+
+    '<div style="padding-left:36px">'+
+      '<div style="font-family:monospace;font-size:15px;font-weight:700;color:var(--orange)">'+esc(p.paramCode)+'</div>'+
+      (p.paramName?'<div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px">'+esc(p.paramName)+'</div>':'')+
+      (p.description?'<div style="font-size:12px;color:var(--text2);margin-top:4px;line-height:1.5">'+esc(p.description)+'</div>':'')+
+      ((p.models||[]).length?'<div style="margin-top:6px">'+p.models.map(function(m){ return '<span style="display:inline-block;background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);border-radius:10px;padding:2px 8px;font-size:11px;margin-left:4px">'+esc(m)+'</span>'; }).join('')+'</div>':'')+
+      ((p.range||p.defaultValue)?'<div style="display:flex;gap:12px;margin-top:6px">'+
+        (p.range?'<span style="font-size:11px;color:var(--text3)">טווח: <b style="color:var(--text2)">'+esc(p.range)+'</b></span>':'')+
+        (p.defaultValue?'<span style="font-size:11px;color:var(--text3)">ברירה: <b style="color:var(--text2)">'+esc(p.defaultValue)+'</b></span>':'')+
+      '</div>':'')+
+    '</div>'+
+  '</div>';
+}
+
 function pmRenderList(){
   var el=document.getElementById('pm-list'); if(!el) return;
   if(!_pmList.length){
     el.innerHTML='<div class="empty"><div class="empty-icon">⚙️</div><p>אין פרמטרים עדיין</p></div>';
     return;
   }
-  el.innerHTML=_pmList.map(function(p){
-    var models=(p.models||[]).join(', ')||'—';
-    return '<div class="card">'+
-      '<div class="card-top">'+
-        '<div style="font-family:monospace;font-size:14px;font-weight:700;color:#60a5fa">'+esc(p.paramCode)+'</div>'+
-        (p.paramName?'<div class="card-name">'+esc(p.paramName)+'</div>':'')+
-      '</div>'+
-      '<div style="font-size:11px;color:var(--text3);margin-top:4px">'+esc(models)+'</div>'+
-    '</div>';
-  }).join('');
+  if(_pmView==='model'){
+    var map={};
+    _pmList.forEach(function(p){
+      var mods=(p.models&&p.models.length)?p.models:['(ללא דגם)'];
+      mods.forEach(function(m){ if(!map[m]) map[m]=[]; map[m].push(p); });
+    });
+    el.innerHTML=Object.keys(map).sort().map(function(m){
+      var sid='pmg_'+m.replace(/[^a-z0-9]/gi,'_');
+      return '<div style="margin-bottom:8px">'+
+        '<button onclick="(function(){var d=document.getElementById(\''+sid+'\');d.style.display=d.style.display===\'none\'?\'block\':\'none\';})()" '+
+          'style="width:100%;text-align:right;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;color:#60a5fa;cursor:pointer;font-family:Heebo,sans-serif">'+
+          '⚙️ '+esc(m)+' <span style="font-size:11px;color:var(--text2);font-weight:400">('+map[m].length+')</span></button>'+
+        '<div id="'+sid+'" style="margin-top:4px">'+map[m].map(pmCardHTML).join('')+'</div>'+
+      '</div>';
+    }).join('');
+  } else {
+    el.innerHTML=_pmList.map(pmCardHTML).join('');
+  }
 }
 
 function pmOpenAdd(){
-  _pmSelected=[];
-  _pmImageBlob=null;
+  _pmEditMode='idb'; _pmEditScanIdx=-1;
+  _pmSelected=[]; _pmImageBlob=null;
   document.getElementById('pm-title').textContent='⚙️ פרמטר חדש';
   document.getElementById('pm-edit-id').value='';
   ['pm-code','pm-name','pm-desc','pm-range','pm-default','pm-notes'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
   });
-  pmClearImage();
-  pmRenderChips();
-  openModal('pm-modal');
+  pmClearImage(); pmRenderChips(); openModal('pm-modal');
+}
+
+function pmOpenEditIdb(id){
+  var p=_pmList.find(function(x){ return x.id===id; }); if(!p) return;
+  _pmEditMode='idb'; _pmEditScanIdx=-1;
+  _pmSelected=(p.models||[]).slice(); _pmImageBlob=null;
+  document.getElementById('pm-title').textContent='✏️ עריכת פרמטר';
+  document.getElementById('pm-edit-id').value=id;
+  document.getElementById('pm-code').value=p.paramCode||'';
+  document.getElementById('pm-name').value=p.paramName||'';
+  document.getElementById('pm-desc').value=p.description||'';
+  document.getElementById('pm-range').value=p.range||'';
+  document.getElementById('pm-default').value=p.defaultValue||'';
+  document.getElementById('pm-notes').value=p.notes||'';
+  pmClearImage(); pmRenderChips(); openModal('pm-modal');
+}
+
+function pmOpenEditScan(idx){
+  var p=_pmScanParsed[idx]; if(!p) return;
+  _pmEditMode='scan'; _pmEditScanIdx=idx;
+  _pmSelected=(p.models||[]).slice(); _pmImageBlob=null;
+  document.getElementById('pm-title').textContent='✏️ עריכת פרמטר (טרם נשמר)';
+  document.getElementById('pm-edit-id').value='';
+  document.getElementById('pm-code').value=p.paramCode||'';
+  document.getElementById('pm-name').value=p.paramName||'';
+  document.getElementById('pm-desc').value=p.description||'';
+  document.getElementById('pm-range').value=p.range||'';
+  document.getElementById('pm-default').value=p.defaultValue||'';
+  document.getElementById('pm-notes').value=p.notes||'';
+  pmClearImage(); pmRenderChips(); openModal('pm-modal');
 }
 
 function pmRenderChips(){
@@ -2607,19 +2685,7 @@ async function pmSave(){
   var code=(document.getElementById('pm-code').value||'').trim();
   if(!code){ showToast('⚠️ נא למלא קוד פרמטר'); return; }
   var models=_pmSelected.slice();
-  // duplicate check
-  var dup=_pmList.find(function(p){
-    if(p.id===(document.getElementById('pm-edit-id').value||'')) return false;
-    if(p.paramCode.toLowerCase()!==code.toLowerCase()) return false;
-    return models.some(function(m){return (p.models||[]).includes(m);});
-  });
-  if(dup){
-    var dupM=models.find(function(m){return (dup.models||[]).includes(m);});
-    showToast('⚠️ פרמטר '+code+' כבר קיים לדגם '+dupM);
-    return;
-  }
-  var p={
-    id: (document.getElementById('pm-edit-id').value)||Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+  var pData={
     paramCode: code,
     paramName: (document.getElementById('pm-name').value||'').trim(),
     description: (document.getElementById('pm-desc').value||'').trim(),
@@ -2627,14 +2693,32 @@ async function pmSave(){
     range: (document.getElementById('pm-range').value||'').trim(),
     defaultValue: (document.getElementById('pm-default').value||'').trim(),
     notes: (document.getElementById('pm-notes').value||'').trim(),
-    image: _pmImageBlob||null,
-    createdAt: Date.now()
+    image: _pmImageBlob||null
   };
-  try{
-    await _pmIdbPut(p);
+  if(_pmEditMode==='scan' && _pmEditScanIdx>=0){
+    // update scan preview in-memory, don't save to IDB yet
+    _pmScanParsed[_pmEditScanIdx]=Object.assign(_pmScanParsed[_pmEditScanIdx],pData);
     pmClose();
-    await pmRefresh();
-    showToast('✅ נשמר!');
+    pmScanRerenderList();
+    showToast('✅ עודכן בתצוגה המקדימה');
+    return;
+  }
+  // IDB save
+  var dup=_pmList.find(function(p){
+    if(p.id===(document.getElementById('pm-edit-id').value||'')) return false;
+    if(p.paramCode.toLowerCase()!==code.toLowerCase()) return false;
+    return models.some(function(m){return (p.models||[]).includes(m);});
+  });
+  if(dup){
+    var dupM=models.find(function(m){return (dup.models||[]).includes(m);});
+    showToast('⚠️ פרמטר '+code+' כבר קיים לדגם '+dupM); return;
+  }
+  var p=Object.assign({
+    id:(document.getElementById('pm-edit-id').value)||Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+    createdAt:Date.now()
+  },pData);
+  try{
+    await _pmIdbPut(p); pmClose(); await pmRefresh(); showToast('✅ נשמר!');
   }catch(e){ showToast('❌ שגיאה: '+e.message); }
 }
 
@@ -2766,7 +2850,7 @@ async function pmScanRun(files){
   var apiKey=localStorage.getItem('anthropic_api_key')||loadChatApiKey();
   if(!apiKey){ showToast('⚠️ נא להגדיר מפתח API בטאב כלים'); return; }
   var modelName=(document.getElementById('pm-scan-model').value||'').trim();
-  var sys='סרוק את המסמך וחלץ את כל פרמטרי התכנות של בקר המעלית. החזר JSON בלבד, ללא markdown:\n[{"paramCode":"","paramName":"","description":"","range":"","defaultValue":"","notes":""}]\nחלץ כמה שיותר פרמטרים. אל תדלג על אף פרמטר שרואים.';
+  var sys='אתה מומחה לבקרי מעליות. סרוק את המסמך וחלץ את כל פרמטרי התכנות. עבור כל פרמטר חלץ:\n- paramCode: קוד/מספר הפרמטר בדיוק כפי שמופיע\n- paramName: שם הפרמטר בעברית או אנגלית\n- description: תיאור מפורט מה הפרמטר עושה, מה השפעתו על פעולת המעלית — לפחות משפט אחד מלא\n- models: מערך עם שם הפיקוד/דגם המעלית שצוין בקלט המשתמש\n- range: טווח ערכים אפשריים (למשל: 0-255, ON/OFF, 0-10.0)\n- defaultValue: ערך ברירת מחדל של היצרן\n- notes: הערות נוספות, אזהרות, או תנאים מיוחדים\n\nהחזר JSON בלבד, ללא markdown, ללא טקסט לפני או אחרי:\n[{"paramCode":"","paramName":"","description":"","models":[],"range":"","defaultValue":"","notes":""}]\n\nחשוב מאוד: אל תדלג על שום פרמטר. חלץ את כולם כולל תיאור מפורט לכל אחד. אם התיאור לא מופיע במפורש — נסה להסיק מהקשר.';
 
   document.getElementById('pm-scan-input-wrap').style.display='none';
   document.getElementById('pm-scan-error').style.display='none';
@@ -2827,16 +2911,30 @@ async function pmScanRun(files){
   if(files.length>1) foundTxt+=' מ-'+files.length+' קבצים';
   if(errors.length) foundTxt+=' ('+errors.length+' קבצים נכשלו)';
   document.getElementById('pm-scan-found').textContent=foundTxt;
-  document.getElementById('pm-scan-list').innerHTML=allParams.map(function(p,i){
-    return '<label style="display:flex;align-items:center;gap:10px;padding:8px;border-bottom:1px solid var(--border);cursor:pointer;font-family:Heebo,sans-serif">'+
-      '<input type="checkbox" class="pm-scan-cb" data-idx="'+i+'" checked style="width:16px;height:16px;accent-color:#3b82f6;flex-shrink:0">'+
-      '<div style="min-width:0">'+
-        '<span style="font-family:monospace;font-size:13px;font-weight:700;color:#60a5fa">'+esc(p.paramCode)+'</span>'+
-        (p.description?' <span style="font-size:11px;color:var(--text2)">'+esc(p.description.slice(0,60))+(p.description.length>60?'…':'')+'</span>':'')+
-      '</div>'+
-    '</label>';
-  }).join('');
+  pmScanRerenderList();
   document.getElementById('pm-scan-results').style.display='block';
+}
+
+function pmScanRerenderList(){
+  var el=document.getElementById('pm-scan-list'); if(!el) return;
+  el.innerHTML=_pmScanParsed.map(function(p,i){
+    return '<div style="display:flex;align-items:flex-start;gap:8px;padding:10px;border-bottom:1px solid var(--border)">'+
+      '<input type="checkbox" class="pm-scan-cb" data-idx="'+i+'" checked style="width:16px;height:16px;accent-color:#3b82f6;flex-shrink:0;margin-top:3px">'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
+          '<span style="font-family:monospace;font-size:13px;font-weight:700;color:var(--orange)">'+esc(p.paramCode)+'</span>'+
+          (p.paramName?'<span style="font-size:12px;font-weight:600;color:var(--text)">'+esc(p.paramName)+'</span>':'')+
+          ((p.models||[]).length?p.models.map(function(m){ return '<span style="font-size:10px;background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);border-radius:8px;padding:1px 6px">'+esc(m)+'</span>'; }).join(''):'')+
+        '</div>'+
+        (p.description?'<div style="font-size:11px;color:var(--text2);margin-top:3px;line-height:1.5">'+esc(p.description)+'</div>':'')+
+        ((p.range||p.defaultValue)?'<div style="font-size:10px;color:var(--text3);margin-top:3px">'+
+          (p.range?'טווח: '+esc(p.range)+'  ':'')+
+          (p.defaultValue?'ברירה: '+esc(p.defaultValue):'')+
+        '</div>':'')+
+      '</div>'+
+      '<button onclick="pmOpenEditScan('+i+')" style="flex-shrink:0;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--text2);cursor:pointer">✏️</button>'+
+    '</div>';
+  }).join('');
 }
 
 function pmScanCheckAll(v){
