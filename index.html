@@ -381,7 +381,8 @@ if('serviceWorker' in navigator){
 
 <!-- PARAMS SECTION -->
 <div id="section-params" style="display:none">
-  <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px">
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <button class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2)" onclick="pmOpenScan()">📄 סרוק PDF/תמונה</button>
     <button class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2)" onclick="pmOpenPaste()">📋 הדבק טקסט</button>
     <button class="btn btn-primary btn-sm" onclick="pmOpenAdd()">+ הוסף פרמטר</button>
   </div>
@@ -527,6 +528,49 @@ if('serviceWorker' in navigator){
       <div style="display:flex;gap:8px">
         <button onclick="pmSaveSelected()" style="flex:1;padding:10px;background:var(--orange);border:none;border-radius:var(--radius-sm);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif">💾 שמור נבחרים</button>
         <button onclick="pmPasteClose()" class="btn btn-cancel" style="flex:1">ביטול</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PARAMS SCAN MODAL -->
+<div class="overlay" id="pm-scan-modal" onclick="if(event.target.id==='pm-scan-modal')pmScanClose()">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📄 סריקת PDF / תמונה</div>
+    <div id="pm-scan-input-wrap">
+      <div class="form-col">
+        <label>שם הדגם / פיקוד (אופציונלי)</label>
+        <input type="text" id="pm-scan-model" placeholder="למשל: NICE3000, CMC4+, SJEC M300...">
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <button type="button" onclick="document.getElementById('pm-scan-camera').click()" style="flex:1;padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">📷 צלם מסמך</button>
+        <button type="button" onclick="document.getElementById('pm-scan-file').click()" style="flex:1;padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">📁 בחר קובץ</button>
+      </div>
+      <input type="file" id="pm-scan-camera" accept="image/*" capture="environment" style="display:none" onchange="pmScanFile(event)">
+      <input type="file" id="pm-scan-file" accept=".pdf,image/*" style="display:none" onchange="pmScanFile(event)">
+    </div>
+    <div id="pm-scan-spinner" style="display:none;text-align:center;padding:20px">
+      <div style="font-size:22px;margin-bottom:6px">⏳</div>
+      <div id="pm-scan-filename" style="font-size:12px;color:var(--text2);font-family:Heebo,sans-serif"></div>
+      <div style="font-size:13px;color:var(--text2);font-family:Heebo,sans-serif">סורק עם AI...</div>
+    </div>
+    <div id="pm-scan-error" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:12px;margin-bottom:10px">
+      <div id="pm-scan-error-msg" style="color:#f87171;font-size:13px;font-family:Heebo,sans-serif;margin-bottom:8px"></div>
+      <button onclick="pmScanRetry()" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:12px;color:var(--text);cursor:pointer;font-family:Heebo,sans-serif">🔄 נסה שוב</button>
+    </div>
+    <div id="pm-scan-results" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:12px;color:#10b981;font-family:Heebo,sans-serif" id="pm-scan-found"></div>
+        <div style="display:flex;gap:6px">
+          <button onclick="pmScanCheckAll(true)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:11px;color:var(--text);cursor:pointer;font-family:Heebo,sans-serif">סמן הכל</button>
+          <button onclick="pmScanCheckAll(false)" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:11px;color:var(--text);cursor:pointer;font-family:Heebo,sans-serif">בטל הכל</button>
+        </div>
+      </div>
+      <div id="pm-scan-list" style="max-height:280px;overflow-y:auto;margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px">
+        <button onclick="pmScanSave()" style="flex:1;padding:10px;background:var(--orange);border:none;border-radius:var(--radius-sm);color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif">💾 שמור נבחרים</button>
+        <button onclick="pmScanClose()" class="btn btn-cancel" style="flex:1">ביטול</button>
       </div>
     </div>
   </div>
@@ -2677,6 +2721,126 @@ async function pmSaveSelected(){
     saved++;
   }
   pmPasteClose();
+  await pmRefresh();
+  showToast('✅ נשמרו '+saved+' פרמטרים!');
+}
+
+// ── Scan modal ──────────────────────────────────────────
+var _pmScanParsed = [];
+var _pmScanLastFile = null;
+
+function pmOpenScan(){
+  document.getElementById('pm-scan-model').value='';
+  document.getElementById('pm-scan-spinner').style.display='none';
+  document.getElementById('pm-scan-error').style.display='none';
+  document.getElementById('pm-scan-results').style.display='none';
+  document.getElementById('pm-scan-input-wrap').style.display='block';
+  document.getElementById('pm-scan-camera').value='';
+  document.getElementById('pm-scan-file').value='';
+  _pmScanParsed=[]; _pmScanLastFile=null;
+  openModal('pm-scan-modal');
+}
+
+function pmScanClose(){ closeModal('pm-scan-modal'); }
+
+async function pmScanFile(e){
+  var file=e.target.files&&e.target.files[0]; if(!file) return;
+  e.target.value='';
+  _pmScanLastFile=file;
+  await pmScanRun(file);
+}
+
+function pmScanRetry(){
+  if(_pmScanLastFile) pmScanRun(_pmScanLastFile);
+}
+
+async function pmScanRun(file){
+  var apiKey=localStorage.getItem('anthropic_api_key')||loadChatApiKey();
+  if(!apiKey){ showToast('⚠️ נא להגדיר מפתח API בטאב כלים'); return; }
+  var modelName=(document.getElementById('pm-scan-model').value||'').trim();
+  var isPdf=file.type==='application/pdf';
+
+  document.getElementById('pm-scan-input-wrap').style.display='none';
+  document.getElementById('pm-scan-error').style.display='none';
+  document.getElementById('pm-scan-results').style.display='none';
+  document.getElementById('pm-scan-filename').textContent=file.name;
+  document.getElementById('pm-scan-spinner').style.display='block';
+
+  try{
+    var b64=await new Promise(function(res,rej){
+      var r=new FileReader();
+      r.onload=function(){ res(r.result.split(',')[1]); };
+      r.onerror=function(){ rej(new Error('שגיאת קריאת קובץ')); };
+      r.readAsDataURL(file);
+    });
+
+    var contentBlock=isPdf
+      ?{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}}
+      :{type:'image',source:{type:'base64',media_type:file.type,data:b64}};
+
+    var sys='סרוק את המסמך וחלץ את כל פרמטרי התכנות של בקר המעלית. החזר JSON בלבד, ללא markdown:\n[{"paramCode":"","paramName":"","description":"","range":"","defaultValue":"","notes":""}]\nחלץ כמה שיותר פרמטרים. אל תדלג על אף פרמטר שרואים.';
+
+    var resp=await fetch('https://tke-proxy.guyshtaiger.workers.dev',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,system:sys,
+        messages:[{role:'user',content:[contentBlock,{type:'text',text:'חלץ את כל הפרמטרים מהמסמך.'}]}]})
+    });
+    var data=await resp.json();
+    if(data.error) throw new Error(data.error.message||JSON.stringify(data.error));
+    var raw=((data.content||[])[0]||{}).text||'';
+    var arr=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    if(!Array.isArray(arr)||!arr.length) throw new Error('לא נמצאו פרמטרים במסמך');
+
+    if(modelName) arr=arr.map(function(p){ return Object.assign({},p,{models:[modelName]}); });
+    else arr=arr.map(function(p){ return Object.assign({},p,{models:[]}); });
+
+    _pmScanParsed=arr;
+    document.getElementById('pm-scan-spinner').style.display='none';
+    document.getElementById('pm-scan-found').textContent='✅ נמצאו '+arr.length+' פרמטרים:';
+    document.getElementById('pm-scan-list').innerHTML=arr.map(function(p,i){
+      return '<label style="display:flex;align-items:center;gap:10px;padding:8px;border-bottom:1px solid var(--border);cursor:pointer;font-family:Heebo,sans-serif">'+
+        '<input type="checkbox" class="pm-scan-cb" data-idx="'+i+'" checked style="width:16px;height:16px;accent-color:#3b82f6;flex-shrink:0">'+
+        '<div style="min-width:0">'+
+          '<span style="font-family:monospace;font-size:13px;font-weight:700;color:#60a5fa">'+esc(p.paramCode)+'</span>'+
+          (p.description?' <span style="font-size:11px;color:var(--text2)">'+esc(p.description.slice(0,60))+(p.description.length>60?'…':'')+'</span>':'')+
+        '</div>'+
+      '</label>';
+    }).join('');
+    document.getElementById('pm-scan-results').style.display='block';
+  }catch(err){
+    document.getElementById('pm-scan-spinner').style.display='none';
+    document.getElementById('pm-scan-error-msg').textContent='❌ '+((err&&err.message)||String(err));
+    document.getElementById('pm-scan-error').style.display='block';
+  }
+}
+
+function pmScanCheckAll(v){
+  document.querySelectorAll('.pm-scan-cb').forEach(function(cb){ cb.checked=v; });
+}
+
+async function pmScanSave(){
+  var cbs=document.querySelectorAll('.pm-scan-cb:checked');
+  if(!cbs.length){ showToast('לא נבחרו פרמטרים'); return; }
+  var saved=0;
+  for(var i=0;i<cbs.length;i++){
+    var idx=parseInt(cbs[i].dataset.idx);
+    var p=_pmScanParsed[idx]; if(!p) continue;
+    await _pmIdbPut({
+      id:Date.now().toString(36)+Math.random().toString(36).slice(2,5)+'s'+i,
+      paramCode:p.paramCode||'',
+      paramName:p.paramName||'',
+      description:p.description||'',
+      models:p.models||[],
+      range:p.range||'',
+      defaultValue:p.defaultValue||'',
+      notes:p.notes||'',
+      image:null,
+      createdAt:Date.now()
+    });
+    saved++;
+  }
+  pmScanClose();
   await pmRefresh();
   showToast('✅ נשמרו '+saved+' פרמטרים!');
 }
