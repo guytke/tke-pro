@@ -3720,30 +3720,50 @@ function startCatLongPress(e,c){
   clearTimeout(_catLpTimer);
   _catLpTimer=setTimeout(function(){
     _catLpFired=true;
-    showCatCtxMenu(e,c);
+    showCatDeletePopup(e,c);
   },600);
 }
 function cancelCatLongPress(){ clearTimeout(_catLpTimer); }
-function showCatCtxMenu(e,c){
-  closeCatCtxMenu();
+function showCatDeletePopup(e,c){
+  closeCatDeletePopup();
   var t=e.currentTarget||e.target;
   var rect=t.getBoundingClientRect();
-  var menu=document.createElement('div');
-  menu.id='cat-ctx-menu';
-  menu.style.cssText='position:fixed;z-index:9999;background:#fff;border:1px solid #E8E2EC;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,0.15);padding:4px 0;font-family:Heebo,sans-serif;min-width:160px';
-  menu.style.top=(rect.bottom+6)+'px';
-  menu.style.right=(window.innerWidth-rect.right)+'px';
-  var btn=document.createElement('button');
-  btn.textContent='🗑️ מחק קטגוריה';
-  btn.style.cssText='display:block;width:100%;text-align:right;padding:10px 16px;background:none;border:none;font-size:13px;color:#C0392B;cursor:pointer;font-family:Heebo,sans-serif';
-  btn.onclick=function(){ closeCatCtxMenu(); deleteCatalogCat(c); };
-  menu.appendChild(btn);
-  document.body.appendChild(menu);
-  setTimeout(function(){ document.addEventListener('click',closeCatCtxMenu,{once:true}); },0);
+  var overlay=document.createElement('div');
+  overlay.id='cat-del-overlay';
+  overlay.style.cssText='position:fixed;inset:0;z-index:9998';
+  overlay.onclick=closeCatDeletePopup;
+  document.body.appendChild(overlay);
+  var popup=document.createElement('div');
+  popup.id='cat-del-popup';
+  popup.style.cssText='position:fixed;z-index:9999;background:#fff;border:1px solid #E8E2EC;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.18);padding:16px;font-family:Heebo,sans-serif;min-width:220px;max-width:280px;text-align:right;direction:rtl';
+  var top=rect.bottom+8;
+  if(top+120>window.innerHeight) top=rect.top-128;
+  popup.style.top=top+'px';
+  popup.style.right=(window.innerWidth-rect.right)+'px';
+  var msg=document.createElement('div');
+  msg.style.cssText='font-size:13px;color:#2A1F33;margin-bottom:14px;line-height:1.5';
+  msg.textContent='למחוק את הקטגוריה "'+c+'" לצמיתות?';
+  var btns=document.createElement('div');
+  btns.style.cssText='display:flex;gap:8px;justify-content:flex-end';
+  var bDel=document.createElement('button');
+  bDel.textContent='מחק';
+  bDel.style.cssText='background:#C0392B;color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:13px;font-family:Heebo,sans-serif;cursor:pointer';
+  bDel.onclick=function(){ closeCatDeletePopup(); deleteCatalogCat(c); };
+  var bCan=document.createElement('button');
+  bCan.textContent='ביטול';
+  bCan.style.cssText='background:#F0EBF4;color:#5B2A8C;border:none;border-radius:8px;padding:7px 16px;font-size:13px;font-family:Heebo,sans-serif;cursor:pointer';
+  bCan.onclick=closeCatDeletePopup;
+  btns.appendChild(bCan);
+  btns.appendChild(bDel);
+  popup.appendChild(msg);
+  popup.appendChild(btns);
+  document.body.appendChild(popup);
 }
-function closeCatCtxMenu(){ var m=document.getElementById('cat-ctx-menu'); if(m) m.remove(); }
+function closeCatDeletePopup(){
+  var o=document.getElementById('cat-del-overlay'); if(o) o.remove();
+  var p=document.getElementById('cat-del-popup'); if(p) p.remove();
+}
 async function deleteCatalogCat(c){
-  if(!confirm('למחוק את הקטגוריה "'+c+'" לצמיתות?')) return;
   if(!_hiddenCatalogCategories.includes(c)) _hiddenCatalogCategories.push(c);
   localStorage.setItem('tke_hidden_cats',JSON.stringify(_hiddenCatalogCategories));
   var toUpdate=_catalogParts.filter(function(p){ return p.category===c; });
@@ -3763,13 +3783,13 @@ function renderCatalogCatChipsAdd(){
     var active=_catalogSelectedCat===c;
     var bg=active?'#5B2A8C':'#fff', col=active?'#fff':'#8A7F94', bc=active?'#5B2A8C':'#E8E2EC';
     var cs=c.replace(/'/g,"\\'");
-    if(active){
-      return '<span style="display:inline-flex;align-items:center;background:'+bg+';color:'+col+';border:1px solid '+bc+';border-radius:20px;padding:5px 8px 5px 12px;font-size:12px;font-family:Heebo,sans-serif">'+c+'<button onclick="event.stopPropagation();_catalogSelectedCat=null;renderCatalogCatChipsAdd();" style="background:rgba(255,255,255,0.25);border:none;color:#fff;font-size:15px;line-height:1;cursor:pointer;margin-right:6px;padding:0;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0">×</button></span>';
-    }
-    return '<button onmousedown="startCatLongPress(event,\''+cs+'\')" onmouseup="cancelCatLongPress()" onmouseleave="cancelCatLongPress()" ontouchstart="startCatLongPress(event,\''+cs+'\')" ontouchend="cancelCatLongPress()" onclick="if(_catLpFired){event.preventDefault();event.stopPropagation();}else{selectCatalogCat(\''+cs+'\')}" style="background:'+bg+';color:'+col+';border:1px solid '+bc+';border-radius:20px;padding:5px 12px;font-size:12px;font-family:Heebo,sans-serif;cursor:pointer">'+c+'</button>';
+    return '<button onmousedown="startCatLongPress(event,\''+cs+'\')" onmouseup="cancelCatLongPress()" onmouseleave="cancelCatLongPress()" ontouchstart="startCatLongPress(event,\''+cs+'\')" ontouchend="cancelCatLongPress()" onclick="if(_catLpFired){_catLpFired=false;return;}selectCatalogCat(\''+cs+'\')" style="background:'+bg+';color:'+col+';border:1px solid '+bc+';border-radius:20px;padding:5px 12px;font-size:12px;font-family:Heebo,sans-serif;cursor:pointer">'+c+'</button>';
   }).join('');
 }
-function selectCatalogCat(c){ _catalogSelectedCat=c; renderCatalogCatChipsAdd(); }
+function selectCatalogCat(c){
+  _catalogSelectedCat=(_catalogSelectedCat===c)?null:c;
+  renderCatalogCatChipsAdd();
+}
 function addCustomCatalogCat(){
   var inp=document.getElementById('catalog-new-cat'), val=inp.value.trim();
   if(!val) return; _catalogSelectedCat=val; inp.value=''; renderCatalogCatChipsAdd();
