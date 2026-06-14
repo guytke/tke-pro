@@ -3735,7 +3735,15 @@ function openCatalogAdd(){
   document.getElementById('catalog-model-picker').style.display='none';
   renderCatalogCatChipsAdd(); renderSelectedModels(); buildModelPicker();
   document.getElementById('catalog-add-modal').classList.add('open');
+  history.pushState({catalogAddOpen:true},'');
 }
+
+window.addEventListener('popstate',function(e){
+  if(document.getElementById('catalog-add-modal').classList.contains('open')){
+    confirmCloseCatalogAdd();
+    history.pushState({catalogAddOpen:true},'');
+  }
+});
 
 async function handleCatalogImage(input){
   if(!input.files||!input.files[0]) return;
