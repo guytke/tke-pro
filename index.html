@@ -861,9 +861,9 @@ if('serviceWorker' in navigator){
 </div>
 
 <!-- CATALOG ADD MODAL -->
-<div id="catalog-add-modal" class="overlay" style="z-index:200;overflow-y:auto;padding:16px;align-items:flex-start">
+<div id="catalog-add-modal" class="overlay" style="z-index:200;overflow-y:auto;padding:16px;align-items:flex-start" onclick="if(event.target===this)confirmCloseCatalogAdd()">
   <div class="cl-modal-inner">
-    <button onclick="closeModal('catalog-add-modal')" style="position:absolute;top:10px;left:10px;background:#E8E2EC;border:none;border-radius:50%;width:30px;height:30px;color:#2A1F33;font-size:18px;cursor:pointer">×</button>
+    <button onclick="confirmCloseCatalogAdd()" style="position:absolute;top:10px;left:10px;background:#E8E2EC;border:none;border-radius:50%;width:30px;height:30px;color:#2A1F33;font-size:18px;cursor:pointer">×</button>
     <div style="font-size:15px;font-weight:700;margin-bottom:16px;color:#2A1F33">➕ חלק חדש למאגר</div>
 
     <!-- Image -->
@@ -3664,7 +3664,7 @@ function renderCatalog(){
     if(_catalogFilterModel&&!models.includes(_catalogFilterModel)) return false;
     if(_catalogFilterCat&&p.category!==_catalogFilterCat) return false;
     var pn=p.partNumber||p.sku||'';
-    if(q&&!(p.name||'').toLowerCase().includes(q)&&!pn.toLowerCase().includes(q)) return false;
+    if(q&&!(p.name||'').toLowerCase().includes(q)&&!pn.toLowerCase().includes(q)&&!models.join(' ').toLowerCase().includes(q)) return false;
     return true;
   });
   var grid=document.getElementById('catalog-grid'); if(!grid) return;
@@ -3678,7 +3678,7 @@ function renderCatalog(){
     var badges=models.slice(0,2).map(function(m){ return '<span class="cl-badge-model">'+m+'</span>'; }).join('');
     var objURL=_catalogObjURLs[p.id];
     var imgHtml=objURL
-      ?'<img src="'+objURL+'" style="width:100%;height:110px;object-fit:cover;border-radius:8px;display:block;margin-bottom:8px">'
+      ?'<img src="'+objURL+'" onclick="event.stopPropagation();openCatalogLightbox(\''+objURL+'\')" style="width:100%;height:110px;object-fit:cover;border-radius:8px;display:block;margin-bottom:8px;cursor:zoom-in">'
       :'<div class="cl-img-placeholder">🔩</div>';
     var pendingBadge=(!p.fingerprint&&p.imageBlob)
       ?'<span id="fp-spinner-'+p.id+'" onclick="event.stopPropagation();retryFingerprint(\''+p.id+'\')" style="position:absolute;top:7px;left:7px;font-size:11px;background:rgba(91,42,140,0.1);color:#5B2A8C;border:1px solid rgba(91,42,140,0.3);border-radius:8px;padding:2px 6px;cursor:pointer">⏳ ניתוח</span>'
@@ -3694,6 +3694,37 @@ function renderCatalog(){
   }).join('');
 }
 
+// ── Confirm close catalog add form ─────────────────────
+function _hasCatalogFormData(){
+  var name=(document.getElementById('catalog-add-name')||{}).value||'';
+  var sku=(document.getElementById('catalog-add-sku')||{}).value||'';
+  var notes=(document.getElementById('catalog-add-notes')||{}).value||'';
+  return !!(name.trim()||sku.trim()||notes.trim()||_catalogSelectedModels.length||_catalogSelectedCat||_catalogImgBlob);
+}
+function confirmCloseCatalogAdd(){
+  if(!_hasCatalogFormData()){ closeModal('catalog-add-modal'); return; }
+  var existing=document.getElementById('catalog-close-confirm'); if(existing) existing.remove();
+  var dlg=document.createElement('div');
+  dlg.id='catalog-close-confirm';
+  dlg.style.cssText='position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45)';
+  dlg.innerHTML='<div style="background:#fff;border-radius:14px;padding:24px 20px;max-width:300px;width:90%;text-align:center;font-family:Heebo,sans-serif;direction:rtl">'+
+    '<div style="font-size:15px;font-weight:700;color:#2A1F33;margin-bottom:8px">לצאת ללא שמירה?</div>'+
+    '<div style="font-size:13px;color:#8A7F94;margin-bottom:20px">השינויים לא נשמרו. לצאת בכל זאת?</div>'+
+    '<div style="display:flex;gap:10px;justify-content:center">'+
+      '<button onclick="document.getElementById(\'catalog-close-confirm\').remove();closeModal(\'catalog-add-modal\')" style="background:#C0392B;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">צא</button>'+
+      '<button onclick="document.getElementById(\'catalog-close-confirm\').remove()" style="background:#F0EBF4;color:#5B2A8C;border:none;border-radius:8px;padding:9px 20px;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">המשך עריכה</button>'+
+    '</div></div>';
+  document.body.appendChild(dlg);
+}
+// ── Catalog lightbox ────────────────────────────────────
+function openCatalogLightbox(url){
+  var dlg=document.createElement('div');
+  dlg.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center';
+  dlg.onclick=function(e){ if(e.target===dlg) dlg.remove(); };
+  dlg.innerHTML='<button onclick="this.parentElement.remove()" style="position:absolute;top:16px;left:16px;background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:36px;height:36px;color:#fff;font-size:20px;cursor:pointer;line-height:1">×</button>'+
+    '<img src="'+url+'" style="max-width:94vw;max-height:88vh;border-radius:10px;object-fit:contain">';
+  document.body.appendChild(dlg);
+}
 // ── Add form ───────────────────────────────────────────
 function openCatalogAdd(){
   _catalogImgBlob=null; _catalogSelectedCat=null; _catalogSelectedModels=[]; _catalogEditId=null;
@@ -3795,15 +3826,29 @@ function addCustomCatalogCat(){
   var inp=document.getElementById('catalog-new-cat'), val=inp.value.trim();
   if(!val) return; _catalogSelectedCat=val; inp.value=''; renderCatalogCatChipsAdd();
 }
-function buildModelPicker(){
+function buildModelPicker(q){
   var el=document.getElementById('catalog-model-picker'); if(!el) return;
-  el.innerHTML=ELEVATOR_MODELS.map(function(m){
+  var filter=(q||'').toLowerCase();
+  var models=ELEVATOR_MODELS.filter(function(m){ return !filter||m.toLowerCase().includes(filter); });
+  var rows=models.map(function(m){
     var chk=_catalogSelectedModels.includes(m)?'checked':'';
     return '<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px;color:#2A1F33;font-family:Heebo,sans-serif;border-bottom:1px solid #F0EBF4">'+
       '<input type="checkbox" '+chk+' onchange="toggleModelSelect(\''+m.replace(/'/g,"\\'")+'\''+')" style="width:16px;height:16px;accent-color:#5B2A8C">'+m+'</label>';
   }).join('');
+  if(!el._hasSearch){
+    el._hasSearch=true;
+    el.innerHTML='<input id="catalog-model-search" type="text" placeholder="חפש דגם..." oninput="buildModelPicker(this.value)" style="width:100%;box-sizing:border-box;padding:6px 10px;border:1px solid #E8E2EC;border-radius:8px;font-size:13px;font-family:Heebo,sans-serif;margin-bottom:6px;direction:rtl">';
+  }
+  var list=el.querySelector('#catalog-model-list');
+  if(!list){ list=document.createElement('div'); list.id='catalog-model-list'; el.appendChild(list); }
+  list.innerHTML=rows||'<div style="color:#B8B0C0;font-size:12px;padding:6px 0;font-family:Heebo,sans-serif">לא נמצאו דגמים</div>';
 }
-function toggleModelPicker(){ var el=document.getElementById('catalog-model-picker'); if(!el) return; el.style.display=el.style.display==='none'?'block':'none'; if(el.style.display==='block') buildModelPicker(); }
+function toggleModelPicker(){
+  var el=document.getElementById('catalog-model-picker'); if(!el) return;
+  var open=el.style.display==='none';
+  el.style.display=open?'block':'none';
+  if(open){ el._hasSearch=false; buildModelPicker(''); setTimeout(function(){ var s=document.getElementById('catalog-model-search'); if(s) s.focus(); },50); }
+}
 function toggleModelSelect(m){
   var idx=_catalogSelectedModels.indexOf(m);
   if(idx===-1) _catalogSelectedModels.push(m); else _catalogSelectedModels.splice(idx,1);
