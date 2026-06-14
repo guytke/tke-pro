@@ -3723,7 +3723,7 @@ function renderCatalogCatChipsAdd(){
     var bg=active?'#5B2A8C':'#fff', col=active?'#fff':'#8A7F94', bc=active?'#5B2A8C':'#E8E2EC';
     var cs=c.replace(/'/g,"\\'");
     if(active){
-      return '<span style="display:inline-flex;align-items:center;background:'+bg+';color:'+col+';border:1px solid '+bc+';border-radius:20px;padding:5px 12px;font-size:12px;font-family:Heebo,sans-serif">'+c+'<button onclick="event.stopPropagation();selectCatalogCat(null)" style="background:none;border:none;color:#fff;font-size:13px;line-height:1;cursor:pointer;margin-right:4px;padding:0;display:flex;align-items:center">×</button></span>';
+      return '<span style="display:inline-flex;align-items:center;background:'+bg+';color:'+col+';border:1px solid '+bc+';border-radius:20px;padding:5px 8px 5px 12px;font-size:12px;font-family:Heebo,sans-serif">'+c+'<button onclick="event.stopPropagation();_catalogSelectedCat=null;renderCatalogCatChipsAdd();" style="background:rgba(255,255,255,0.25);border:none;color:#fff;font-size:15px;line-height:1;cursor:pointer;margin-right:6px;padding:0;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;flex-shrink:0">×</button></span>';
     }
     return '<button onclick="selectCatalogCat(\''+cs+'\')" style="background:'+bg+';color:'+col+';border:1px solid '+bc+';border-radius:20px;padding:5px 12px;font-size:12px;font-family:Heebo,sans-serif;cursor:pointer">'+c+'</button>';
   }).join('');
