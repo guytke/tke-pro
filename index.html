@@ -871,6 +871,8 @@ if('serviceWorker' in navigator){
       <div class="cl-label">תמונה</div>
       <div id="catalog-img-preview-wrap" style="display:none;margin-bottom:8px">
         <img id="catalog-img-preview" style="width:100%;max-height:180px;object-fit:contain;border-radius:10px;background:#F0EBF4">
+        <button id="catalog-ai-identify-btn" onclick="catalogAIIdentify()" style="margin-top:8px;width:100%;background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-family:Heebo,sans-serif;cursor:pointer">🔍 זהה חלק עם AI</button>
+        <div id="catalog-ai-identify-result" style="display:none"></div>
       </div>
       <div style="display:flex;gap:8px">
         <label class="cl-img-label" onclick="_catalogMarkFilePicker()">📷 צלם<input type="file" accept="image/*" capture="environment" id="catalog-img-camera" style="display:none" onchange="handleCatalogImage(this)"></label>
@@ -3778,6 +3780,53 @@ async function handleCatalogImage(input){
   _catalogImgBlob=blob;
   document.getElementById('catalog-img-preview').src=URL.createObjectURL(blob);
   document.getElementById('catalog-img-preview-wrap').style.display='block';
+  var res=document.getElementById('catalog-ai-identify-result');
+  if(res){ res.style.display='none'; res.innerHTML=''; }
+  var btn=document.getElementById('catalog-ai-identify-btn');
+  if(btn){ btn.style.display='block'; btn.disabled=false; btn.textContent='🔍 זהה חלק עם AI'; }
+}
+
+async function catalogAIIdentify(){
+  var btn=document.getElementById('catalog-ai-identify-btn');
+  var res=document.getElementById('catalog-ai-identify-result');
+  if(!_catalogImgBlob){ return; }
+  var apiKey=localStorage.getItem('anthropic_api_key')||loadChatApiKey();
+  if(!apiKey){ showToast('⚠️ נא להגדיר מפתח API בטאב כלים'); return; }
+  btn.disabled=true; btn.textContent='⏳ מזהה חלק...';
+  res.style.display='none'; res.innerHTML='';
+  try{
+    var b64=await blobToBase64(_catalogImgBlob);
+    var sys='אתה מזהה חלקי חילוף של מעליות. נתח את התמונה וחלץ:\n- שם החלק (קצר ומדויק)\n- מק"ט/P/N שמודפס על התווית או המעגל (OCR — זה הכי חשוב)\n\nהחזר JSON בלבד, ללא markdown:\n{"name":"","sku":""}\n\nאם לא רואים מק"ט — השאר sku ריק.\nאל תנחש מק"ט שלא מופיע בבירור בתמונה.';
+    var r=await fetch('https://tke-proxy.guyshtaiger.workers.dev',{method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:500,system:sys,
+        messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}}]}]
+      })
+    });
+    var d=await r.json();
+    if(d.error) throw new Error(d.error.message||JSON.stringify(d.error));
+    var parsed=JSON.parse(d.content[0].text.replace(/```json|```/g,'').trim());
+    var nameEl=document.getElementById('catalog-add-name');
+    var skuEl=document.getElementById('catalog-add-sku');
+    if(parsed.name){
+      if(nameEl.value.trim()&&nameEl.value.trim()!==parsed.name){
+        if(confirm('להחליף את שם החלק "'+nameEl.value+'" ב-"'+parsed.name+'"?')) nameEl.value=parsed.name;
+      } else { nameEl.value=parsed.name; }
+    }
+    if(parsed.sku){
+      if(skuEl.value.trim()&&skuEl.value.trim()!==parsed.sku){
+        if(confirm('להחליף את המק"ט "'+skuEl.value+'" ב-"'+parsed.sku+'"?')) skuEl.value=parsed.sku;
+      } else { skuEl.value=parsed.sku; }
+    }
+    btn.textContent='🔍 זהה חלק עם AI'; btn.disabled=false;
+    res.style.display='block';
+    res.innerHTML='<div style="margin-top:6px;font-size:11px;color:#8A7F94;font-family:Heebo,sans-serif;text-align:center">✨ זוהה על ידי AI — אנא אמת</div>';
+  }catch(e){
+    btn.textContent='🔍 זהה חלק עם AI'; btn.disabled=false;
+    res.style.display='block';
+    res.innerHTML='<div style="margin-top:6px;font-size:12px;color:#ef4444;font-family:Heebo,sans-serif;text-align:center">לא ניתן לזהות, נסה שוב '+
+      '<button onclick="catalogAIIdentify()" style="background:none;border:none;color:#5B2A8C;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;text-decoration:underline">נסה שוב</button></div>';
+  }
 }
 
 var _hiddenCatalogCategories=JSON.parse(localStorage.getItem('tke_hidden_cats')||'[]');
