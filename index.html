@@ -3735,11 +3735,55 @@ function confirmCloseCatalogAdd(){
 // ── Catalog lightbox ────────────────────────────────────
 function openCatalogLightbox(url){
   var dlg=document.createElement('div');
-  dlg.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center';
-  dlg.onclick=function(e){ if(e.target===dlg) dlg.remove(); };
-  dlg.innerHTML='<button onclick="this.parentElement.remove()" style="position:absolute;top:16px;left:16px;background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:36px;height:36px;color:#fff;font-size:20px;cursor:pointer;line-height:1">×</button>'+
-    '<img src="'+url+'" style="max-width:94vw;max-height:88vh;border-radius:10px;object-fit:contain">';
+  dlg.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none';
+  var img=document.createElement('img');
+  img.src=url;
+  img.style.cssText='max-width:94vw;max-height:88vh;border-radius:10px;object-fit:contain;touch-action:none;user-select:none;transform-origin:center center;transition:transform 0.05s';
+  var closeBtn=document.createElement('button');
+  closeBtn.innerHTML='×';
+  closeBtn.style.cssText='position:absolute;top:16px;left:16px;background:rgba(255,255,255,0.15);border:none;border-radius:50%;width:36px;height:36px;color:#fff;font-size:20px;cursor:pointer;line-height:1;z-index:1';
+  closeBtn.onclick=function(){ dlg.remove(); };
+  dlg.appendChild(closeBtn);
+  dlg.appendChild(img);
   document.body.appendChild(dlg);
+  // pinch-to-zoom
+  var scale=1, lastScale=1, startDist=0, originX=0, originY=0, panX=0, panY=0, lastPanX=0, lastPanY=0, isDragging=false, dragStart={x:0,y:0};
+  function dist(t){ return Math.hypot(t[0].clientX-t[1].clientX, t[0].clientY-t[1].clientY); }
+  function midpoint(t){ return {x:(t[0].clientX+t[1].clientX)/2, y:(t[0].clientY+t[1].clientY)/2}; }
+  function applyTransform(){ img.style.transform='translate('+panX+'px,'+panY+'px) scale('+scale+')'; }
+  dlg.addEventListener('touchstart',function(e){
+    if(e.touches.length===2){
+      e.preventDefault();
+      startDist=dist(e.touches);
+      lastScale=scale;
+      var mid=midpoint(e.touches);
+      originX=mid.x; originY=mid.y;
+      lastPanX=panX; lastPanY=panY;
+      isDragging=false;
+    } else if(e.touches.length===1&&scale>1){
+      e.preventDefault();
+      isDragging=true;
+      dragStart={x:e.touches[0].clientX-panX, y:e.touches[0].clientY-panY};
+    }
+  },{passive:false});
+  dlg.addEventListener('touchmove',function(e){
+    if(e.touches.length===2){
+      e.preventDefault();
+      var d=dist(e.touches);
+      scale=Math.min(5,Math.max(1,lastScale*(d/startDist)));
+      applyTransform();
+    } else if(e.touches.length===1&&isDragging){
+      e.preventDefault();
+      panX=e.touches[0].clientX-dragStart.x;
+      panY=e.touches[0].clientY-dragStart.y;
+      applyTransform();
+    }
+  },{passive:false});
+  dlg.addEventListener('touchend',function(e){
+    if(e.touches.length<2) isDragging=false;
+    if(scale<=1){ scale=1; panX=0; panY=0; applyTransform(); }
+  });
+  dlg.addEventListener('click',function(e){ if(e.target===dlg) dlg.remove(); });
 }
 // ── Add form ───────────────────────────────────────────
 function openCatalogAdd(){
