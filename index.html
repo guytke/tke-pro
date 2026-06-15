@@ -873,9 +873,9 @@ if('serviceWorker' in navigator){
         <img id="catalog-img-preview" style="width:100%;max-height:180px;object-fit:contain;border-radius:10px;background:#F0EBF4">
       </div>
       <div style="display:flex;gap:8px">
-        <label class="cl-img-label">📷 צלם<input type="file" accept="image/*" capture="environment" id="catalog-img-camera" style="display:none" onchange="handleCatalogImage(this)"></label>
-        <label class="cl-img-label">🖼️ גלריה<input type="file" accept="image/*" id="catalog-img-gallery" style="display:none" onchange="handleCatalogImage(this)"></label>
-        <label class="cl-img-label">📁 קבצים<input type="file" accept="image/*,.pdf" id="catalog-img-files" style="display:none" onchange="handleCatalogImage(this)"></label>
+        <label class="cl-img-label" onclick="_catalogMarkFilePicker()">📷 צלם<input type="file" accept="image/*" capture="environment" id="catalog-img-camera" style="display:none" onchange="handleCatalogImage(this)"></label>
+        <label class="cl-img-label" onclick="_catalogMarkFilePicker()">🖼️ גלריה<input type="file" accept="image/*" id="catalog-img-gallery" style="display:none" onchange="handleCatalogImage(this)"></label>
+        <label class="cl-img-label" onclick="_catalogMarkFilePicker()">📁 קבצים<input type="file" accept="image/*,.pdf" id="catalog-img-files" style="display:none" onchange="handleCatalogImage(this)"></label>
       </div>
     </div>
 
@@ -3752,6 +3752,7 @@ function openCatalogAdd(){
   history.pushState({modal:'addPart'},'');
   if(_catalogPopstateHandler) window.removeEventListener('popstate',_catalogPopstateHandler);
   _catalogPopstateHandler=function(){
+    if(_catalogFilePickerOpen) return;
     if(!document.getElementById('catalog-add-modal').classList.contains('open')) return;
     if(!_hasCatalogFormData()){
       if(_catalogPopstateHandler){ window.removeEventListener('popstate',_catalogPopstateHandler); _catalogPopstateHandler=null; }
@@ -3767,6 +3768,9 @@ function openCatalogAdd(){
   };
   window.addEventListener('popstate',_catalogPopstateHandler);
 }
+
+var _catalogFilePickerOpen=false;
+function _catalogMarkFilePicker(){ _catalogFilePickerOpen=true; setTimeout(function(){ _catalogFilePickerOpen=false; },3000); }
 
 async function handleCatalogImage(input){
   if(!input.files||!input.files[0]) return;
