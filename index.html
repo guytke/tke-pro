@@ -3702,32 +3702,32 @@ function _hasCatalogFormData(){
   return !!(name.trim()||sku.trim()||notes.trim()||_catalogSelectedModels.length||_catalogSelectedCat||_catalogImgBlob);
 }
 var _catalogPopstateHandler=null;
-function _catalogAddActualClose(){
-  sessionStorage.removeItem('catalogAddOpen');
-  if(_catalogPopstateHandler){ window.removeEventListener('popstate',_catalogPopstateHandler); _catalogPopstateHandler=null; }
-  closeModal('catalog-add-modal');
+function _showCatalogExitDlg(onExit){
+  var existing=document.getElementById('catalog-close-confirm'); if(existing) return;
+  var dlg=document.createElement('div');
+  dlg.id='catalog-close-confirm';
+  dlg.style.cssText='position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45)';
+  var inner=document.createElement('div');
+  inner.style.cssText='background:#fff;border-radius:14px;padding:24px 20px;max-width:300px;width:90%;text-align:center;font-family:Heebo,sans-serif;direction:rtl';
+  inner.innerHTML='<div style="font-size:15px;font-weight:700;color:#2A1F33;margin-bottom:8px">לצאת ללא שמירה?</div>'+
+    '<div style="font-size:13px;color:#8A7F94;margin-bottom:20px">השינויים לא נשמרו. לצאת בכל זאת?</div>'+
+    '<div style="display:flex;gap:10px;justify-content:center">'+
+      '<button id="cat-exit-yes" style="background:#C0392B;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">צא</button>'+
+      '<button id="cat-exit-no" style="background:#F0EBF4;color:#5B2A8C;border:none;border-radius:8px;padding:9px 20px;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">המשך עריכה</button>'+
+    '</div>';
+  dlg.appendChild(inner);
+  document.body.appendChild(dlg);
+  document.getElementById('cat-exit-yes').onclick=function(){ dlg.remove(); onExit(); };
+  document.getElementById('cat-exit-no').onclick=function(){ dlg.remove(); };
 }
-function _doCatalogAddExit(){
-  var d=document.getElementById('catalog-close-confirm'); if(d) d.remove();
+function _closeCatalogAddClean(){
   if(_catalogPopstateHandler){ window.removeEventListener('popstate',_catalogPopstateHandler); _catalogPopstateHandler=null; }
-  sessionStorage.removeItem('catalogAddOpen');
   history.back();
   closeModal('catalog-add-modal');
 }
 function confirmCloseCatalogAdd(){
-  if(!_hasCatalogFormData()){ _catalogAddActualClose(); history.back(); return; }
-  var existing=document.getElementById('catalog-close-confirm'); if(existing) existing.remove();
-  var dlg=document.createElement('div');
-  dlg.id='catalog-close-confirm';
-  dlg.style.cssText='position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45)';
-  dlg.innerHTML='<div style="background:#fff;border-radius:14px;padding:24px 20px;max-width:300px;width:90%;text-align:center;font-family:Heebo,sans-serif;direction:rtl">'+
-    '<div style="font-size:15px;font-weight:700;color:#2A1F33;margin-bottom:8px">לצאת ללא שמירה?</div>'+
-    '<div style="font-size:13px;color:#8A7F94;margin-bottom:20px">השינויים לא נשמרו. לצאת בכל זאת?</div>'+
-    '<div style="display:flex;gap:10px;justify-content:center">'+
-      '<button onclick="_doCatalogAddExit()" style="background:#C0392B;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">צא</button>'+
-      '<button onclick="document.getElementById(\'catalog-close-confirm\').remove()" style="background:#F0EBF4;color:#5B2A8C;border:none;border-radius:8px;padding:9px 20px;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">המשך עריכה</button>'+
-    '</div></div>';
-  document.body.appendChild(dlg);
+  if(!_hasCatalogFormData()){ _closeCatalogAddClean(); return; }
+  _showCatalogExitDlg(_closeCatalogAddClean);
 }
 // ── Catalog lightbox ────────────────────────────────────
 function openCatalogLightbox(url){
@@ -3748,25 +3748,21 @@ function openCatalogAdd(){
   document.getElementById('catalog-model-picker').style.display='none';
   renderCatalogCatChipsAdd(); renderSelectedModels(); buildModelPicker();
   document.getElementById('catalog-add-modal').classList.add('open');
-  sessionStorage.setItem('catalogAddOpen','1');
-  history.pushState({catalogAddOpen:true},'');
+  history.pushState({modal:'addPart'},'');
   if(_catalogPopstateHandler) window.removeEventListener('popstate',_catalogPopstateHandler);
   _catalogPopstateHandler=function(){
     if(!document.getElementById('catalog-add-modal').classList.contains('open')) return;
-    history.pushState({catalogAddOpen:true},'');
-    if(!_hasCatalogFormData()){ _catalogAddActualClose(); return; }
-    var existing=document.getElementById('catalog-close-confirm'); if(existing) return;
-    var dlg=document.createElement('div');
-    dlg.id='catalog-close-confirm';
-    dlg.style.cssText='position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45)';
-    dlg.innerHTML='<div style="background:#fff;border-radius:14px;padding:24px 20px;max-width:300px;width:90%;text-align:center;font-family:Heebo,sans-serif;direction:rtl">'+
-      '<div style="font-size:15px;font-weight:700;color:#2A1F33;margin-bottom:8px">לצאת ללא שמירה?</div>'+
-      '<div style="font-size:13px;color:#8A7F94;margin-bottom:20px">השינויים לא נשמרו. לצאת בכל זאת?</div>'+
-      '<div style="display:flex;gap:10px;justify-content:center">'+
-        '<button onclick="_doCatalogAddExit()" style="background:#C0392B;color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">צא</button>'+
-        '<button onclick="document.getElementById(\'catalog-close-confirm\').remove()" style="background:#F0EBF4;color:#5B2A8C;border:none;border-radius:8px;padding:9px 20px;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">המשך עריכה</button>'+
-      '</div></div>';
-    document.body.appendChild(dlg);
+    if(!_hasCatalogFormData()){
+      if(_catalogPopstateHandler){ window.removeEventListener('popstate',_catalogPopstateHandler); _catalogPopstateHandler=null; }
+      closeModal('catalog-add-modal');
+      return;
+    }
+    history.pushState({modal:'addPart'},'');
+    _showCatalogExitDlg(function(){
+      if(_catalogPopstateHandler){ window.removeEventListener('popstate',_catalogPopstateHandler); _catalogPopstateHandler=null; }
+      history.go(-2);
+      closeModal('catalog-add-modal');
+    });
   };
   window.addEventListener('popstate',_catalogPopstateHandler);
 }
