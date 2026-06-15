@@ -871,7 +871,7 @@ if('serviceWorker' in navigator){
       <div class="cl-label">תמונה</div>
       <div id="catalog-img-preview-wrap" style="display:none;margin-bottom:8px">
         <img id="catalog-img-preview" style="width:100%;max-height:180px;object-fit:contain;border-radius:10px;background:#F0EBF4">
-        <button id="catalog-ai-identify-btn" onclick="catalogAIIdentify()" style="margin-top:8px;width:100%;background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-family:Heebo,sans-serif;cursor:pointer">🔍 זהה חלק עם AI</button>
+        <button id="catalog-ai-identify-btn" onclick="catalogAIIdentify()" style="margin-top:8px;width:100%;background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-family:Heebo,sans-serif;cursor:pointer">🔍 נתח פרטי חלק</button>
         <div id="catalog-ai-identify-result" style="display:none"></div>
       </div>
       <div style="display:flex;gap:8px">
@@ -3783,7 +3783,7 @@ async function handleCatalogImage(input){
   var res=document.getElementById('catalog-ai-identify-result');
   if(res){ res.style.display='none'; res.innerHTML=''; }
   var btn=document.getElementById('catalog-ai-identify-btn');
-  if(btn){ btn.style.display='block'; btn.disabled=false; btn.textContent='🔍 זהה חלק עם AI'; }
+  if(btn){ btn.style.display='block'; btn.disabled=false; btn.textContent='🔍 נתח פרטי חלק'; }
 }
 
 async function catalogAIIdentify(){
@@ -3818,11 +3818,11 @@ async function catalogAIIdentify(){
         if(confirm('להחליף את המק"ט "'+skuEl.value+'" ב-"'+parsed.sku+'"?')) skuEl.value=parsed.sku;
       } else { skuEl.value=parsed.sku; }
     }
-    btn.textContent='🔍 זהה חלק עם AI'; btn.disabled=false;
+    btn.textContent='🔍 נתח פרטי חלק'; btn.disabled=false;
     res.style.display='block';
     res.innerHTML='<div style="margin-top:6px;font-size:11px;color:#8A7F94;font-family:Heebo,sans-serif;text-align:center">✨ זוהה על ידי AI — אנא אמת</div>';
   }catch(e){
-    btn.textContent='🔍 זהה חלק עם AI'; btn.disabled=false;
+    btn.textContent='🔍 נתח פרטי חלק'; btn.disabled=false;
     res.style.display='block';
     res.innerHTML='<div style="margin-top:6px;font-size:12px;color:#ef4444;font-family:Heebo,sans-serif;text-align:center">לא ניתן לזהות, נסה שוב '+
       '<button onclick="catalogAIIdentify()" style="background:none;border:none;color:#5B2A8C;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;text-decoration:underline">נסה שוב</button></div>';
@@ -4235,3 +4235,4 @@ if('serviceWorker' in navigator){
 </script>
 </body>
 </html>
+
