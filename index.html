@@ -383,8 +383,8 @@ if('serviceWorker' in navigator){
 <div id="section-params" style="display:none">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
     <div style="display:flex;gap:6px">
-      <button id="pm-view-all-btn" onclick="pmSetView('all')" style="padding:5px 10px;border-radius:8px;border:1px solid rgba(59,130,246,0.4);background:rgba(59,130,246,0.12);color:#60a5fa;font-size:12px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif">📃 כל הפרמטרים</button>
-      <button id="pm-view-model-btn" onclick="pmSetView('model')" style="padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-size:12px;cursor:pointer;font-family:Heebo,sans-serif">📋 לפי דגם</button>
+      <button id="pm-view-all-btn" onclick="pmSetView('all')" style="padding:5px 10px;border-radius:8px;border:1px solid rgba(59,130,246,0.4);background:rgba(59,130,246,0.12);color:#60a5fa;font-size:12px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif">📋 כל הפרמטרים</button>
+      <button id="pm-view-model-btn" onclick="pmSetView('model')" style="padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-size:12px;cursor:pointer;font-family:Heebo,sans-serif">🏷️ לפי דגם</button>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2)" onclick="pmOpenScan()">📄 סרוק PDF/תמונה</button>
@@ -2588,7 +2588,8 @@ function pmSetView(v){
   pmRenderList();
 }
 
-function pmCardHTML(p){
+function pmCardHTML(p,extraTag){
+  extraTag=extraTag||'';
   return '<div class="card" style="position:relative">'+
     '<button onclick="pmOpenEditIdb(\''+p.id+'\')" style="position:absolute;top:8px;left:8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--text2);cursor:pointer">✏️</button>'+
     '<div style="padding-left:36px">'+
@@ -2600,6 +2601,7 @@ function pmCardHTML(p){
         (p.range?'<span style="font-size:11px;color:var(--text3)">טווח: <b style="color:var(--text2)">'+esc(p.range)+'</b></span>':'')+
         (p.defaultValue?'<span style="font-size:11px;color:var(--text3)">ברירה: <b style="color:var(--text2)">'+esc(p.defaultValue)+'</b></span>':'')+
       '</div>':'')+
+      extraTag+
     '</div>'+
   '</div>';
 }
@@ -2613,18 +2615,25 @@ function pmRenderList(){
   if(_pmView==='model'){
     var map={};
     _pmList.forEach(function(p){
-      var mods=(p.models&&p.models.length)?p.models:['(ללא דגם)'];
-      mods.forEach(function(m){ if(!map[m]) map[m]=[]; map[m].push(p); });
+      if(!(p.models&&p.models.length)) return;
+      p.models.forEach(function(m){ if(!map[m]) map[m]=[]; map[m].push(p); });
     });
     el.innerHTML=Object.keys(map).sort().map(function(m){
       var sid='pmg_'+m.replace(/[^a-z0-9]/gi,'_');
+      var cards=map[m].map(function(p){
+        var others=(p.models||[]).filter(function(x){ return x!==m; });
+        var extraTag=others.length?'<div style="margin-top:4px;font-size:10px;color:var(--text3)">משויך גם: <span style="color:var(--text2)">'+others.map(esc).join(', ')+'</span></div>':'';
+        return pmCardHTML(p,extraTag);
+      }).join('');
       return '<div style="margin-bottom:8px">'+
-        '<button onclick="(function(){var d=document.getElementById(\''+sid+'\');d.style.display=d.style.display===\'none\'?\'block\':\'none\';})()" '+
-          'style="width:100%;text-align:right;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;color:#60a5fa;cursor:pointer;font-family:Heebo,sans-serif">'+
-          '⚙️ '+esc(m)+' <span style="font-size:11px;color:var(--text2);font-weight:400">('+map[m].length+')</span></button>'+
-        '<div id="'+sid+'" style="margin-top:4px">'+map[m].map(pmCardHTML).join('')+'</div>'+
+        '<button onclick="(function(){var d=document.getElementById(\''+sid+'\');var open=d.style.display!==\'none\';d.style.display=open?\'none\':\'block\';this.querySelector(\'.pmg-arrow\').textContent=open?\'▶\':\'▼\';})(this)" '+
+          'style="width:100%;text-align:right;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;color:#60a5fa;cursor:pointer;font-family:Heebo,sans-serif;display:flex;align-items:center;justify-content:space-between">'+
+          '<span>🏷️ '+esc(m)+' <span style="font-size:11px;color:var(--text2);font-weight:400">('+map[m].length+')</span></span>'+
+          '<span class="pmg-arrow" style="font-size:10px;color:var(--text2)">▼</span></button>'+
+        '<div id="'+sid+'" style="margin-top:4px">'+cards+'</div>'+
       '</div>';
     }).join('');
+    if(!Object.keys(map).length) el.innerHTML='<div class="empty"><div class="empty-icon">⚙️</div><p>אין פרמטרים משויכים לדגמים</p></div>';
   } else {
     el.innerHTML=_pmList.map(pmCardHTML).join('');
   }
