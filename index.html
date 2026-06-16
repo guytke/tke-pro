@@ -3697,7 +3697,7 @@ function renderCatalog(){
       ?'<span id="fp-spinner-'+p.id+'" onclick="event.stopPropagation();retryFingerprint(\''+p.id+'\')" style="position:absolute;top:7px;left:7px;font-size:11px;background:rgba(91,42,140,0.1);color:#5B2A8C;border:1px solid rgba(91,42,140,0.3);border-radius:8px;padding:2px 6px;cursor:pointer">⏳ ניתוח</span>'
       :'';
     var pn=p.partNumber||p.sku||'';
-    return '<div onclick="openCatalogDetail(\''+p.id+'\')" class="cl-card">'+
+    return '<div onclick="openCatalogDetail(\''+p.id+'\')" class="cl-card" data-catalog-id="'+p.id+'">'+
       (shared?'<span class="cl-badge-shared">🔗 Shared</span>':'')+
       pendingBadge+imgHtml+
       '<div style="font-size:13px;font-weight:600;color:#2A1F33;margin-bottom:3px;line-height:1.3">'+p.name+'</div>'+
@@ -4147,13 +4147,43 @@ function orderFromCatalog(id){
 }
 
 // ── Image search (two-phase) ───────────────────────────
+function _catalogSearchOverlay(msg){
+  var el=document.getElementById('catalog-search-overlay');
+  if(!el){
+    el=document.createElement('div');
+    el.id='catalog-search-overlay';
+    el.style.cssText='position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.75);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px';
+    document.body.appendChild(el);
+  }
+  el.innerHTML='<div style="width:52px;height:52px;border:4px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite"></div>'+
+    '<div style="color:#fff;font-size:16px;font-family:Heebo,sans-serif;font-weight:600">'+msg+'</div>';
+  el.style.display='flex';
+}
+function _catalogSearchOverlayHide(){
+  var el=document.getElementById('catalog-search-overlay'); if(el) el.style.display='none';
+}
+function _catalogSearchModal(html){
+  var el=document.getElementById('catalog-search-result-modal');
+  if(!el){
+    el=document.createElement('div');
+    el.id='catalog-search-result-modal';
+    el.style.cssText='position:fixed;inset:0;z-index:9001;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,0.6)';
+    document.body.appendChild(el);
+  }
+  el.innerHTML='<div style="background:#fff;border-radius:16px;width:100%;max-width:380px;max-height:85vh;overflow-y:auto;font-family:Heebo,sans-serif;direction:rtl">'+html+'</div>';
+  el.style.display='flex';
+}
+function _catalogSearchModalHide(){
+  var el=document.getElementById('catalog-search-result-modal'); if(el) el.style.display='none';
+}
+
 async function catalogImageSearch(input){
   if(!input.files||!input.files[0]) return;
+  input.value='';
   if(!_catalogParts.length){ showToast('המאגר ריק — הוסף חלקים תחילה'); return; }
   var apiKey=localStorage.getItem('anthropic_api_key')||loadChatApiKey();
   if(!apiKey){ showToast('⚠️ נא להגדיר מפתח API בטאב כלים'); return; }
-  var resultsDiv=document.getElementById('catalog-search-results');
-  if(resultsDiv){ resultsDiv.style.display='block'; resultsDiv.innerHTML='<div style="text-align:center;padding:24px;color:#8A7F94;font-size:14px;font-family:Heebo,sans-serif">🔍 מחפש במאגר...</div>'; }
+  _catalogSearchOverlay('מחפש במאגר...');
   try{
     var queryBlob=await compressImage(input.files[0]);
     var queryB64=await blobToBase64(queryBlob);
@@ -4173,38 +4203,73 @@ async function catalogImageSearch(input){
     var d=await res.json();
     if(d.error) throw new Error(d.error.message||JSON.stringify(d.error));
     var r=JSON.parse(d.content[0].text.replace(/```json|```/g,'').trim());
-    renderCatalogSearchResults(r);
+    _catalogSearchOverlayHide();
+    _showCatalogSearchModal(r);
   }catch(e){
-    if(resultsDiv) resultsDiv.innerHTML='<div style="background:#fff;border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:16px;margin-top:14px;text-align:center;font-size:14px;color:#ef4444;font-family:Heebo,sans-serif">❌ שגיאת רשת<br><button onclick="document.getElementById(\'catalog-img-search-input\').click()" style="margin-top:8px;background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">נסה שוב</button></div>';
+    _catalogSearchOverlayHide();
+    _catalogSearchModal(
+      '<div style="padding:24px;text-align:center">'+
+        '<div style="font-size:32px;margin-bottom:8px">❌</div>'+
+        '<div style="color:#ef4444;font-size:14px;margin-bottom:16px">שגיאת חיבור לשרת</div>'+
+        '<button onclick="_catalogSearchModalHide()" style="background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif">סגור</button>'+
+      '</div>'
+    );
   }
 }
 
-function renderCatalogSearchResults(r){
-  var rd=document.getElementById('catalog-search-results'); if(!rd) return;
-  rd.style.display='block';
-  var html='<div style="border-top:2px solid #E8E2EC;margin-top:14px;padding-top:14px">';
+function _showCatalogSearchModal(r){
+  var html='';
   if(!r.matchId||r.confidence<=50){
-    html+='<div style="text-align:center;color:#B8B0C0;padding:20px;font-size:14px;font-family:Heebo,sans-serif">לא נמצאה התאמה במאגר<br><button onclick="openCatalogAdd()" style="margin-top:8px;background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">➕ הוסף כחלק חדש</button></div>';
+    html='<div style="padding:32px 20px;text-align:center">'+
+      '<div style="font-size:48px;margin-bottom:12px">🔍</div>'+
+      '<div style="font-size:16px;font-weight:700;color:#2A1F33;margin-bottom:8px">לא נמצאה התאמה במאגר</div>'+
+      '<div style="font-size:13px;color:#8A7F94;margin-bottom:24px">הצלם לא זוהה כחלק קיים</div>'+
+      '<div style="display:flex;gap:10px;justify-content:center">'+
+        '<button onclick="_catalogSearchModalHide()" style="background:#F0EBF4;color:#5B2A8C;border:none;border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif">סגור</button>'+
+        '<button onclick="_catalogSearchModalHide();openCatalogAdd()" style="background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif">➕ הוסף חלק חדש</button>'+
+      '</div>'+
+    '</div>';
   } else {
     var p=_catalogParts.find(function(x){ return x.id===r.matchId; });
     if(!p){
-      html+='<div style="text-align:center;color:#B8B0C0;padding:20px;font-size:14px;font-family:Heebo,sans-serif">לא נמצאה התאמה במאגר</div>';
+      html='<div style="padding:32px 20px;text-align:center">'+
+        '<div style="font-size:16px;color:#8A7F94;margin-bottom:20px">לא נמצאה התאמה במאגר</div>'+
+        '<button onclick="_catalogSearchModalHide()" style="background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif">סגור</button>'+
+      '</div>';
     } else {
       var objURL=_catalogObjURLs[p.id];
       var pn=p.partNumber||p.sku||'';
       var cc=r.confidence>=80?'#10b981':'#FB8C40';
-      html+='<div style="background:#F0FBF4;border:1px solid #10b981;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:13px;font-weight:600;color:#2A1F33;font-family:Heebo,sans-serif">✅ נמצא: '+p.name+' <span style="color:'+cc+';font-weight:400">('+r.confidence+'% ביטחון)</span></div>';
-      html+='<div onclick="openCatalogDetail(\''+p.id+'\')" style="background:#fff;border:1px solid #E8E2EC;border-radius:12px;padding:12px;display:flex;gap:10px;align-items:flex-start;cursor:pointer">'+
-        (objURL?'<img src="'+objURL+'" style="width:60px;height:60px;object-fit:cover;border-radius:8px;flex-shrink:0">':'<div style="width:60px;height:60px;background:#F0EBF4;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🔩</div>')+
-        '<div style="flex:1;min-width:0;font-family:Heebo,sans-serif">'+
-          '<div style="font-size:13px;font-weight:600;color:#2A1F33">'+p.name+'</div>'+
-          (pn?'<div style="font-size:11px;color:#8A7F94">מק"ט: '+pn+'</div>':'')+
-          (r.reason?'<div style="font-size:11px;color:#B8B0C0;margin-top:4px">'+r.reason+'</div>':'')+
-        '</div></div>';
+      var models=(p.models||[]).filter(Boolean);
+      html='<div style="padding:16px 16px 8px">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">'+
+          '<div style="flex:1;font-size:15px;font-weight:700;color:#10b981">✅ נמצאה התאמה</div>'+
+          '<span style="background:'+cc+'22;color:'+cc+';border:1px solid '+cc+'44;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600">'+r.confidence+'% ביטחון</span>'+
+        '</div>'+
+        (objURL?'<img src="'+objURL+'" style="width:100%;height:180px;object-fit:contain;border-radius:10px;background:#F7F4FA;margin-bottom:12px">':
+          '<div style="width:100%;height:120px;background:#F0EBF4;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:48px;margin-bottom:12px">🔩</div>')+
+        '<div style="font-size:17px;font-weight:700;color:#2A1F33;margin-bottom:6px">'+p.name+'</div>'+
+        (pn?'<div style="font-size:13px;color:#5B2A8C;font-weight:600;margin-bottom:4px">מק"ט: '+pn+'</div>':'')+
+        (p.category?'<div style="font-size:12px;color:#8A7F94;margin-bottom:6px">קטגוריה: '+p.category+'</div>':'')+
+        (models.length?'<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">'+models.map(function(m){ return '<span style="background:#EDE4F7;color:#5B2A8C;border-radius:10px;padding:2px 8px;font-size:11px">'+m+'</span>'; }).join('')+'</div>':'')+
+        (r.reason?'<div style="font-size:12px;color:#8A7F94;background:#F7F4FA;border-radius:8px;padding:8px 10px;margin-bottom:4px">'+r.reason+'</div>':'')+
+      '</div>'+
+      '<div style="display:flex;gap:10px;padding:12px 16px 16px">'+
+        '<button onclick="_catalogSearchModalHide()" style="flex:1;background:#F0EBF4;color:#5B2A8C;border:none;border-radius:8px;padding:11px;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif">סגור</button>'+
+        '<button onclick="_catalogSearchModalHide();_catalogScrollToCard(\''+p.id+'\')" style="flex:2;background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif">📍 עבור לחלק</button>'+
+      '</div>';
     }
   }
-  html+='</div>';
-  rd.innerHTML=html;
+  _catalogSearchModal(html);
+}
+
+function _catalogScrollToCard(id){
+  var card=document.querySelector('[data-catalog-id="'+id+'"]');
+  if(!card){ showToast('גולל לרשימה...'); return; }
+  card.scrollIntoView({behavior:'smooth',block:'center'});
+  card.style.transition='box-shadow 0.3s';
+  card.style.boxShadow='0 0 0 3px #5B2A8C';
+  setTimeout(function(){ card.style.boxShadow=''; },2000);
 }
 
 function openCatalogAddWithPN(pn){
