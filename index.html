@@ -4218,6 +4218,15 @@ function _csModalShow(html){
 function _csModalHide(){
   var el=document.getElementById('_cs_modal'); if(el) el.style.display='none';
 }
+function _csOrderPart(name,pn){
+  _csModalHide();
+  switchMainTab('orders');
+  setOrderMode('manual');
+  setTimeout(function(){
+    var n=document.getElementById('man-part-name'); if(n) n.value=name||'';
+    var p=document.getElementById('man-part-num'); if(p) p.value=pn||'';
+  },120);
+}
 
 async function catalogImageSearch(input){
   if(!input.files||!input.files[0]) return;
@@ -4295,9 +4304,10 @@ function _csShowResult(r){
           models.map(function(m){ return '<span style="background:#EDE4F7;color:#5B2A8C;border-radius:10px;padding:2px 8px;font-size:11px">'+m+'</span>'; }).join('')+'</div>':'')+
         (r.reason?'<div style="font-size:12px;color:#8A7F94;background:#F7F4FA;border-radius:8px;padding:8px 10px;margin-bottom:4px">'+r.reason+'</div>':'')+
       '</div>'+
-      '<div style="display:flex;gap:10px;padding:12px 16px 16px">'+
-        '<button onclick="_csModalHide()" style="flex:1;background:#F0EBF4;color:#5B2A8C;border:none;border-radius:8px;padding:11px;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif">סגור</button>'+
-        '<button onclick="_csModalHide();_catalogScrollToCard(\''+p.id+'\')" style="flex:2;background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif">📍 עבור לחלק</button>'+
+      '<div style="display:flex;gap:8px;padding:12px 16px 16px;flex-wrap:wrap">'+
+        '<button onclick="_csModalHide()" style="flex:1;background:#F0EBF4;color:#5B2A8C;border:none;border-radius:8px;padding:11px;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">סגור</button>'+
+        '<button onclick="_csModalHide();_catalogScrollToCard(\''+p.id+'\')" style="flex:1;background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif">📍 עבור לחלק</button>'+
+        '<button onclick="_csOrderPart(\''+p.name.replace(/'/g,"\\'")+'\',' +'\''+pn.replace(/'/g,"\\'")+'\''+')" style="flex:1;background:#10b981;color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif">🛒 הזמן חלק</button>'+
       '</div>';
     }
   }
