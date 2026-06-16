@@ -259,6 +259,7 @@ if('serviceWorker' in navigator){
       <input type="file" id="restore-input" accept=".json" style="display:none" onchange="importBackup(event)">
       <button class="btn btn-ghost btn-sm" onclick="refreshApp()">🔄 רענון</button>
       <button class="btn btn-ghost btn-sm" onclick="switchMainTab('faults')">🏠 בית</button>
+      <button class="btn btn-ghost btn-sm" onclick="switchMainTab('tools')">🛠️ כלים</button>
       <button class="btn btn-primary btn-sm" onclick="openAdd()">+ חדש</button>
     </div>
   </div>
@@ -270,7 +271,7 @@ if('serviceWorker' in navigator){
   <button id="main-tab-faults" onclick="switchMainTab('faults')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--orange-border);background:var(--orange-dim);color:var(--orange);font-family:Heebo,sans-serif;font-size:12px;font-weight:600;cursor:pointer">🔧 תקלות</button>
   <button id="main-tab-params" onclick="switchMainTab('params')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">⚙️ פרמטרים</button>
   <button id="main-tab-mfr" onclick="switchMainTab('mfr')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">📚 ספרי תקלות יצרן</button>
-  <button id="main-tab-tools" onclick="switchMainTab('tools')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">🛠️ כלים</button>
+
   <button id="main-tab-chat" onclick="switchMainTab('chat')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">🤖 ייעוץ שטח</button>
   <button id="main-tab-parts" onclick="switchMainTab('parts')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">🗂️ מאגר חלקים</button>
   <button id="main-tab-orders" onclick="switchMainTab('orders')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">📋 הזמנות</button>
@@ -387,9 +388,10 @@ if('serviceWorker' in navigator){
       <button id="pm-view-model-btn" onclick="pmSetView('model')" style="padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-size:12px;cursor:pointer;font-family:Heebo,sans-serif">🏷️ לפי דגם</button>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2)" onclick="pmOpenScan()">📄 סרוק PDF/תמונה</button>
-      <button class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2)" onclick="pmOpenPaste()">📋 הדבק טקסט</button>
       <button class="btn btn-primary btn-sm" onclick="pmOpenAdd()">+ הוסף פרמטר</button>
+      <label class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2);cursor:pointer">📄 סרוק PDF<input type="file" accept=".pdf" style="display:none" onchange="pmDirectScan(event)"></label>
+      <label class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2);cursor:pointer">📷 צלם<input type="file" accept="image/*" capture="environment" style="display:none" onchange="pmDirectScan(event)"></label>
+      <label class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2);cursor:pointer">🖼️ גלריה<input type="file" accept="image/*" style="display:none" onchange="pmDirectScan(event)"></label>
     </div>
   </div>
   <div id="pm-list"></div>
@@ -417,6 +419,7 @@ if('serviceWorker' in navigator){
     <div class="form-col">
       <label>תיאור — מה הפרמטר עושה</label>
       <textarea id="pm-desc" rows="3" placeholder="תפקיד הפרמטר..."></textarea>
+      <button type="button" onclick="pmTranslateDesc()" style="margin-top:6px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:12px;color:var(--text2);cursor:pointer;font-family:Heebo,sans-serif">🔤 נתח לעברית</button>
     </div>
     <div class="form-col">
       <label>דגמים</label>
@@ -596,69 +599,6 @@ if('serviceWorker' in navigator){
 
 <!-- MFR SECTION -->
 <div id="section-mfr" style="display:none">
-  <!-- API KEY -->
-  <div id="mfr-api-section" style="background:var(--bg2);border:1px solid rgba(232,93,0,0.3);border-radius:var(--radius);padding:14px;margin-bottom:14px">
-    <div style="font-size:13px;font-weight:700;color:var(--orange);margin-bottom:6px">🔑 מפתח API</div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:8px">נדרש לסריקת ספרי תקלות ותרגום</div>
-    <div style="display:flex;gap:8px">
-      <input type="password" id="mfr-api-key" placeholder="sk-ant-..." style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 12px;font-size:13px;color:var(--text);font-family:Heebo,sans-serif;outline:none">
-      <button onclick="saveMfrApiKey()" style="background:var(--orange);border:none;border-radius:var(--radius-sm);padding:9px 16px;color:#fff;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">שמור</button>
-    </div>
-  </div>
-
-  <!-- API KEY TOGGLE -->
-  <div style="text-align:left;margin-bottom:8px">
-    <button onclick="toggleMfrApiSection()" style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:11px;color:var(--text3);cursor:pointer;font-family:Heebo,sans-serif">🔑 שנה מפתח API</button>
-  </div>
-
-  <!-- SCAN AREA -->
-  <div style="background:var(--bg2);border:1px dashed var(--border-active);border-radius:var(--radius);padding:20px;text-align:center;margin-bottom:14px;cursor:pointer" onclick="document.getElementById('mfr-scan-input').click()" id="mfr-upload-area">
-    <div style="font-size:36px;margin-bottom:8px">📸</div>
-    <div style="font-size:14px;color:var(--text2);margin-bottom:4px">סרוק דף מספר תקלות</div>
-    <div style="font-size:12px;color:var(--text3)">לחץ לבחירת תמונה מהגלריה — יחלץ את כל הקודים ויתרגם לעברית</div>
-    <input type="file" id="mfr-scan-input" accept="image/*" multiple style="display:none" onchange="handleMfrMultiScan(event)">
-  </div>
-  <div style="display:flex;gap:8px;margin-bottom:14px">
-    <button onclick="document.getElementById('mfr-camera-input').click()" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-size:12px;color:var(--text2);cursor:pointer;font-family:Heebo,sans-serif">📷 צלם דף</button>
-    <input type="file" id="mfr-camera-input" accept="image/*" capture="environment" style="display:none" onchange="handleMfrScan(event)">
-    <button onclick="document.getElementById('mfr-pdf-input').click()" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-size:12px;color:var(--text2);cursor:pointer;font-family:Heebo,sans-serif">📄 PDF</button>
-    <input type="file" id="mfr-pdf-input" accept="application/pdf" style="display:none" onchange="handleMfrPdf(event)">
-    <button onclick="openMfrAdd()" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-size:12px;color:var(--text2);cursor:pointer;font-family:Heebo,sans-serif">✏️ ידני</button>
-  </div>
-
-  <!-- SCAN STATUS -->
-  <div id="mfr-scan-status" style="display:none;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px;text-align:center">
-    <div id="mfr-scan-status-text" style="font-size:13px;color:var(--text2)"></div>
-    <div style="display:flex;gap:8px;margin-top:8px;margin-bottom:6px">
-      <button onclick="mfrSelectAll(true)" style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:5px;font-size:11px;color:var(--text2);cursor:pointer;font-family:Heebo,sans-serif">✅ בחר הכל</button>
-      <button onclick="mfrSelectAll(false)" style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:5px;font-size:11px;color:var(--text2);cursor:pointer;font-family:Heebo,sans-serif">❌ בטל הכל</button>
-    </div>
-    <div id="mfr-scan-results-list" style="margin-top:4px;max-height:300px;overflow-y:auto;text-align:right;font-size:12px;color:var(--text2);line-height:1.8"></div>
-    <button id="mfr-save-btn" onclick="saveMfrScanResults()" style="display:none;margin-top:10px;background:var(--green);border:none;border-radius:var(--radius-sm);padding:10px 20px;color:#fff;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif;width:100%">💾 שמור הכל לספר יצרן</button>
-  </div>
-
-  <!-- SEARCH & LIST -->
-  <div class="search-wrap" style="margin-bottom:10px">
-    <span class="search-icon">🔍</span>
-    <input type="text" id="mfr-search" placeholder="חפש קוד, שם, תיאור..." oninput="renderMfr()">
-  </div>
-  <div style="display:flex;gap:8px;margin-bottom:14px">
-    <div style="display:flex;align-items:center;gap:8px">
-      <div class="stat" id="mfr-count">0 קודים</div>
-      <button id="mfr-delete-mode-btn" onclick="toggleMfrDeleteMode()" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:Heebo,sans-serif">🗑 מחיקה מרובה</button>
-    </div>
-    <button id="mfr-lang-toggle" onclick="toggleMfrLang()" style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--text2);cursor:pointer;font-family:Heebo,sans-serif">🇮🇱 עברית</button>
-  </div>
-  <div class="model-tabs" id="mfr-model-tabs"></div>
-  <div id="mfr-list"></div>
-
-  <!-- דפים סרוקים -->
-  <div style="margin-top:20px">
-    <button onclick="toggleScannedPages()" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 16px;color:var(--text2);font-size:13px;cursor:pointer;font-family:Heebo,sans-serif;width:100%;text-align:right">
-      🗂️ דפים סרוקים <span id="scanned-pages-count"></span>
-    </button>
-    <div id="scanned-pages-list" style="display:none;margin-top:8px"></div>
-  </div>
 </div>
 
 <!-- MFR ADD MODAL -->
@@ -2575,6 +2515,57 @@ function _pmIdbPut(p){
   });
 }
 
+function _pmIdbDelete(id){
+  return openIDB().then(function(db){
+    return new Promise(function(res,rej){
+      var r=db.transaction('params','readwrite').objectStore('params').delete(id);
+      r.onsuccess=function(){ res(); };
+      r.onerror=function(){ rej(r.error); };
+    });
+  });
+}
+
+async function pmDelete(id){
+  if(!confirm('למחוק פרמטר זה לצמיתות?')) return;
+  await _pmIdbDelete(id);
+  await pmRefresh();
+  showToast('🗑️ נמחק');
+}
+
+async function pmDirectScan(event){
+  var files=event.target.files; if(!files||!files.length) return;
+  event.target.value='';
+  pmOpenScan();
+  await new Promise(function(r){ setTimeout(r,100); });
+  var dt=new DataTransfer();
+  Array.from(files).forEach(function(f){ dt.items.add(f); });
+  var inp=document.getElementById('pm-scan-file-input');
+  if(inp){ inp.files=dt.files; }
+  await pmScanRun(Array.from(files));
+}
+
+async function pmTranslateDesc(){
+  var ta=document.getElementById('pm-desc');
+  var txt=(ta.value||'').trim(); if(!txt){ showToast('אין טקסט לתרגום'); return; }
+  var apiKey=localStorage.getItem('anthropic_api_key')||loadChatApiKey();
+  if(!apiKey){ showToast('⚠️ נא להגדיר מפתח API בטאב כלים'); return; }
+  var btn=event.target; btn.disabled=true; btn.textContent='⏳ מתרגם...';
+  try{
+    var resp=await fetch('https://tke-proxy.guyshtaiger.workers.dev',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:500,
+        system:'אתה מומחה לבקרי מעליות TKE. תרגם את הטקסט הבא לעברית טכנית תמציתית ומדויקת. החזר רק את התרגום, ללא הסברים.',
+        messages:[{role:'user',content:txt}]})
+    });
+    var data=await resp.json();
+    if(data.error) throw new Error(data.error.message);
+    var translated=((data.content||[])[0]||{}).text||'';
+    if(translated) ta.value=translated;
+  }catch(e){ showToast('שגיאה: '+(e.message||e)); }
+  finally{ btn.disabled=false; btn.textContent='🔤 נתח לעברית'; }
+}
+
 async function pmRefresh(){
   _pmList = await _pmIdbGetAll();
   pmRenderList();
@@ -2592,7 +2583,8 @@ function pmCardHTML(p,extraTag){
   extraTag=extraTag||'';
   return '<div class="card" style="position:relative">'+
     '<button onclick="pmOpenEditIdb(\''+p.id+'\')" style="position:absolute;top:8px;left:8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--text2);cursor:pointer">✏️</button>'+
-    '<div style="padding-left:36px">'+
+    '<button onclick="pmDelete(\''+p.id+'\')" style="position:absolute;top:8px;left:48px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:3px 8px;font-size:11px;color:#f87171;cursor:pointer">🗑️</button>'+
+    '<div style="padding-left:88px">'+
       '<div style="font-family:monospace;font-size:15px;font-weight:700;color:var(--orange)">'+esc(p.paramCode)+'</div>'+
       (p.paramName?'<div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px">'+esc(p.paramName)+'</div>':'')+
       (p.description?'<div style="font-size:12px;color:var(--text2);margin-top:4px;line-height:1.5">'+esc(p.description)+'</div>':'')+
@@ -2863,7 +2855,7 @@ async function pmScanRun(files){
   var apiKey=localStorage.getItem('anthropic_api_key')||loadChatApiKey();
   if(!apiKey){ showToast('⚠️ נא להגדיר מפתח API בטאב כלים'); return; }
   var modelName=(document.getElementById('pm-scan-model').value||'').trim();
-  var sys='אתה מומחה לבקרי מעליות. סרוק את המסמך וחלץ את כל פרמטרי התכנות. עבור כל פרמטר חלץ:\n- paramCode: קוד/מספר הפרמטר בדיוק כפי שמופיע\n- paramName: שם הפרמטר בעברית או אנגלית\n- description: תיאור מפורט מה הפרמטר עושה, מה השפעתו על פעולת המעלית — לפחות משפט אחד מלא\n- models: מערך עם שם הפיקוד/דגם המעלית שצוין בקלט המשתמש\n- range: טווח ערכים אפשריים (למשל: 0-255, ON/OFF, 0-10.0)\n- defaultValue: ערך ברירת מחדל של היצרן\n- notes: הערות נוספות, אזהרות, או תנאים מיוחדים\n\nהחזר JSON בלבד, ללא markdown, ללא טקסט לפני או אחרי:\n[{"paramCode":"","paramName":"","description":"","models":[],"range":"","defaultValue":"","notes":""}]\n\nחשוב מאוד: אל תדלג על שום פרמטר. חלץ את כולם כולל תיאור מפורט לכל אחד. אם התיאור לא מופיע במפורש — נסה להסיק מהקשר.';
+  var sys='אתה מומחה לבקרי מעליות TKE/ThyssenKrupp. סרוק את המסמך וחלץ את כל פרמטרי התכנות. המבנה הרגיל: Direction=קוד הפרמטר | Parameter definition=שם | Function=תיאור | Lower/Upper limit=גבולות | Standard value=ערך יצרן | Range=טווח אפשרויות. עמודת ID היא מספור שורה בלבד — התעלם ממנה לחלוטין. החזר JSON בלבד, ללא markdown: [{"paramCode":"","paramName":"","description":"","models":[],"range":"","defaultValue":"","notes":""}] - paramCode = עמודת Direction - paramName = Parameter definition - description = Function - defaultValue = Standard value - range = Range - notes = Lower limit + Upper limit - models = תמיד ריק חלץ את כולם, אל תדלג על שורה אחת.';
 
   document.getElementById('pm-scan-input-wrap').style.display='none';
   document.getElementById('pm-scan-error').style.display='none';
@@ -2958,9 +2950,18 @@ async function pmScanSave(){
   var cbs=document.querySelectorAll('.pm-scan-cb:checked');
   if(!cbs.length){ showToast('לא נבחרו פרמטרים'); return; }
   var saved=0;
+  var existing=await _pmIdbGetAll();
+  var existingCodes=existing.map(function(x){ return (x.paramCode||'').trim().toLowerCase(); });
   for(var i=0;i<cbs.length;i++){
     var idx=parseInt(cbs[i].dataset.idx);
     var p=_pmScanParsed[idx]; if(!p) continue;
+    var codeKey=(p.paramCode||'').trim().toLowerCase();
+    if(codeKey&&existingCodes.indexOf(codeKey)!==-1){
+      var ok=confirm('פרמטר "'+p.paramCode+'" כבר קיים. להחליף?');
+      if(!ok) continue;
+      var dup=existing.find(function(x){ return (x.paramCode||'').trim().toLowerCase()===codeKey; });
+      if(dup) await _pmIdbDelete(dup.id);
+    }
     await _pmIdbPut({
       id:Date.now().toString(36)+Math.random().toString(36).slice(2,5)+'s'+i,
       paramCode:p.paramCode||'',
