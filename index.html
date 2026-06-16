@@ -982,6 +982,10 @@ if('serviceWorker' in navigator){
         <div>
           <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">מספר קריאה</label>
           <input id="man-call-number" type="text" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none" placeholder="מספר קריאה">
+          <label id="man-scan-call-btn" style="display:inline-flex;align-items:center;gap:6px;margin-top:7px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--text2);cursor:pointer;font-family:Heebo,sans-serif">
+            🖼️ סרוק קריאה מהגלריה
+            <input type="file" accept="image/*" style="display:none" onchange="scanCallFromImage(this)">
+          </label>
         </div>
         <div>
           <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">אתר</label>
@@ -2032,6 +2036,39 @@ function switchMainTab(tab){
 
 // ─── ORDERS ───────────────────────────────────────────
 var _callImgBase64 = null, _partsImgBase64 = null;
+
+async function scanCallFromImage(input){
+  if(!input.files||!input.files[0]) return;
+  var file=input.files[0]; input.value='';
+  var apiKey=localStorage.getItem('anthropic_api_key')||loadChatApiKey();
+  if(!apiKey){ showToast('⚠️ נא להגדיר מפתח API בטאב כלים'); return; }
+  var btn=document.getElementById('man-scan-call-btn');
+  if(btn){ btn.style.opacity='0.6'; btn.childNodes[0].textContent='⏳ סורק...'; }
+  try{
+    var blob=await compressImage(file);
+    var b64=await blobToBase64(blob);
+    var res=await fetch('https://tke-proxy.guyshtaiger.workers.dev',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:500,
+        system:'אתה סורק טפסי קריאת שירות של מעליות TKE.\nחלץ מהתמונה:\n- מספר קריאה (מספר בלבד)\n- כתובת/שם פרויקט\nהחזר JSON בלבד, ללא markdown:\n{"callNumber":"","projectName":""}',
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},
+          {type:'text',text:'חלץ מספר קריאה ושם פרויקט מהטופס.'}
+        ]}]})
+    });
+    var d=await res.json();
+    if(d.error) throw new Error(d.error.message);
+    var r=JSON.parse(d.content[0].text.replace(/```json|```/g,'').trim());
+    var cn=document.getElementById('man-call-number'); if(cn&&r.callNumber) cn.value=r.callNumber;
+    var ms=document.getElementById('man-site'); if(ms&&r.projectName) ms.value=r.projectName;
+    showToast('✅ קריאה נסרקה!');
+  }catch(e){
+    showToast('❌ לא ניתן לקרוא, נסה שוב');
+  }finally{
+    if(btn){ btn.style.opacity=''; btn.childNodes[0].textContent='🖼️ סרוק קריאה מהגלריה'; }
+  }
+}
 
 function setOrderMode(mode){
   var auto = document.getElementById('orders-auto');
