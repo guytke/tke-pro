@@ -1289,13 +1289,26 @@ async function refreshApp(){
 }
 
 // ─── BACKUP ───────────────────────────────────────────
-function exportBackup(){
-  const blob = new Blob([JSON.stringify({version:1,date:new Date().toISOString(),faults,params,mfr:mfrEntries},null,2)],{type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'tke-backup-'+new Date().toISOString().split('T')[0]+'.json';
-  a.click();
-  showToast('✅ גיבוי הורד!');
+async function exportBackup(){
+  showToast('⏳ מכין גיבוי...');
+  try{
+    var catalogParts = await idbGetAll();
+    var catalogExport = await Promise.all(catalogParts.map(async function(p){
+      var out = Object.assign({},p);
+      delete out.imageBlob;
+      if(p.imageBlob){
+        try{ out.imageBase64 = await blobToBase64(p.imageBlob); }catch(e){}
+      }
+      return out;
+    }));
+    var pmParts = await _pmIdbGetAll();
+    const blob = new Blob([JSON.stringify({version:2,date:new Date().toISOString(),faults,params,mfr:mfrEntries,catalog:catalogExport,pmParams:pmParts},null,2)],{type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'tke-backup-'+new Date().toISOString().split('T')[0]+'.json';
+    a.click();
+    showToast('✅ גיבוי הורד!');
+  }catch(e){ showToast('❌ שגיאה בייצוא: '+(e.message||e)); }
 }
 
 // ─── UTILS ────────────────────────────────────────────
@@ -2245,27 +2258,49 @@ function importBackup(e){
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
-  reader.onload = function(ev){
+  reader.onload = async function(ev){
     try{
       const data = JSON.parse(ev.target.result);
-      // תמיכה בפורמטים שונים של גיבוי
       const importedFaults = data.faults || data.fault || (Array.isArray(data) ? data : null);
       if(!importedFaults){ showToast('❌ קובץ לא תקין'); return; }
       const importedParams = data.params || data.parameters || [];
       const importedMfr = data.mfr || data.mfrEntries || data.manufacturer || [];
-      if(!confirm('שחזור יחליף ' + faults.length + ' תקלות קיימות ב-' + importedFaults.length + ' תקלות מהגיבוי. להמשיך?')) return;
-      // שמור ל-localStorage
+      const importedCatalog = data.catalog || [];
+      const importedPmParams = data.pmParams || [];
+      var msg = 'שחזור יחליף ' + faults.length + ' תקלות קיימות ב-' + importedFaults.length + ' תקלות מהגיבוי.';
+      if(importedCatalog.length) msg += '\nיובאו גם ' + importedCatalog.length + ' חלקים למאגר.';
+      if(!confirm(msg + '\nלהמשיך?')) return;
       save(importedFaults);
       saveParams(importedParams);
       saveMfr(importedMfr);
-      // טען מחדש לזיכרון מה-localStorage
       faults = load();
       params = loadParams();
       mfrEntries = loadMfr();
-      // רענן תצוגה
       refresh();
       renderParams();
-      showToast('✅ שוחזרו ' + faults.length + ' תקלות!');
+      // ייבוא מאגר חלקים עם תמונות
+      if(importedCatalog.length){
+        showToast('⏳ מייבא מאגר חלקים...');
+        for(var i=0;i<importedCatalog.length;i++){
+          var p = Object.assign({},importedCatalog[i]);
+          if(p.imageBase64){
+            try{
+              var res = await fetch(p.imageBase64);
+              p.imageBlob = await res.blob();
+            }catch(e2){}
+            delete p.imageBase64;
+          }
+          await idbPut(p);
+        }
+        await refreshCatalogCache();
+        renderCatalog();
+      }
+      // ייבוא פרמטרים
+      if(importedPmParams.length){
+        for(var j=0;j<importedPmParams.length;j++) await _pmIdbPut(importedPmParams[j]);
+        await pmRefresh();
+      }
+      showToast('✅ שוחזרו ' + faults.length + ' תקלות' + (importedCatalog.length ? ' + ' + importedCatalog.length + ' חלקים' : '') + '!');
     } catch(err){
       showToast('❌ שגיאה בקריאת הקובץ: ' + (err.message||''));
     }
