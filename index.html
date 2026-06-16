@@ -4192,96 +4192,85 @@ function orderFromCatalog(id){
   },100);
 }
 
-// ── Image search (two-phase) ───────────────────────────
-function _catalogSearchOverlay(msg){
-  var el=document.getElementById('catalog-search-overlay');
-  if(!el){
-    el=document.createElement('div');
-    el.id='catalog-search-overlay';
-    el.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;z-index:9000;background:rgba(0,0,0,0.75);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px';
-    document.body.appendChild(el);
-  }
-  el.innerHTML='<div style="width:52px;height:52px;border:4px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite"></div>'+
+// ── Image search ──────────────────────────────────────────
+function _csOverlayShow(msg){
+  var el=document.getElementById('_cs_overlay');
+  if(!el){ el=document.createElement('div'); el.id='_cs_overlay'; document.body.appendChild(el); }
+  el.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;background:rgba(0,0,0,0.78);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px';
+  el.innerHTML='<style>#_cs_spin{animation:spin 0.8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}</style>'+
+    '<div id="_cs_spin" style="width:54px;height:54px;border:5px solid rgba(255,255,255,0.2);border-top-color:#fff;border-radius:50%"></div>'+
     '<div style="color:#fff;font-size:16px;font-family:Heebo,sans-serif;font-weight:600">'+msg+'</div>';
-  el.style.display='flex';
 }
-function _catalogSearchOverlayHide(){
-  var el=document.getElementById('catalog-search-overlay'); if(el) el.style.display='none';
+function _csOverlayHide(){
+  var el=document.getElementById('_cs_overlay'); if(el) el.style.display='none';
 }
-function _catalogSearchModal(html){
-  var el=document.getElementById('catalog-search-result-modal');
-  if(!el){
-    el=document.createElement('div');
-    el.id='catalog-search-result-modal';
-    el.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;z-index:9001;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(0,0,0,0.6)';
-    document.body.appendChild(el);
-  }
-  el.innerHTML='<div style="background:#fff;border-radius:16px;width:100%;max-width:380px;max-height:85vh;overflow-y:auto;font-family:Heebo,sans-serif;direction:rtl">'+html+'</div>';
-  el.style.display='flex';
+function _csModalShow(html){
+  var el=document.getElementById('_cs_modal');
+  if(!el){ el=document.createElement('div'); el.id='_cs_modal'; document.body.appendChild(el); }
+  el.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;background:rgba(0,0,0,0.6)';
+  el.innerHTML='<div style="background:#fff;border-radius:16px;width:100%;max-width:400px;max-height:88vh;overflow-y:auto;font-family:Heebo,sans-serif;direction:rtl">'+html+'</div>';
 }
-function _catalogSearchModalHide(){
-  var el=document.getElementById('catalog-search-result-modal'); if(el) el.style.display='none';
+function _csModalHide(){
+  var el=document.getElementById('_cs_modal'); if(el) el.style.display='none';
 }
 
 async function catalogImageSearch(input){
   if(!input.files||!input.files[0]) return;
-  input.value='';
+  var file=input.files[0]; input.value='';
   if(!_catalogParts.length){ showToast('המאגר ריק — הוסף חלקים תחילה'); return; }
   var apiKey=localStorage.getItem('anthropic_api_key')||loadChatApiKey();
   if(!apiKey){ showToast('⚠️ נא להגדיר מפתח API בטאב כלים'); return; }
-  _catalogSearchOverlay('מחפש במאגר...');
+  _csOverlayShow('מחפש במאגר...');
   try{
-    var queryBlob=await compressImage(input.files[0]);
+    var queryBlob=await compressImage(file);
     var queryB64=await blobToBase64(queryBlob);
     var catalogDesc=JSON.stringify(_catalogParts.map(function(p){
       return {id:p.id,name:p.name,partNumber:p.partNumber||p.sku||'',fingerprint:p.fingerprint||''};
     }));
     var sys='אתה מזהה חלקי מעליות. קיבלת תמונה של חלק ורשימת מאגר.\nמצא את ההתאמה הסבירה ביותר לפי מק"ט מודפס, צורה, וסוג רכיב.\nהחזר JSON בלבד:\n{"matchId":"","confidence":0-100,"reason":"","detectedPN":""}\nאם אין התאמה — matchId ריק.';
-    var res=await fetch('https://tke-proxy.guyshtaiger.workers.dev',{method:'POST',
+    var res=await fetch('https://tke-proxy.guyshtaiger.workers.dev',{
+      method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
       body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:300,system:sys,
         messages:[{role:'user',content:[
           {type:'image',source:{type:'base64',media_type:'image/jpeg',data:queryB64}},
           {type:'text',text:'רשימת המאגר:\n'+catalogDesc}
-        ]}]
-      })
+        ]}]})
     });
     var d=await res.json();
     if(d.error) throw new Error(d.error.message||JSON.stringify(d.error));
     var r=JSON.parse(d.content[0].text.replace(/```json|```/g,'').trim());
-    _catalogSearchOverlayHide();
-    _showCatalogSearchModal(r);
+    _csOverlayHide();
+    _csShowResult(r);
   }catch(e){
-    _catalogSearchOverlayHide();
-    _catalogSearchModal(
-      '<div style="padding:24px;text-align:center">'+
-        '<div style="font-size:32px;margin-bottom:8px">❌</div>'+
-        '<div style="color:#ef4444;font-size:14px;margin-bottom:16px">שגיאת חיבור לשרת</div>'+
-        '<button onclick="_catalogSearchModalHide()" style="background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif">סגור</button>'+
+    _csOverlayHide();
+    _csModalShow(
+      '<div style="padding:28px 20px;text-align:center">'+
+        '<div style="font-size:36px;margin-bottom:10px">❌</div>'+
+        '<div style="color:#ef4444;font-size:14px;margin-bottom:18px">שגיאת חיבור לשרת</div>'+
+        '<button onclick="_csModalHide()" style="background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif">סגור</button>'+
       '</div>'
     );
   }
 }
 
-function _showCatalogSearchModal(r){
+function _csShowResult(r){
   var html='';
   if(!r.matchId||r.confidence<=50){
     html='<div style="padding:32px 20px;text-align:center">'+
       '<div style="font-size:48px;margin-bottom:12px">🔍</div>'+
       '<div style="font-size:16px;font-weight:700;color:#2A1F33;margin-bottom:8px">לא נמצאה התאמה במאגר</div>'+
-      '<div style="font-size:13px;color:#8A7F94;margin-bottom:24px">הצלם לא זוהה כחלק קיים</div>'+
+      '<div style="font-size:13px;color:#8A7F94;margin-bottom:24px">החלק לא זוהה</div>'+
       '<div style="display:flex;gap:10px;justify-content:center">'+
-        '<button onclick="_catalogSearchModalHide()" style="background:#F0EBF4;color:#5B2A8C;border:none;border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif">סגור</button>'+
-        '<button onclick="_catalogSearchModalHide();openCatalogAdd()" style="background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif">➕ הוסף חלק חדש</button>'+
-      '</div>'+
-    '</div>';
+        '<button onclick="_csModalHide()" style="background:#F0EBF4;color:#5B2A8C;border:none;border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif">סגור</button>'+
+        '<button onclick="_csModalHide();openCatalogAdd()" style="background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif">➕ הוסף חלק חדש</button>'+
+      '</div></div>';
   } else {
     var p=_catalogParts.find(function(x){ return x.id===r.matchId; });
     if(!p){
       html='<div style="padding:32px 20px;text-align:center">'+
-        '<div style="font-size:16px;color:#8A7F94;margin-bottom:20px">לא נמצאה התאמה במאגר</div>'+
-        '<button onclick="_catalogSearchModalHide()" style="background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif">סגור</button>'+
-      '</div>';
+        '<div style="font-size:15px;color:#8A7F94;margin-bottom:20px">לא נמצאה התאמה במאגר</div>'+
+        '<button onclick="_csModalHide()" style="background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif">סגור</button></div>';
     } else {
       var objURL=_catalogObjURLs[p.id];
       var pn=p.partNumber||p.sku||'';
@@ -4293,20 +4282,21 @@ function _showCatalogSearchModal(r){
           '<span style="background:'+cc+'22;color:'+cc+';border:1px solid '+cc+'44;border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600">'+r.confidence+'% ביטחון</span>'+
         '</div>'+
         (objURL?'<img src="'+objURL+'" style="width:100%;height:180px;object-fit:contain;border-radius:10px;background:#F7F4FA;margin-bottom:12px">':
-          '<div style="width:100%;height:120px;background:#F0EBF4;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:48px;margin-bottom:12px">🔩</div>')+
+          '<div style="width:100%;height:100px;background:#F0EBF4;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:48px;margin-bottom:12px">🔩</div>')+
         '<div style="font-size:17px;font-weight:700;color:#2A1F33;margin-bottom:6px">'+p.name+'</div>'+
         (pn?'<div style="font-size:13px;color:#5B2A8C;font-weight:600;margin-bottom:4px">מק"ט: '+pn+'</div>':'')+
         (p.category?'<div style="font-size:12px;color:#8A7F94;margin-bottom:6px">קטגוריה: '+p.category+'</div>':'')+
-        (models.length?'<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">'+models.map(function(m){ return '<span style="background:#EDE4F7;color:#5B2A8C;border-radius:10px;padding:2px 8px;font-size:11px">'+m+'</span>'; }).join('')+'</div>':'')+
+        (models.length?'<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">'+
+          models.map(function(m){ return '<span style="background:#EDE4F7;color:#5B2A8C;border-radius:10px;padding:2px 8px;font-size:11px">'+m+'</span>'; }).join('')+'</div>':'')+
         (r.reason?'<div style="font-size:12px;color:#8A7F94;background:#F7F4FA;border-radius:8px;padding:8px 10px;margin-bottom:4px">'+r.reason+'</div>':'')+
       '</div>'+
       '<div style="display:flex;gap:10px;padding:12px 16px 16px">'+
-        '<button onclick="_catalogSearchModalHide()" style="flex:1;background:#F0EBF4;color:#5B2A8C;border:none;border-radius:8px;padding:11px;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif">סגור</button>'+
-        '<button onclick="_catalogSearchModalHide();_catalogScrollToCard(\''+p.id+'\')" style="flex:2;background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif">📍 עבור לחלק</button>'+
+        '<button onclick="_csModalHide()" style="flex:1;background:#F0EBF4;color:#5B2A8C;border:none;border-radius:8px;padding:11px;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif">סגור</button>'+
+        '<button onclick="_csModalHide();_catalogScrollToCard(\''+p.id+'\')" style="flex:2;background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif">📍 עבור לחלק</button>'+
       '</div>';
     }
   }
-  _catalogSearchModal(html);
+  _csModalShow(html);
 }
 
 function _catalogScrollToCard(id){
