@@ -2758,9 +2758,9 @@ function pmSetView(v){
 
 function pmCardHTML(p,extraTag){
   extraTag=extraTag||'';
-  return '<div class="card" style="position:relative">'+
-    '<button onclick="pmOpenEditIdb(\''+p.id+'\')" style="position:absolute;top:8px;left:8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--text2);cursor:pointer">✏️</button>'+
-    '<button onclick="pmDelete(\''+p.id+'\')" style="position:absolute;top:8px;left:48px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:3px 8px;font-size:11px;color:#f87171;cursor:pointer">🗑️</button>'+
+  return '<div class="card" onclick="pmOpenDetail(\''+p.id+'\')" style="position:relative;cursor:pointer">'+
+    '<button onclick="event.stopPropagation();pmOpenEditIdb(\''+p.id+'\')" style="position:absolute;top:8px;left:8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--text2);cursor:pointer">✏️</button>'+
+    '<button onclick="event.stopPropagation();pmDelete(\''+p.id+'\')" style="position:absolute;top:8px;left:48px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:3px 8px;font-size:11px;color:#f87171;cursor:pointer">🗑️</button>'+
     '<div style="padding-left:88px">'+
       '<div style="font-family:monospace;font-size:15px;font-weight:700;color:var(--orange)">'+esc(p.paramCode)+'</div>'+
       (p.paramName?'<div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px">'+esc(p.paramName)+'</div>':'')+
@@ -2773,6 +2773,34 @@ function pmCardHTML(p,extraTag){
       extraTag+
     '</div>'+
   '</div>';
+}
+
+function pmOpenDetail(id){
+  var p=_pmList.find(function(x){ return x.id===id; }); if(!p) return;
+  var models=(p.models||[]).filter(Boolean);
+  var el=document.getElementById('_pm_detail_modal');
+  if(!el){ el=document.createElement('div'); el.id='_pm_detail_modal'; document.body.appendChild(el); }
+  el.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;z-index:99990;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box';
+  el.innerHTML='<div style="background:var(--bg);border-radius:16px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;direction:rtl;font-family:Heebo,sans-serif;box-shadow:0 8px 40px rgba(0,0,0,0.4)">'+
+    '<div style="position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:10px;z-index:1">'+
+      '<div style="flex:1;font-family:monospace;font-size:20px;font-weight:700;color:var(--orange)">'+esc(p.paramCode)+'</div>'+
+      '<button onclick="pmOpenEditIdb(\''+id+'\');pmCloseDetail()" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:13px;color:var(--text2);cursor:pointer;font-family:Heebo,sans-serif">✏️ עריכה</button>'+
+      '<button onclick="pmCloseDetail()" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;width:34px;height:34px;font-size:18px;color:var(--text2);cursor:pointer;line-height:1">×</button>'+
+    '</div>'+
+    '<div style="padding:16px;display:flex;flex-direction:column;gap:12px">'+
+      (p.paramName?'<div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">שם טכני</div><div style="font-size:15px;font-weight:600;color:var(--text)">'+esc(p.paramName)+'</div></div>':'')+
+      (p.description?'<div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">תיאור</div><div style="font-size:13px;color:var(--text2);line-height:1.6;white-space:pre-wrap">'+esc(p.description)+'</div></div>':'')+
+      (models.length?'<div><div style="font-size:10px;color:var(--text3);margin-bottom:6px">דגמים תואמים</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+models.map(function(m){ return '<span style="background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);border-radius:10px;padding:3px 10px;font-size:12px">'+esc(m)+'</span>'; }).join('')+'</div></div>':'')+
+      (p.defaultValue?'<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg2);border-radius:8px;padding:10px 14px"><span style="font-size:12px;color:var(--text3)">ערך יצרן</span><span style="font-size:14px;font-weight:700;color:var(--text);font-family:monospace">'+esc(p.defaultValue)+'</span></div>':'')+
+      (p.range?'<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg2);border-radius:8px;padding:10px 14px"><span style="font-size:12px;color:var(--text3)">טווח ערכים</span><span style="font-size:13px;font-weight:600;color:var(--text);font-family:monospace">'+esc(p.range)+'</span></div>':'')+
+      (p.notes?'<div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">גבולות / הערות</div><div style="font-size:13px;color:var(--text2);line-height:1.6;white-space:pre-wrap">'+esc(p.notes)+'</div></div>':'')+
+    '</div>'+
+  '</div>';
+  el.onclick=function(e){ if(e.target===el) pmCloseDetail(); };
+}
+
+function pmCloseDetail(){
+  var el=document.getElementById('_pm_detail_modal'); if(el) el.style.display='none';
 }
 
 function pmRenderList(){
