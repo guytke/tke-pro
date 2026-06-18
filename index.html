@@ -352,6 +352,12 @@ if('serviceWorker' in navigator){
     <div class="form-col">
       <label class="label-field">🔧 ניסיון שטח שלך</label>
       <textarea id="f-field" class="field-area" rows="4" placeholder="מה אתה יודע מהשטח — פתרון, מה לבדוק, טעויות נפוצות..."></textarea>
+      <button type="button" id="f-analyze-btn" onclick="fAnalyzeSummary()" style="margin-top:7px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:12px;color:var(--text2);cursor:pointer;font-family:Heebo,sans-serif">✨ ניתוח לסיכום</button>
+      <div id="f-lang-btns" style="display:none;margin-top:8px;display:none;gap:6px">
+        <button type="button" onclick="fTranslateTo('he')" id="f-lang-he" style="border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;border:1px solid var(--border);background:var(--bg3);color:var(--text2)">🇮🇱 עברית</button>
+        <button type="button" onclick="fTranslateTo('en')" id="f-lang-en" style="border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;border:1px solid var(--border);background:var(--bg3);color:var(--text2)">🇺🇸 English</button>
+        <button type="button" onclick="fTranslateTo('ru')" id="f-lang-ru" style="border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;border:1px solid var(--border);background:var(--bg3);color:var(--text2)">🇷🇺 Русский</button>
+      </div>
     </div>
     <div class="form-col">
       <label>📸 תמונות</label>
@@ -1951,6 +1957,79 @@ function mfrSelectAll(val){
 }
 
 // ─── NOTE TOGGLE ──────────────────────────────────────
+async function _fCallWorker(systemPrompt, userText){
+  var apiKey=localStorage.getItem('anthropic_api_key')||loadChatApiKey();
+  if(!apiKey) throw new Error('no_key');
+  var res=await fetch('https://tke-proxy.guyshtaiger.workers.dev',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:500,
+      system:systemPrompt,
+      messages:[{role:'user',content:userText}]})
+  });
+  var d=await res.json();
+  if(d.error) throw new Error(d.error.message||JSON.stringify(d.error));
+  return ((d.content||[])[0]||{}).text||'';
+}
+
+async function fAnalyzeSummary(){
+  var ta=document.getElementById('f-field');
+  var txt=(ta&&ta.value||'').trim();
+  if(!txt){ showToast('אין טקסט לניתוח'); return; }
+  var btn=document.getElementById('f-analyze-btn');
+  btn.disabled=true; btn.textContent='⏳ מנסח...';
+  try{
+    var result=await _fCallWorker(
+      'אתה עוזר לטכנאי מעליות לנסח דוחות שטח מקצועיים.\nהטקסט שתקבל עשוי להיות בכל שפה — עברית, רוסית, אנגלית, ערבית, שפה מעורבת, או ניסוח לקוי.\nהבן את התוכן הטכני וכתוב אותו מחדש בעברית מקצועית, ברורה ותמציתית בשפת טכנאי מעליות.\nשמור על כל הפרטים הטכניים. אל תוסיף מידע שלא קיים.\nכתוב בגוף ראשון. החזר רק את הטקסט, ללא הסבר.',
+      txt
+    );
+    ta.value=result;
+    var lb=document.getElementById('f-lang-btns');
+    if(lb){ lb.style.display='flex'; }
+    _fSetActiveLang('he');
+  }catch(e){
+    showToast(e.message==='no_key'?'⚠️ נא להגדיר מפתח API':'שגיאת חיבור לשרת, נסה שוב');
+  }finally{
+    btn.disabled=false; btn.textContent='✨ ניתוח לסיכום';
+  }
+}
+
+var _fActiveLang='he';
+async function fTranslateTo(lang){
+  var ta=document.getElementById('f-field');
+  var txt=(ta&&ta.value||'').trim();
+  if(!txt) return;
+  if(lang===_fActiveLang) return;
+  var langNames={'he':'עברית','en':'English','ru':'Русский'};
+  var btn=document.getElementById('f-lang-'+lang);
+  if(btn){ btn.disabled=true; btn.textContent='⏳...'; }
+  try{
+    var result=await _fCallWorker(
+      'תרגם את הטקסט הטכני הבא לשפה: '+langNames[lang]+'.\nשמור על כל הפרטים הטכניים. גוף ראשון.\nהחזר רק את הטקסט המתורגם, ללא הסבר.',
+      txt
+    );
+    ta.value=result;
+    _fSetActiveLang(lang);
+  }catch(e){
+    showToast('שגיאת חיבור לשרת, נסה שוב');
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent={'he':'🇮🇱 עברית','en':'🇺🇸 English','ru':'🇷🇺 Русский'}[lang]; }
+  }
+}
+
+function _fSetActiveLang(lang){
+  _fActiveLang=lang;
+  ['he','en','ru'].forEach(function(l){
+    var b=document.getElementById('f-lang-'+l);
+    if(!b) return;
+    if(l===lang){
+      b.style.background='var(--orange-dim)'; b.style.borderColor='var(--orange-border)'; b.style.color='var(--orange)'; b.style.fontWeight='700';
+    } else {
+      b.style.background='var(--bg3)'; b.style.borderColor='var(--border)'; b.style.color='var(--text2)'; b.style.fontWeight='400';
+    }
+  });
+}
+
 function toggleNoteField(){
   var f = document.getElementById('f-note');
   if(!f) return;
