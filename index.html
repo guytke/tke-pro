@@ -225,12 +225,22 @@ textarea.field-area:focus{border-color:var(--green-border)}
 if('serviceWorker' in navigator){
   window.addEventListener('load',function(){
     navigator.serviceWorker.register('/sw.js').catch(function(){});
-    // Auto-reload when a new SW takes control
     navigator.serviceWorker.addEventListener('controllerchange',function(){
+      sessionStorage.setItem('sw_updated','1');
       window.location.reload();
     });
   });
 }
+(function(){
+  if(sessionStorage.getItem('sw_updated')){
+    sessionStorage.removeItem('sw_updated');
+    var banner=document.createElement('div');
+    banner.style.cssText='position:fixed;top:0;left:0;width:100%;z-index:99999;background:#10b981;color:#fff;text-align:center;padding:10px 16px;font-size:14px;font-family:Heebo,sans-serif;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.2)';
+    banner.textContent='✅ האפליקציה עודכנה לגרסה חדשה';
+    document.body.appendChild(banner);
+    setTimeout(function(){ banner.style.transition='opacity 0.4s'; banner.style.opacity='0'; setTimeout(function(){ banner.remove(); },400); },3000);
+  }
+})();
 </script>
 <script>
 (function(){
@@ -4549,13 +4559,6 @@ function openCatalogAddWithPN(pn){
 })();
 </script>
 
-<script>
-if('serviceWorker' in navigator){
-  window.addEventListener('load', function(){
-    navigator.serviceWorker.register('sw.js').catch(function(){});
-  });
-}
-</script>
 
 <script>
 // ─── FORM DRAFT AUTOSAVE ──────────────────────────────
