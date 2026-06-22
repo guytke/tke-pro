@@ -1079,8 +1079,14 @@ if('serviceWorker' in navigator){
 
 <script>
 const KEY = 'tke_faults_v2';
+const D1_URL = 'https://tke-proxy.guyshtaiger.workers.dev/faults/save';
 function load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return[];}}
 function save(d){localStorage.setItem(KEY,JSON.stringify(d));}
+function syncFaultToD1(fault){
+  if(!navigator.onLine) return;
+  fetch(D1_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(fault)})
+    .catch(function(){});
+}
 let faults = load();
 let activeModel = '';
 
@@ -1207,7 +1213,7 @@ function saveFault(){
         date:new Date().toISOString().split('T')[0]
       };
       faults[faults.findIndex(f=>f.id===duplicate.id)]=fault;
-      save(faults); closeModal('form-modal'); refresh(); renderParams();
+      save(faults); syncFaultToD1(fault); closeModal('form-modal'); refresh(); renderParams();
       setTimeout(function(){ flashSavedCard(fault.code); },280);
       if(window.clearDraftPrefix) clearDraftPrefix('f-');
       showToast('✅ עודכן!'); return;
@@ -1225,7 +1231,7 @@ function saveFault(){
   };
   const idx = faults.findIndex(f=>f.id===id);
   if(idx>=0) faults[idx]=fault; else faults.unshift(fault);
-  save(faults); closeModal('form-modal'); refresh(); renderParams();
+  save(faults); syncFaultToD1(fault); closeModal('form-modal'); refresh(); renderParams();
   setTimeout(function(){ flashSavedCard(fault.code); },280);
   if(window.clearDraftPrefix) clearDraftPrefix('f-');
   showToast('✅ נשמר!');
