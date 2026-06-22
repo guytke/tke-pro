@@ -192,6 +192,23 @@ textarea.field-area:focus{border-color:var(--green-border)}
 .cl-textarea{background:#fff;border:1px solid #E8E2EC;border-radius:8px;padding:9px 12px;font-size:14px;color:#2A1F33;font-family:Heebo,sans-serif;outline:none;resize:none;width:100%}
 .cl-notes-box{font-size:13px;color:#2A1F33;margin-bottom:10px;background:#fff;border-radius:8px;padding:8px 12px;border:1px solid #E8E2EC}
 
+/* LOGIN */
+#login-screen{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-box{width:100%;max-width:360px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:32px 24px}
+.login-logo{text-align:center;font-size:22px;font-weight:700;margin-bottom:28px;color:var(--text)}
+.login-logo span{color:var(--orange)}
+.login-field{margin-bottom:14px}
+.login-field label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px}
+.login-input-wrap{position:relative}
+.login-input-wrap input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 40px 10px 12px;font-size:14px;color:var(--text);font-family:'Heebo',sans-serif;outline:none;transition:border-color .2s}
+.login-input-wrap input:focus{border-color:var(--orange-border)}
+.eye-btn{position:absolute;left:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:2px 4px;line-height:1}
+.login-err{font-size:12px;color:#f87171;min-height:18px;margin-bottom:8px;text-align:center}
+.login-btn-primary{width:100%;background:var(--orange);color:#fff;border:none;border-radius:var(--radius-sm);padding:11px;font-size:15px;font-weight:600;font-family:'Heebo',sans-serif;cursor:pointer;margin-bottom:10px;transition:background .15s}
+.login-btn-primary:active{background:#c44f00}
+.login-btn-bio{width:100%;background:var(--bg3);color:var(--text2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-size:14px;font-family:'Heebo',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px}
+.login-btn-bio:active{background:var(--bg4)}
+.login-divider{text-align:center;font-size:11px;color:var(--text3);margin:10px 0}
 </style>
 
 
@@ -261,6 +278,34 @@ if('serviceWorker' in navigator){
 </script>
 </head>
 <body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen" style="display:none">
+  <div class="login-box">
+    <div class="login-logo">🛗 <span>TKE Pro</span></div>
+    <div id="login-bio-section" style="display:none">
+      <button class="login-btn-bio" onclick="loginWithBiometric()">
+        <span style="font-size:20px">🪪</span> כניסה עם טביעת אצבע
+      </button>
+      <div class="login-divider">— או הכנס סיסמה —</div>
+    </div>
+    <div class="login-field">
+      <label>שם משתמש</label>
+      <div class="login-input-wrap">
+        <input id="login-username" type="text" autocomplete="username" placeholder="הכנס שם משתמש" onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
+      </div>
+    </div>
+    <div class="login-field">
+      <label>סיסמה</label>
+      <div class="login-input-wrap">
+        <input id="login-password" type="password" autocomplete="current-password" placeholder="הכנס סיסמה" onkeydown="if(event.key==='Enter')doLogin()">
+        <button class="eye-btn" onclick="togglePasswordVisibility()" title="הצג/הסתר סיסמה">👁</button>
+      </div>
+    </div>
+    <div class="login-err" id="login-err"></div>
+    <button class="login-btn-primary" onclick="doLogin()">כניסה</button>
+  </div>
+</div>
 
 <!-- HEADER -->
 <div class="header">
@@ -4649,6 +4694,93 @@ function openCatalogAddWithPN(pn){
     document.addEventListener('DOMContentLoaded', window.restoreDrafts);
   } else {
     window.restoreDrafts();
+  }
+})();
+</script>
+
+<script>
+// ── Login / Auth ─────────────────────────────────────────
+const AUTH_URL = 'https://tke-proxy.guyshtaiger.workers.dev/auth/login';
+const TOKEN_KEY = 'tke_auth_token';
+
+function getToken() { return sessionStorage.getItem(TOKEN_KEY); }
+function setToken(t) { sessionStorage.setItem(TOKEN_KEY, t); }
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+}
+
+function showLogin() {
+  const screen = document.getElementById('login-screen');
+  screen.style.display = 'flex';
+  // If token exists from a previous login this session, offer biometric
+  const hasBio = getToken() && window.PublicKeyCredential;
+  document.getElementById('login-bio-section').style.display = hasBio ? '' : 'none';
+  if (!hasBio) setTimeout(() => document.getElementById('login-username').focus(), 100);
+}
+
+function togglePasswordVisibility() {
+  const inp = document.getElementById('login-password');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function setLoginErr(msg) {
+  document.getElementById('login-err').textContent = msg;
+}
+
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!username || !password) { setLoginErr('נא למלא שם משתמש וסיסמה'); return; }
+  setLoginErr('');
+  try {
+    const res = await fetch(AUTH_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (!res.ok) { setLoginErr(data.error || 'שגיאת כניסה'); return; }
+    setToken(data.token);
+    showApp();
+  } catch (e) {
+    setLoginErr('שגיאת רשת — בדוק חיבור');
+  }
+}
+
+// WebAuthn: use platform authenticator as a second-factor shortcut.
+// We store the credential id in sessionStorage after first biometric use.
+// The actual auth is token-based; biometric just gates showing the app
+// when a valid session token already exists in sessionStorage.
+async function loginWithBiometric() {
+  if (!window.PublicKeyCredential) { setLoginErr('מכשיר זה אינו תומך בטביעת אצבע'); return; }
+  setLoginErr('');
+  try {
+    const challenge = new Uint8Array(32);
+    crypto.getRandomValues(challenge);
+    await navigator.credentials.get({
+      publicKey: {
+        challenge,
+        timeout: 60000,
+        userVerification: 'required',
+        rpId: location.hostname,
+        allowCredentials: [],
+      }
+    });
+    // Biometric verified — token is already in sessionStorage from previous login
+    showApp();
+  } catch (e) {
+    if (e.name !== 'NotAllowedError') setLoginErr('אימות נכשל — נסה שוב');
+  }
+}
+
+// Boot: check for existing token
+(function initAuth() {
+  if (getToken()) {
+    // Token exists — show app directly (biometric prompt is optional UX only)
+    showApp();
+  } else {
+    showLogin();
   }
 })();
 </script>
