@@ -192,6 +192,13 @@ textarea.field-area:focus{border-color:var(--green-border)}
 .cl-textarea{background:#fff;border:1px solid #E8E2EC;border-radius:8px;padding:9px 12px;font-size:14px;color:#2A1F33;font-family:Heebo,sans-serif;outline:none;resize:none;width:100%}
 .cl-notes-box{font-size:13px;color:#2A1F33;margin-bottom:10px;background:#fff;border-radius:8px;padding:8px 12px;border:1px solid #E8E2EC}
 
+/* BIO OFFER */
+#bio-offer-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);z-index:10000;display:none;align-items:center;justify-content:center;padding:20px}
+.bio-offer-box{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:28px 24px;max-width:320px;width:100%;text-align:center}
+.bio-offer-icon{font-size:48px;margin-bottom:12px}
+.bio-offer-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px}
+.bio-offer-sub{font-size:13px;color:var(--text2);margin-bottom:22px;line-height:1.5}
+.bio-offer-btns{display:flex;flex-direction:column;gap:9px}
 /* LOGIN */
 #login-screen{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
 .login-box{width:100%;max-width:360px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:32px 24px}
@@ -278,6 +285,19 @@ if('serviceWorker' in navigator){
 </script>
 </head>
 <body>
+
+<!-- BIOMETRIC OFFER OVERLAY -->
+<div id="bio-offer-overlay">
+  <div class="bio-offer-box">
+    <div class="bio-offer-icon">🪪</div>
+    <div class="bio-offer-title">הפעל כניסה מהירה?</div>
+    <div class="bio-offer-sub">בכניסות הבאות תוכל להיכנס עם טביעת אצבע במקום סיסמה.</div>
+    <div class="bio-offer-btns">
+      <button class="login-btn-primary" onclick="acceptBioOffer()">✅ כן, הפעל</button>
+      <button class="login-btn-bio" onclick="declineBioOffer()">לא תודה</button>
+    </div>
+  </div>
+</div>
 
 <!-- LOGIN SCREEN -->
 <div id="login-screen" style="display:none">
@@ -4700,23 +4720,35 @@ function openCatalogAddWithPN(pn){
 
 <script>
 // ── Login / Auth ─────────────────────────────────────────
-const AUTH_URL = 'https://tke-proxy.guyshtaiger.workers.dev/auth/login';
-const TOKEN_KEY = 'tke_auth_token';
+const AUTH_URL  = 'https://tke-proxy.guyshtaiger.workers.dev/auth/login';
+const TOKEN_KEY = 'tke_auth_token';      // sessionStorage — active session
+const BIO_CRED  = 'tke_bio_cred_id';    // localStorage  — WebAuthn credential id (base64url)
+const BIO_TOKEN = 'tke_bio_token';      // localStorage  — token unlocked by biometric
 
-function getToken() { return sessionStorage.getItem(TOKEN_KEY); }
-function setToken(t) { sessionStorage.setItem(TOKEN_KEY, t); }
+function b64u(buf) {
+  return btoa(String.fromCharCode(...new Uint8Array(buf)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+function b64uDecode(s) {
+  s = s.replace(/-/g,'+').replace(/_/g,'/');
+  while (s.length % 4) s += '=';
+  return Uint8Array.from(atob(s), c => c.charCodeAt(0));
+}
+
+function getToken()   { return sessionStorage.getItem(TOKEN_KEY); }
+function setToken(t)  { sessionStorage.setItem(TOKEN_KEY, t); }
+function hasBioCred() { return !!localStorage.getItem(BIO_CRED); }
 
 function showApp() {
   document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('bio-offer-overlay').style.display = 'none';
 }
 
 function showLogin() {
-  const screen = document.getElementById('login-screen');
-  screen.style.display = 'flex';
-  // If token exists from a previous login this session, offer biometric
-  const hasBio = getToken() && window.PublicKeyCredential;
-  document.getElementById('login-bio-section').style.display = hasBio ? '' : 'none';
-  if (!hasBio) setTimeout(() => document.getElementById('login-username').focus(), 100);
+  document.getElementById('login-screen').style.display = 'flex';
+  const showBio = hasBioCred() && window.PublicKeyCredential;
+  document.getElementById('login-bio-section').style.display = showBio ? '' : 'none';
+  if (!showBio) setTimeout(() => document.getElementById('login-username').focus(), 100);
 }
 
 function togglePasswordVisibility() {
@@ -4724,9 +4756,7 @@ function togglePasswordVisibility() {
   inp.type = inp.type === 'password' ? 'text' : 'password';
 }
 
-function setLoginErr(msg) {
-  document.getElementById('login-err').textContent = msg;
-}
+function setLoginErr(msg) { document.getElementById('login-err').textContent = msg; }
 
 async function doLogin() {
   const username = document.getElementById('login-username').value.trim();
@@ -4734,7 +4764,7 @@ async function doLogin() {
   if (!username || !password) { setLoginErr('נא למלא שם משתמש וסיסמה'); return; }
   setLoginErr('');
   try {
-    const res = await fetch(AUTH_URL, {
+    const res  = await fetch(AUTH_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
@@ -4742,18 +4772,60 @@ async function doLogin() {
     const data = await res.json();
     if (!res.ok) { setLoginErr(data.error || 'שגיאת כניסה'); return; }
     setToken(data.token);
-    showApp();
+    // Offer biometric registration if supported and not yet registered
+    if (window.PublicKeyCredential && !hasBioCred()) {
+      _pendingBioToken    = data.token;
+      _pendingBioUsername = username;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('bio-offer-overlay').style.display = 'flex';
+    } else {
+      showApp();
+    }
   } catch (e) {
     setLoginErr('שגיאת רשת — בדוק חיבור');
   }
 }
 
-// WebAuthn: use platform authenticator as a second-factor shortcut.
-// We store the credential id in sessionStorage after first biometric use.
-// The actual auth is token-based; biometric just gates showing the app
-// when a valid session token already exists in sessionStorage.
+let _pendingBioToken = null, _pendingBioUsername = '';
+
+async function acceptBioOffer() {
+  document.getElementById('bio-offer-overlay').style.display = 'none';
+  try {
+    const challenge = new Uint8Array(32);
+    crypto.getRandomValues(challenge);
+    const userId = new TextEncoder().encode(_pendingBioUsername || 'user');
+    const cred = await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: { name: 'TKE Pro', id: location.hostname },
+        user: { id: userId, name: _pendingBioUsername, displayName: _pendingBioUsername },
+        pubKeyCredParams: [
+          { type: 'public-key', alg: -7 },
+          { type: 'public-key', alg: -257 }
+        ],
+        authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+        timeout: 60000,
+      }
+    });
+    localStorage.setItem(BIO_CRED,  b64u(cred.rawId));
+    localStorage.setItem(BIO_TOKEN, _pendingBioToken);
+    if(window.showToast) showToast('✅ טביעת אצבע נרשמה!');
+  } catch(e) {
+    // User cancelled or device doesn't support — just continue
+  }
+  showApp();
+}
+
+function declineBioOffer() {
+  document.getElementById('bio-offer-overlay').style.display = 'none';
+  showApp();
+}
+
 async function loginWithBiometric() {
   if (!window.PublicKeyCredential) { setLoginErr('מכשיר זה אינו תומך בטביעת אצבע'); return; }
+  const credId = localStorage.getItem(BIO_CRED);
+  const bioToken = localStorage.getItem(BIO_TOKEN);
+  if (!credId || !bioToken) { setLoginErr('לא נמצאה טביעת אצבע — הכנס סיסמה'); return; }
   setLoginErr('');
   try {
     const challenge = new Uint8Array(32);
@@ -4764,21 +4836,24 @@ async function loginWithBiometric() {
         timeout: 60000,
         userVerification: 'required',
         rpId: location.hostname,
-        allowCredentials: [],
+        allowCredentials: [{ type: 'public-key', id: b64uDecode(credId) }],
       }
     });
-    // Biometric verified — token is already in sessionStorage from previous login
+    // Biometric OK — restore token to session
+    setToken(bioToken);
     showApp();
   } catch (e) {
-    if (e.name !== 'NotAllowedError') setLoginErr('אימות נכשל — נסה שוב');
+    if (e.name === 'NotAllowedError') return;
+    setLoginErr('אימות נכשל — נסה שוב');
   }
 }
 
-// Boot: check for existing token
+// Boot
 (function initAuth() {
-  if (getToken()) {
-    // Token exists — show app directly (biometric prompt is optional UX only)
-    showApp();
+  if (getToken()) { showApp(); return; }
+  // Check if there's a bio-protected token (cross-session)
+  if (hasBioCred() && localStorage.getItem(BIO_TOKEN)) {
+    showLogin(); // shows with biometric button
   } else {
     showLogin();
   }
