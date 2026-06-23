@@ -1148,9 +1148,23 @@ const D1_URL = 'https://tke-proxy.guyshtaiger.workers.dev/faults/save';
 function load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return[];}}
 function save(d){localStorage.setItem(KEY,JSON.stringify(d));}
 function syncFaultToD1(fault){
-  if(!navigator.onLine) return;
-  fetch(D1_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(fault)})
-    .catch(function(){});
+  if(!navigator.onLine){ console.log('[syncFaultToD1] offline, skipping'); return; }
+  var token = sessionStorage.getItem('tke_auth_token');
+  console.log('[syncFaultToD1] URL:', D1_URL);
+  console.log('[syncFaultToD1] token present:', !!token);
+  console.log('[syncFaultToD1] fault:', fault);
+  if(!token){ console.warn('[syncFaultToD1] no token — aborting sync'); return; }
+  fetch(D1_URL,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify(fault)
+  })
+    .then(function(r){
+      console.log('[syncFaultToD1] response status:', r.status);
+      return r.text();
+    })
+    .then(function(body){ console.log('[syncFaultToD1] response body:', body); })
+    .catch(function(err){ console.error('[syncFaultToD1] fetch error:', err); });
 }
 let faults = load();
 let activeModel = '';
