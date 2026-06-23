@@ -1147,24 +1147,52 @@ const KEY = 'tke_faults_v2';
 const D1_URL = 'https://tke-proxy.guyshtaiger.workers.dev/faults/save';
 function load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return[];}}
 function save(d){localStorage.setItem(KEY,JSON.stringify(d));}
-function syncFaultToD1(fault){
-  if(!navigator.onLine){ console.log('[syncFaultToD1] offline, skipping'); return; }
-  var token = sessionStorage.getItem('tke_auth_token');
-  console.log('[syncFaultToD1] URL:', D1_URL);
-  console.log('[syncFaultToD1] token present:', !!token);
-  console.log('[syncFaultToD1] fault:', fault);
-  if(!token){ console.warn('[syncFaultToD1] no token — aborting sync'); return; }
-  fetch(D1_URL,{
+const SYNC_QUEUE_KEY = 'tke_sync_queue';
+function _getSyncQueue(){ try{ return JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY))||[]; }catch(e){ return []; } }
+function _saveSyncQueue(q){ localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(q)); }
+
+function _sendFaultToD1(fault, token){
+  return fetch(D1_URL,{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
     body:JSON.stringify(fault)
   })
-    .then(function(r){
-      console.log('[syncFaultToD1] response status:', r.status);
-      return r.text();
+    .then(function(r){ return r.text().then(function(b){ return {status:r.status,body:b}; }); })
+    .then(function(res){
+      console.log('[syncFaultToD1] status:',res.status,'body:',res.body);
+      return res.status >= 200 && res.status < 300;
     })
-    .then(function(body){ console.log('[syncFaultToD1] response body:', body); })
-    .catch(function(err){ console.error('[syncFaultToD1] fetch error:', err); });
+    .catch(function(err){ console.error('[syncFaultToD1] fetch error:',err); return false; });
+}
+
+function syncFaultToD1(fault){
+  if(!navigator.onLine){ console.log('[syncFaultToD1] offline — queuing'); _enqueueFault(fault); return; }
+  var token = sessionStorage.getItem('tke_auth_token');
+  if(!token){ console.warn('[syncFaultToD1] no token — queuing for after login'); _enqueueFault(fault); return; }
+  _sendFaultToD1(fault, token).then(function(ok){
+    if(!ok){ _enqueueFault(fault); }
+  });
+}
+
+function _enqueueFault(fault){
+  var q = _getSyncQueue();
+  // avoid duplicates by id
+  if(!q.find(function(f){ return f.id === fault.id; })){ q.push(fault); }
+  _saveSyncQueue(q);
+}
+
+function flushSyncQueue(){
+  var token = sessionStorage.getItem('tke_auth_token');
+  if(!token || !navigator.onLine) return;
+  var q = _getSyncQueue();
+  if(!q.length) return;
+  console.log('[syncFaultToD1] flushing',q.length,'queued fault(s)');
+  _saveSyncQueue([]);
+  q.forEach(function(fault){
+    _sendFaultToD1(fault, token).then(function(ok){
+      if(!ok){ _enqueueFault(fault); }
+    });
+  });
 }
 let faults = load();
 let activeModel = '';
@@ -4756,6 +4784,7 @@ function hasBioCred() { return !!localStorage.getItem(BIO_CRED); }
 function showApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('bio-offer-overlay').style.display = 'none';
+  flushSyncQueue();
 }
 
 function showLogin() {
