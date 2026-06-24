@@ -1165,6 +1165,28 @@ function _sendFaultToD1(fault, token){
     .catch(function(err){ console.error('[syncFaultToD1] fetch error:',err); return false; });
 }
 
+function _showConflictDialog(code, model, onAdd, onReplace, onCancel){
+  var ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center';
+  var box = document.createElement('div');
+  box.style.cssText = 'background:var(--bg);border-radius:16px;padding:24px 20px;max-width:320px;width:90%;text-align:center;font-family:Heebo,sans-serif;direction:rtl;box-shadow:0 8px 32px rgba(0,0,0,.3)';
+  box.innerHTML =
+    '<div style="font-size:18px;font-weight:700;margin-bottom:8px;color:var(--text)">תקלה קיימת</div>'+
+    '<div style="color:var(--text2);font-size:14px;margin-bottom:20px">קוד <b>'+code+'</b> עבור <b>'+model+'</b> כבר קיים במערכת.</div>'+
+    '<div style="display:flex;flex-direction:column;gap:10px">'+
+      '<button id="_cd_replace" style="background:var(--orange);color:#fff;border:none;border-radius:10px;padding:12px;font-size:15px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:600">החלף</button>'+
+      '<button id="_cd_add" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:15px;cursor:pointer;font-family:Heebo,sans-serif;color:var(--text)">הוסף כחדש</button>'+
+      '<button id="_cd_cancel" style="background:transparent;border:none;color:var(--text2);padding:8px;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif">ביטול</button>'+
+    '</div>';
+  ov.appendChild(box);
+  document.body.appendChild(ov);
+  function cleanup(){ if(ov.parentNode) ov.parentNode.removeChild(ov); }
+  document.getElementById('_cd_replace').onclick = function(){ cleanup(); onReplace(); };
+  document.getElementById('_cd_add').onclick    = function(){ cleanup(); onAdd(); };
+  document.getElementById('_cd_cancel').onclick = function(){ cleanup(); onCancel(); };
+  ov.onclick = function(e){ if(e.target===ov){ cleanup(); onCancel(); } };
+}
+
 function syncFaultToD1(fault){
   if(!navigator.onLine){ console.log('[syncFaultToD1] offline — queuing'); _enqueueFault(fault); return; }
   var token = sessionStorage.getItem('tke_auth_token');
@@ -1176,8 +1198,8 @@ function syncFaultToD1(fault){
 
 function _enqueueFault(fault){
   var q = _getSyncQueue();
-  // avoid duplicates by id
-  if(!q.find(function(f){ return f.id === fault.id; })){ q.push(fault); }
+  var idx = q.findIndex(function(f){ return f.id === fault.id; });
+  if(idx >= 0) q[idx] = fault; else q.push(fault);
   _saveSyncQueue(q);
 }
 
@@ -1307,23 +1329,39 @@ function saveFault(){
   if(!editId){
     const duplicate = faults.find(f=>f.model===model && f.code===code);
     if(duplicate){
-      if(!confirm('תקלה '+code+' עבור '+model+' כבר קיימת. לדרוס אותה?')){
-        _savingFault=false; return;
+      function _readFormFault(useId){
+        return {id:useId,model,code,
+          name:document.getElementById('f-name').value.trim(),
+          level:document.getElementById('f-level').value.trim(),
+          book:document.getElementById('f-book').value.trim(),
+          field:document.getElementById('f-field').value.trim(),
+          images:[...formImages],
+          note:document.getElementById('f-note')?document.getElementById('f-note').value.trim():'',
+          date:new Date().toISOString().split('T')[0]
+        };
       }
-      const fault={id:duplicate.id,model,code,
-        name:document.getElementById('f-name').value.trim(),
-        level:document.getElementById('f-level').value.trim(),
-        book:document.getElementById('f-book').value.trim(),
-        field:document.getElementById('f-field').value.trim(),
-        images:[...formImages],
-        note:document.getElementById('f-note')?document.getElementById('f-note').value.trim():'',
-        date:new Date().toISOString().split('T')[0]
-      };
-      faults[faults.findIndex(f=>f.id===duplicate.id)]=fault;
-      save(faults); syncFaultToD1(fault); closeModal('form-modal'); refresh(); renderParams();
-      setTimeout(function(){ flashSavedCard(fault.code); },280);
-      if(window.clearDraftPrefix) clearDraftPrefix('f-');
-      showToast('✅ עודכן!'); return;
+      _showConflictDialog(code, model,
+        function(){ // הוסף כחדש
+          const fault=_readFormFault(id);
+          faults.unshift(fault);
+          save(faults); syncFaultToD1(fault); closeModal('form-modal'); refresh(); renderParams();
+          setTimeout(function(){ flashSavedCard(fault.code); },280);
+          if(window.clearDraftPrefix) clearDraftPrefix('f-');
+          showToast('✅ נוסף!');
+          _savingFault=false;
+        },
+        function(){ // החלף
+          const fault=_readFormFault(duplicate.id);
+          faults[faults.findIndex(f=>f.id===duplicate.id)]=fault;
+          save(faults); syncFaultToD1(fault); closeModal('form-modal'); refresh(); renderParams();
+          setTimeout(function(){ flashSavedCard(fault.code); },280);
+          if(window.clearDraftPrefix) clearDraftPrefix('f-');
+          showToast('✅ עודכן!');
+          _savingFault=false;
+        },
+        function(){ _savingFault=false; } // ביטול
+      );
+      return;
     }
   }
 
