@@ -351,7 +351,6 @@ if('serviceWorker' in navigator){
   <button id="main-tab-chat" onclick="switchMainTab('chat')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">🤖 ייעוץ שטח</button>
   <button id="main-tab-parts" onclick="switchMainTab('parts')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">🗂️ מאגר חלקים</button>
   <button id="main-tab-orders" onclick="switchMainTab('orders')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">📋 הזמנות</button>
-  <button id="main-tab-learning" onclick="switchMainTab('learning')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">🎓 לימוד</button>
 </div>
 <div id="section-tools" style="display:none">
   <div style="padding:8px 0;color:var(--text2);font-size:13px;font-family:Heebo,sans-serif;margin-bottom:16px">כלי ניהול נתונים</div>
@@ -2320,11 +2319,11 @@ function switchMainTab(tab){
     if(logoIcon) logoIcon.textContent='⚙️';
     renderParams();
   } else if(tab==='mfr'){
-    sm.style.display='block';
-    tm.style.background='rgba(232,93,0,0.12)';tm.style.borderColor='rgba(232,93,0,0.4)';tm.style.color='#fb8c40';tm.style.fontWeight='600';
-    if(logoText){ logoText.textContent='ספרי יצרן'; logoText.style.color='#fb8c40'; }
-    if(logoIcon) logoIcon.textContent='📚';
-    initMfrSection();
+    if(sl)sl.style.display='block';
+    tm.style.background='rgba(127,119,221,0.12)';tm.style.borderColor='rgba(127,119,221,0.4)';tm.style.color='#7F77DD';tm.style.fontWeight='600';
+    if(logoText){ logoText.textContent='לימוד ותצורה'; logoText.style.color='#7F77DD'; }
+    if(logoIcon) logoIcon.textContent='🎓';
+    refreshLearning();
   } else if(tab==='tools'){
     if(st)st.style.display='block';
     if(tt){tt.style.background='rgba(16,185,129,0.12)';tt.style.borderColor='rgba(16,185,129,0.4)';tt.style.color='#10b981';tt.style.fontWeight='600';}
@@ -2352,12 +2351,6 @@ function switchMainTab(tab){
     if(to){to.style.background='rgba(99,102,241,0.12)';to.style.borderColor='rgba(99,102,241,0.4)';to.style.color='#818cf8';to.style.fontWeight='600';}
     if(logoText){ logoText.textContent='הזמנות'; logoText.style.color='#818cf8'; }
     if(logoIcon) logoIcon.textContent='📋';
-  } else if(tab==='learning'){
-    if(sl)sl.style.display='block';
-    if(tl){tl.style.background='rgba(127,119,221,0.12)';tl.style.borderColor='rgba(127,119,221,0.4)';tl.style.color='#7F77DD';tl.style.fontWeight='600';}
-    if(logoText){ logoText.textContent='לימוד ותצורה'; logoText.style.color='#7F77DD'; }
-    if(logoIcon) logoIcon.textContent='🎓';
-    refreshLearning();
   }
 }
 
