@@ -4830,15 +4830,14 @@ async function syncFaultsFromD1() {
     if (!Array.isArray(d1Faults)) return;
 
     var local = load();
-    var localById = {};
-    local.forEach(function(f){ localById[f.id] = f; });
-    var d1ById = {};
-    d1Faults.forEach(function(f){ d1ById[f.id] = f; });
+    // normalise ids to strings for safe comparison
+    var localIds = new Set(local.map(function(f){ return String(f.id).trim(); }));
+    var d1Ids   = new Set(d1Faults.map(function(f){ return String(f.id).trim(); }));
 
-    // תקלות ב-D1 שלא קיימות מקומית — הוסף
-    var toAdd = d1Faults.filter(function(f){ return !localById[f.id]; });
+    // תקלות ב-D1 שאין להן id תואם מקומית — תמיד הוסף
+    var toAdd = d1Faults.filter(function(f){ return !localIds.has(String(f.id).trim()); });
     // תקלות מקומיות שלא ב-D1 — שלח ל-D1
-    local.forEach(function(f){ if (!d1ById[f.id]) _sendFaultToD1(f, token); });
+    local.forEach(function(f){ if (!d1Ids.has(String(f.id).trim())) _sendFaultToD1(f, token); });
 
     if (toAdd.length) {
       faults = local.concat(toAdd);
