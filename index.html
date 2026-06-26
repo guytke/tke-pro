@@ -1144,7 +1144,8 @@ if('serviceWorker' in navigator){
 
 <script>
 const KEY = 'tke_faults_v2';
-const D1_URL = 'https://tke-proxy.guyshtaiger.workers.dev/faults/save';
+const D1_URL      = 'https://tke-proxy.guyshtaiger.workers.dev/faults/save';
+const D1_LIST_URL = 'https://tke-proxy.guyshtaiger.workers.dev/faults/list';
 function load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return[];}}
 function save(d){localStorage.setItem(KEY,JSON.stringify(d));}
 const SYNC_QUEUE_KEY = 'tke_sync_queue';
@@ -4819,10 +4820,42 @@ function getToken()   { return sessionStorage.getItem(TOKEN_KEY); }
 function setToken(t)  { sessionStorage.setItem(TOKEN_KEY, t); }
 function hasBioCred() { return !!localStorage.getItem(BIO_CRED); }
 
+async function syncFaultsFromD1() {
+  var token = getToken();
+  if (!token || !navigator.onLine) return;
+  try {
+    var res = await fetch(D1_LIST_URL, { headers: { 'Authorization': 'Bearer ' + token } });
+    if (!res.ok) return;
+    var d1Faults = await res.json();
+    if (!Array.isArray(d1Faults)) return;
+
+    var local = load();
+    var localById = {};
+    local.forEach(function(f){ localById[f.id] = f; });
+    var d1ById = {};
+    d1Faults.forEach(function(f){ d1ById[f.id] = f; });
+
+    // תקלות ב-D1 שלא קיימות מקומית — הוסף
+    var toAdd = d1Faults.filter(function(f){ return !localById[f.id]; });
+    // תקלות מקומיות שלא ב-D1 — שלח ל-D1
+    local.forEach(function(f){ if (!d1ById[f.id]) _sendFaultToD1(f, token); });
+
+    if (toAdd.length) {
+      faults = local.concat(toAdd);
+      save(faults);
+      refresh();
+      console.log('[syncFaultsFromD1] added', toAdd.length, 'faults from D1');
+    }
+  } catch(e) {
+    console.warn('[syncFaultsFromD1]', e);
+  }
+}
+
 function showApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('bio-offer-overlay').style.display = 'none';
   flushSyncQueue();
+  syncFaultsFromD1();
 }
 
 function showLogin() {
