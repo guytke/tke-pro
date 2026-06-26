@@ -351,6 +351,7 @@ if('serviceWorker' in navigator){
   <button id="main-tab-chat" onclick="switchMainTab('chat')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">🤖 ייעוץ שטח</button>
   <button id="main-tab-parts" onclick="switchMainTab('parts')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">🗂️ מאגר חלקים</button>
   <button id="main-tab-orders" onclick="switchMainTab('orders')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">📋 הזמנות</button>
+  <button id="main-tab-learning" onclick="switchMainTab('learning')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">🎓 לימוד</button>
 </div>
 <div id="section-tools" style="display:none">
   <div style="padding:8px 0;color:var(--text2);font-size:13px;font-family:Heebo,sans-serif;margin-bottom:16px">כלי ניהול נתונים</div>
@@ -952,6 +953,83 @@ if('serviceWorker' in navigator){
   <div class="cl-modal-inner">
     <button onclick="closeModal('catalog-detail-modal')" style="position:absolute;top:10px;left:10px;background:#E8E2EC;border:none;border-radius:50%;width:30px;height:30px;color:#2A1F33;font-size:18px;cursor:pointer">×</button>
     <div id="catalog-detail-content"></div>
+  </div>
+</div>
+
+<!-- LEARNING SECTION -->
+<div id="section-learning" style="display:none">
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="lrn-search" placeholder="חפש כותרת, מודל, קטגוריה..." oninput="renderLearning()">
+  </div>
+  <div class="model-tabs" id="lrn-model-tabs"></div>
+  <div class="model-tabs" id="lrn-cat-tabs" style="margin-top:4px"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0 4px">
+    <div id="lrn-count" style="font-size:13px;color:var(--text2)"></div>
+    <button onclick="openLearningAdd()" style="background:var(--orange);color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:600">+ פריט חדש</button>
+  </div>
+  <div id="lrn-list"></div>
+</div>
+
+<!-- LEARNING FORM MODAL -->
+<div class="overlay" id="learning-form-modal" onclick="if(event.target.id==='learning-form-modal')_lrnGuardClose()">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="lrn-form-title">➕ פריט חדש</div>
+    <input type="hidden" id="lrn-edit-id">
+    <div class="form-row">
+      <div>
+        <label>מודל *</label>
+        <select id="lrn-model" oninput="_lrnDirty=true" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-family:Heebo,sans-serif;font-size:14px">
+          <option value="">בחר מודל</option>
+          <option>NICE3000</option><option>CMC4</option><option>CMC3</option>
+          <option>20.50</option><option>KONE</option><option>כללי</option>
+        </select>
+      </div>
+      <div>
+        <label>קטגוריה *</label>
+        <select id="lrn-category" oninput="_lrnDirty=true" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-family:Heebo,sans-serif;font-size:14px">
+          <option value="">בחר קטגוריה</option>
+          <option>כרטיסים</option><option>פיר</option><option>לחצנים</option>
+          <option>בקר</option><option>חייגן</option><option>כללי</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-bottom:12px">
+      <label>כותרת *</label>
+      <input id="lrn-title" type="text" placeholder="כותרת הפריט" oninput="_lrnDirty=true" style="width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-family:Heebo,sans-serif;font-size:14px">
+    </div>
+    <div style="margin-bottom:12px">
+      <label>תיאור קצר</label>
+      <input id="lrn-desc" type="text" placeholder="שורה אחת — מופיעה בכרטיס" oninput="_lrnDirty=true" style="width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-family:Heebo,sans-serif;font-size:14px">
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <label style="margin:0">מלל חופשי</label>
+        <button id="lrn-ai-btn" onclick="lrnRephrase()" style="background:var(--orange);color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif">✨ AI</button>
+      </div>
+      <textarea id="lrn-text" rows="5" placeholder="תוכן מפורט, הוראות, הערות..." oninput="_lrnDirty=true" style="width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-family:Heebo,sans-serif;font-size:14px;resize:vertical;line-height:1.6"></textarea>
+    </div>
+    <div style="margin-bottom:16px">
+      <label>תמונות</label>
+      <label style="display:inline-flex;align-items:center;gap:6px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;cursor:pointer;font-size:13px;color:var(--text2)">
+        📷 הוסף תמונה
+        <input type="file" accept="image/*" multiple style="display:none" onchange="lrnAddImages(this)">
+      </label>
+      <div id="lrn-img-preview" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px"></div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button onclick="saveLearningItem()" style="flex:1;background:var(--orange);color:#fff;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif">💾 שמור</button>
+      <button onclick="_lrnGuardClose()" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:13px;font-size:15px;cursor:pointer;color:var(--text2);font-family:Heebo,sans-serif">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- LEARNING VIEW MODAL -->
+<div class="overlay" id="learning-view-modal" onclick="if(event.target.id==='learning-view-modal')closeModal('learning-view-modal')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div id="lrn-view-content"></div>
   </div>
 </div>
 
@@ -2202,7 +2280,7 @@ function toggleNoteField(){
 // ─── MAIN TAB SWITCH ──────────────────────────────────
 
 function closeAllModals(){
-  var ids = ['form-modal','view-modal','param-form-modal','param-view-modal','mfr-form-modal','mfr-view-modal','page-image-modal','part-form-modal'];
+  var ids = ['form-modal','view-modal','param-form-modal','param-view-modal','mfr-form-modal','mfr-view-modal','page-image-modal','part-form-modal','learning-form-modal','learning-view-modal'];
   ids.forEach(function(id){ closeModal(id); });
 }
 function switchMainTab(tab){
@@ -2222,9 +2300,11 @@ function switchMainTab(tab){
 
   var so=document.getElementById('section-orders');
   var to=document.getElementById('main-tab-orders');
+  var sl=document.getElementById('section-learning');
+  var tl=document.getElementById('main-tab-learning');
   sf.style.display='none'; sp.style.display='none'; sm.style.display='none';
-  if(st)st.style.display='none'; if(sc)sc.style.display='none'; if(spt)spt.style.display='none'; if(so)so.style.display='none';
-  [tf,tp,tm,tt,tc,tpt,to].forEach(function(b){if(b){b.style.background='var(--bg2)';b.style.borderColor='var(--border)';b.style.color='var(--text2)';b.style.fontWeight='500';}});
+  if(st)st.style.display='none'; if(sc)sc.style.display='none'; if(spt)spt.style.display='none'; if(so)so.style.display='none'; if(sl)sl.style.display='none';
+  [tf,tp,tm,tt,tc,tpt,to,tl].forEach(function(b){if(b){b.style.background='var(--bg2)';b.style.borderColor='var(--border)';b.style.color='var(--text2)';b.style.fontWeight='500';}});
 
   var logoText = document.getElementById('logo-text');
   var logoIcon = document.getElementById('logo-icon');
@@ -2272,6 +2352,12 @@ function switchMainTab(tab){
     if(to){to.style.background='rgba(99,102,241,0.12)';to.style.borderColor='rgba(99,102,241,0.4)';to.style.color='#818cf8';to.style.fontWeight='600';}
     if(logoText){ logoText.textContent='הזמנות'; logoText.style.color='#818cf8'; }
     if(logoIcon) logoIcon.textContent='📋';
+  } else if(tab==='learning'){
+    if(sl)sl.style.display='block';
+    if(tl){tl.style.background='rgba(127,119,221,0.12)';tl.style.borderColor='rgba(127,119,221,0.4)';tl.style.color='#7F77DD';tl.style.fontWeight='600';}
+    if(logoText){ logoText.textContent='לימוד ותצורה'; logoText.style.color='#7F77DD'; }
+    if(logoIcon) logoIcon.textContent='🎓';
+    refreshLearning();
   }
 }
 
@@ -4800,6 +4886,278 @@ function openCatalogAddWithPN(pn){
 </script>
 
 <script>
+// ─── LEARNING TAB ────────────────────────────────────────
+const LRN_KEY       = 'tke_learning_v1';
+const LRN_D1_SAVE   = 'https://tke-proxy.guyshtaiger.workers.dev/learning/save';
+const LRN_D1_LIST   = 'https://tke-proxy.guyshtaiger.workers.dev/learning/list';
+const LRN_D1_DELETE = 'https://tke-proxy.guyshtaiger.workers.dev/learning/delete';
+
+const LRN_MODEL_COLORS = {'NICE3000':'#7F77DD','CMC4':'#4a9eff','CMC3':'#4caf50','20.50':'#FF9800','KONE':'#E91E63','כללי':'#888'};
+const LRN_CAT_ICONS    = {'כרטיסים':'🃏','פיר':'🏗️','לחצנים':'🔘','בקר':'🖥️','חייגן':'📟','כללי':'📋'};
+function _lrnColor(m){ return LRN_MODEL_COLORS[m]||'#888'; }
+function _lrnIcon(c){  return LRN_CAT_ICONS[c]||'📋'; }
+
+function loadLearning(){ try{ return JSON.parse(localStorage.getItem(LRN_KEY))||[]; }catch(e){ return []; } }
+function saveLearning(d){ localStorage.setItem(LRN_KEY, JSON.stringify(d)); }
+
+var learningItems = loadLearning();
+var _lrnActiveModel = '';
+var _lrnActiveCat   = '';
+var _lrnImages      = [];
+var _lrnDirty       = false;
+
+// ── Render ───────────────────────────────────────────────
+function renderLearning(){
+  var q     = (document.getElementById('lrn-search').value||'').toLowerCase().trim();
+  var words = q ? q.split(/\s+/).filter(Boolean) : [];
+  var filtered = learningItems.filter(function(item){
+    if(_lrnActiveModel && item.model !== _lrnActiveModel) return false;
+    if(_lrnActiveCat   && item.category !== _lrnActiveCat)   return false;
+    if(!words.length) return true;
+    var txt = [item.model,item.category,item.title,item.desc,item.text].join(' ').toLowerCase();
+    return words.every(function(w){ return txt.includes(w); });
+  });
+  document.getElementById('lrn-count').textContent = filtered.length + ' פריטים';
+  var list = document.getElementById('lrn-list');
+  if(!filtered.length){
+    list.innerHTML = '<div class="empty"><div class="empty-icon">🎓</div><p>'+(learningItems.length===0?'אין פריטים עדיין<br>לחץ &quot;+ פריט חדש&quot; להוסיף':'לא נמצאו תוצאות')+'</p></div>';
+    return;
+  }
+  list.innerHTML = filtered.map(function(item, i){
+    var color  = _lrnColor(item.model);
+    var icon   = _lrnIcon(item.category);
+    var num    = String(i+1).padStart(2,'0');
+    var hasImg = item.images && item.images.length;
+    var hasTxt = item.text && item.text.trim();
+    return '<div style="position:relative;background:var(--bg2);border-radius:12px;margin-bottom:10px;overflow:hidden;border:1px solid var(--border);display:flex;cursor:pointer" onclick="viewLearningItem(\''+item.id+'\')">'+
+      '<div style="width:4px;background:'+color+';flex-shrink:0;border-radius:0 0 0 0"></div>'+
+      '<div style="position:absolute;left:6px;top:50%;transform:translateY(-50%);font-size:50px;font-weight:900;color:rgba(128,128,128,0.06);pointer-events:none;line-height:1;user-select:none;font-family:monospace">'+num+'</div>'+
+      '<div style="flex:1;padding:12px 14px 10px;direction:rtl;min-width:0">'+
+        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">'+
+          '<span style="font-size:15px">'+icon+'</span>'+
+          '<span style="font-size:11px;color:'+color+';font-weight:700">'+esc(item.model||'')+'</span>'+
+          '<span style="font-size:10px;color:var(--text2);background:var(--bg3);border-radius:5px;padding:1px 6px">'+esc(item.category||'')+'</span>'+
+          (hasImg?'<span style="font-size:10px;background:rgba(74,158,255,0.13);color:#4a9eff;border-radius:5px;padding:1px 6px">📷 '+item.images.length+'</span>':'')+
+          (hasTxt?'<span style="font-size:10px;background:rgba(76,175,80,0.13);color:#4caf50;border-radius:5px;padding:1px 6px">📄 מסמך</span>':'')+
+        '</div>'+
+        '<div style="font-weight:600;color:var(--text);font-size:14px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(item.title||'')+'</div>'+
+        (item.desc?'<div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(item.desc)+'</div>':'')+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;justify-content:center;gap:4px;padding:8px 8px 8px 4px;flex-shrink:0">'+
+        '<button onclick="event.stopPropagation();openLearningEdit(\''+item.id+'\')" style="background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:12px;cursor:pointer;color:var(--text2)">✏️</button>'+
+        '<button onclick="event.stopPropagation();deleteLearningItem(\''+item.id+'\')" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:7px;padding:5px 8px;font-size:12px;cursor:pointer;color:#ef4444">🗑</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function updateLearningFilters(){
+  var models = [...new Set(learningItems.map(function(x){ return x.model; }).filter(Boolean))].sort();
+  var cats   = [...new Set(learningItems.map(function(x){ return x.category; }).filter(Boolean))].sort();
+  var mt = document.getElementById('lrn-model-tabs');
+  if(!mt) return;
+  mt.innerHTML =
+    '<button class="model-tab'+(_lrnActiveModel===''?' active':'')+'" onclick="setLrnModel(\'\')">כולם</button>'+
+    models.map(function(m){
+      return '<button class="model-tab'+(_lrnActiveModel===m?' active':'')+'" style="'+(LRN_MODEL_COLORS[m]?'color:'+LRN_MODEL_COLORS[m]+(_lrnActiveModel===m?';border-color:'+LRN_MODEL_COLORS[m]:''):'')+'" onclick="setLrnModel(\''+esc(m)+'\')">'+esc(m)+'</button>';
+    }).join('');
+  var ct = document.getElementById('lrn-cat-tabs');
+  if(!ct) return;
+  ct.innerHTML =
+    '<button class="model-tab'+(_lrnActiveCat===''?' active':'')+'" onclick="setLrnCat(\'\')">כל הקטגוריות</button>'+
+    cats.map(function(c){
+      return '<button class="model-tab'+(_lrnActiveCat===c?' active':'')+'" onclick="setLrnCat(\''+esc(c)+'\')">'+_lrnIcon(c)+' '+esc(c)+'</button>';
+    }).join('');
+}
+
+function setLrnModel(m){ _lrnActiveModel=m; updateLearningFilters(); renderLearning(); }
+function setLrnCat(c){   _lrnActiveCat=c;   updateLearningFilters(); renderLearning(); }
+function refreshLearning(){ updateLearningFilters(); renderLearning(); }
+
+// ── View ─────────────────────────────────────────────────
+function viewLearningItem(id){
+  var item = learningItems.find(function(x){ return x.id===id; });
+  if(!item) return;
+  var color = _lrnColor(item.model);
+  var icon  = _lrnIcon(item.category);
+  document.getElementById('lrn-view-content').innerHTML =
+    '<div style="border-right:3px solid '+color+';padding-right:10px;margin-bottom:14px">'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">'+
+        '<span>'+icon+'</span>'+
+        '<span style="color:'+color+';font-weight:700;font-size:12px">'+esc(item.model||'')+'</span>'+
+        '<span style="background:var(--bg3);border-radius:5px;padding:1px 7px;font-size:11px;color:var(--text2)">'+esc(item.category||'')+'</span>'+
+      '</div>'+
+      '<div style="font-size:17px;font-weight:700;color:var(--text)">'+esc(item.title||'')+'</div>'+
+      (item.desc?'<div style="font-size:13px;color:var(--text2);margin-top:3px">'+esc(item.desc)+'</div>':'')+
+    '</div>'+
+    (item.text?'<div style="white-space:pre-wrap;font-size:14px;color:var(--text);line-height:1.7;margin-bottom:14px;direction:rtl">'+esc(item.text)+'</div>':'')+
+    (item.images&&item.images.length?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'+item.images.map(function(src){
+      return '<img src="'+src+'" style="max-width:100%;max-height:220px;border-radius:8px;cursor:pointer;object-fit:contain" onclick="openPageImageModal(this.src)">';
+    }).join('')+'</div>':'')+
+    '<div style="display:flex;gap:8px;margin-top:4px">'+
+      '<button onclick="openLearningEdit(\''+id+'\');closeModal(\'learning-view-modal\')" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px;font-size:14px;cursor:pointer;color:var(--text);font-family:Heebo,sans-serif">✏️ ערוך</button>'+
+      '<button onclick="deleteLearningItem(\''+id+'\');closeModal(\'learning-view-modal\')" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:10px;padding:11px;font-size:14px;cursor:pointer;color:#ef4444;font-family:Heebo,sans-serif">🗑</button>'+
+    '</div>';
+  openModal('learning-view-modal');
+}
+
+// ── Add / Edit ───────────────────────────────────────────
+function openLearningAdd(){
+  document.getElementById('lrn-form-title').textContent = '➕ פריט חדש';
+  document.getElementById('lrn-edit-id').value = '';
+  ['lrn-model','lrn-category','lrn-title','lrn-desc','lrn-text'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  _lrnImages=[]; _lrnRenderImages(); _lrnDirty=false;
+  openModal('learning-form-modal');
+}
+
+function openLearningEdit(id){
+  var item = learningItems.find(function(x){ return x.id===id; });
+  if(!item) return;
+  document.getElementById('lrn-form-title').textContent = '✏️ עריכת פריט';
+  document.getElementById('lrn-edit-id').value    = id;
+  document.getElementById('lrn-model').value      = item.model||'';
+  document.getElementById('lrn-category').value   = item.category||'';
+  document.getElementById('lrn-title').value      = item.title||'';
+  document.getElementById('lrn-desc').value       = item.desc||'';
+  document.getElementById('lrn-text').value       = item.text||'';
+  _lrnImages = item.images ? [...item.images] : [];
+  _lrnRenderImages(); _lrnDirty=false;
+  openModal('learning-form-modal');
+}
+
+function _lrnGuardClose(){
+  if(_lrnDirty && !confirm('יש שינויים שלא נשמרו. לצאת בכל זאת?')) return;
+  _lrnDirty=false;
+  closeModal('learning-form-modal');
+}
+
+function _lrnRenderImages(){
+  var wrap=document.getElementById('lrn-img-preview'); if(!wrap) return;
+  wrap.innerHTML=_lrnImages.map(function(src,i){
+    return '<div style="position:relative;display:inline-block">'+
+      '<img src="'+src+'" style="width:72px;height:72px;object-fit:cover;border-radius:8px;margin:2px">'+
+      '<button onclick="_lrnRemoveImg('+i+')" style="position:absolute;top:0;right:0;background:#ef4444;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:1;padding:0">×</button>'+
+    '</div>';
+  }).join('');
+}
+
+function _lrnRemoveImg(i){ _lrnImages.splice(i,1); _lrnRenderImages(); _lrnDirty=true; }
+
+function lrnAddImages(input){
+  Array.from(input.files).forEach(function(file){
+    var r=new FileReader();
+    r.onload=function(e){ _lrnImages.push(e.target.result); _lrnRenderImages(); _lrnDirty=true; };
+    r.readAsDataURL(file);
+  });
+  input.value='';
+}
+
+async function lrnRephrase(){
+  var ta=document.getElementById('lrn-text');
+  var txt=ta.value.trim();
+  if(!txt){ showToast('⚠️ אין מלל לניסוח'); return; }
+  var btn=document.getElementById('lrn-ai-btn');
+  btn.disabled=true; btn.textContent='⏳...';
+  try{
+    ta.value = await _fCallWorker(
+      'אתה עוזר טכני לטכנאי מעליות מקצועי. תפקידך לשפר ניסוח של דוחות שטח בלבד — אסור לשנות מידע טכני.\n\nכללים מחייבים:\n- שמור על כל המספרים, קודי רכיבים, שמות חיישנים ופרמטרים בדיוק כפי שנכתבו\n- שמור על מבנה הכותרות, הנקודות והטבלאות\n- שמור על ירידות שורה וסעיפים\n- מונחים טכניים באנגלית — אל תתרגם\n- רק שפר ניסוח עברי לא תקני, תקן שגיאות כתיב, וסדר משפטים לא ברורים\n- אל תוסיף מידע שלא היה במקור',
+      txt
+    );
+    _lrnDirty=true;
+  }catch(e){
+    showToast(e.message==='no_key'?'⚠️ נא להגדיר מפתח API':'שגיאת חיבור לשרת');
+  }finally{
+    btn.disabled=false; btn.textContent='✨ AI';
+  }
+}
+
+function saveLearningItem(){
+  var model    = document.getElementById('lrn-model').value;
+  var category = document.getElementById('lrn-category').value;
+  var title    = document.getElementById('lrn-title').value.trim();
+  if(!model||!category||!title){ showToast('⚠️ נא למלא מודל, קטגוריה וכותרת'); return; }
+  var editId = document.getElementById('lrn-edit-id').value;
+  var id     = editId || Date.now().toString();
+  if(!editId){
+    var dup = learningItems.find(function(x){ return x.model===model && x.category===category && x.title===title; });
+    if(dup){
+      _showConflictDialog(title, model+' / '+category,
+        function(){
+          var item=_lrnBuild(id,model,category,title);
+          learningItems.unshift(item); saveLearning(learningItems); _lrnSyncToD1(item);
+          closeModal('learning-form-modal'); refreshLearning(); showToast('✅ נוסף!'); _lrnDirty=false;
+        },
+        function(){
+          var item=_lrnBuild(dup.id,model,category,title);
+          var idx=learningItems.findIndex(function(x){ return x.id===dup.id; });
+          if(idx>=0) learningItems[idx]=item; saveLearning(learningItems); _lrnSyncToD1(item);
+          closeModal('learning-form-modal'); refreshLearning(); showToast('✅ עודכן!'); _lrnDirty=false;
+        },
+        function(){}
+      );
+      return;
+    }
+  }
+  var item=_lrnBuild(id,model,category,title);
+  var idx=learningItems.findIndex(function(x){ return x.id===id; });
+  if(idx>=0) learningItems[idx]=item; else learningItems.unshift(item);
+  saveLearning(learningItems); _lrnSyncToD1(item);
+  closeModal('learning-form-modal'); refreshLearning(); showToast('✅ נשמר!'); _lrnDirty=false;
+}
+
+function _lrnBuild(id,model,category,title){
+  return { id:id, model:model, category:category, title:title,
+    desc:  document.getElementById('lrn-desc').value.trim(),
+    text:  document.getElementById('lrn-text').value.trim(),
+    images:[..._lrnImages],
+    date:  new Date().toISOString().split('T')[0] };
+}
+
+function deleteLearningItem(id){
+  var item=learningItems.find(function(x){ return x.id===id; }); if(!item) return;
+  if(!confirm('למחוק "'+item.title+'"?')) return;
+  learningItems=learningItems.filter(function(x){ return x.id!==id; });
+  saveLearning(learningItems); refreshLearning(); _lrnDeleteFromD1(id);
+}
+
+// ── D1 Sync ──────────────────────────────────────────────
+function _lrnSyncToD1(item){
+  var token=sessionStorage.getItem('tke_auth_token');
+  if(!token||!navigator.onLine) return;
+  fetch(LRN_D1_SAVE,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(item)}).catch(function(){});
+}
+
+function _lrnDeleteFromD1(id){
+  var token=sessionStorage.getItem('tke_auth_token');
+  if(!token||!navigator.onLine) return;
+  fetch(LRN_D1_DELETE,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({id:id})}).catch(function(){});
+}
+
+async function syncLearningFromD1(){
+  var token=sessionStorage.getItem('tke_auth_token');
+  if(!token||!navigator.onLine) return;
+  try{
+    var res=await fetch(LRN_D1_LIST,{headers:{'Authorization':'Bearer '+token}});
+    if(!res.ok) return;
+    var d1Items=await res.json();
+    if(!Array.isArray(d1Items)) return;
+    var local=loadLearning();
+    var localIds=new Set(local.map(function(x){ return String(x.id).trim(); }));
+    var d1Ids=new Set(d1Items.map(function(x){ return String(x.id).trim(); }));
+    var toAdd=d1Items.filter(function(x){ return !localIds.has(String(x.id).trim()); });
+    local.forEach(function(x){ if(!d1Ids.has(String(x.id).trim())) _lrnSyncToD1(x); });
+    if(toAdd.length){
+      learningItems=local.concat(toAdd);
+      saveLearning(learningItems);
+      refreshLearning();
+    }
+  }catch(e){ console.warn('[syncLearningFromD1]',e); }
+}
+</script>
+
+<script>
 // ── Login / Auth ─────────────────────────────────────────
 const AUTH_URL  = 'https://tke-proxy.guyshtaiger.workers.dev/auth/login';
 const TOKEN_KEY = 'tke_auth_token';      // sessionStorage — active session
@@ -4855,6 +5213,7 @@ function showApp() {
   document.getElementById('bio-offer-overlay').style.display = 'none';
   flushSyncQueue();
   syncFaultsFromD1();
+  syncLearningFromD1();
 }
 
 function showLogin() {
