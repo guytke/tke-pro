@@ -438,8 +438,8 @@ if('serviceWorker' in navigator){
       <label>📸 תמונות</label>
       <div class="img-previews" id="f-img-previews"></div>
       <div style="display:flex;gap:8px;margin-top:6px">
-        <button type="button" class="img-upload-btn" style="flex:1" onclick="document.getElementById('f-img-gallery').click()">🖼️ גלריה</button>
-        <button type="button" class="img-upload-btn" style="flex:1" onclick="document.getElementById('f-img-camera').click()">📷 צלם</button>
+        <button type="button" class="img-upload-btn" style="flex:1" onclick="var el=document.getElementById('f-img-gallery');el.value='';el.click()">🖼️ גלריה</button>
+        <button type="button" class="img-upload-btn" style="flex:1" onclick="var el=document.getElementById('f-img-camera');el.value='';el.click()">📷 צלם</button>
         <button type="button" class="img-upload-btn" style="flex:1" onclick="toggleNoteField()">📝 פתק</button>
       </div>
       <input type="file" id="f-img-gallery" accept="image/*" multiple style="display:none" onchange="handleImgUpload(event)">
@@ -1600,17 +1600,23 @@ function showToast(msg){
 // ─── IMAGES ───────────────────────────────────────────
 let formImages = []; // base64 array for current form
 
-function handleImgUpload(e){
+async function handleImgUpload(e){
   const files = Array.from(e.target.files);
-  files.forEach(file => {
-    const reader = new FileReader();
-    reader.onload = function(ev){
-      formImages.push(ev.target.result);
-      renderFormImgPreviews();
-    };
-    reader.readAsDataURL(file);
-  });
   e.target.value = '';
+  for(const file of files){
+    try{
+      const blob = await compressImage(file);
+      const dataUrl = await new Promise(function(resolve){
+        var fr=new FileReader();
+        fr.onload=function(ev){resolve(ev.target.result);};
+        fr.readAsDataURL(blob);
+      });
+      formImages.push(dataUrl);
+      renderFormImgPreviews();
+    }catch(err){
+      console.error('[handleImgUpload]',err);
+    }
+  }
 }
 
 function renderFormImgPreviews(){
