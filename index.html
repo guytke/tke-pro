@@ -1302,7 +1302,7 @@ function render(){
   const q = document.getElementById('search-input').value.toLowerCase().trim();
   let filtered = faults.filter(f=>{
     const txt = [f.model,f.code,f.name,f.book,f.field,f.level].join(' ').toLowerCase();
-    return(!q||txt.includes(q))&&(!activeModel||f.model===activeModel);
+    return(!q||txt.includes(q))&&(!activeModel||q||f.model===activeModel);
   }).sort(function(a,b){
     // Sort by model first, then by fault code numerically
     if(a.model !== b.model) return a.model.localeCompare(b.model);
