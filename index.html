@@ -4161,6 +4161,10 @@ function renderCatalog(){
     return '<div onclick="openCatalogDetail(\''+p.id+'\')" class="cl-card" data-catalog-id="'+p.id+'">'+
       (shared?'<span class="cl-badge-shared">🔗 Shared</span>':'')+
       pendingBadge+imgHtml+
+      '<div style="display:flex;gap:6px;justify-content:flex-end;margin-bottom:6px">'+
+        '<button onclick="event.stopPropagation();editCatalogPart(\''+p.id+'\')" style="background:rgba(127,119,221,0.15);border:1px solid rgba(127,119,221,0.4);color:#7F77DD;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer">✏️ ערוך</button>'+
+        '<button onclick="event.stopPropagation();deleteCatalogPart(\''+p.id+'\')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer">🗑️</button>'+
+      '</div>'+
       '<div style="font-size:13px;font-weight:600;color:#2A1F33;margin-bottom:3px;line-height:1.3">'+p.name+'</div>'+
       '<div style="font-size:11px;color:#8A7F94;margin-bottom:6px">'+(pn?'מק"ט: '+pn:'')+'</div>'+
       '<div style="display:flex;flex-wrap:wrap;gap:4px">'+badges+'</div>'+
