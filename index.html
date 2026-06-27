@@ -476,6 +476,7 @@ if('serviceWorker' in navigator){
       <label class="btn btn-sm" style="background:var(--bg2);border:1px solid var(--border);color:var(--text2);cursor:pointer">🖼️ גלריה<input type="file" accept="image/*" style="display:none" onchange="pmDirectScan(event)"></label>
     </div>
   </div>
+  <input type="text" id="pm-search" placeholder="🔍 חיפוש פרמטר..." oninput="pmRenderList()" style="width:100%;margin-bottom:10px;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 11px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none">
   <div id="pm-list"></div>
 </div>
 
@@ -1300,9 +1301,12 @@ let activeModel = '';
 // ─── RENDER ───────────────────────────────────────────
 function render(){
   const q = document.getElementById('search-input').value.toLowerCase().trim();
+  const _words = q ? q.split(/\s+/).filter(Boolean) : [];
   let filtered = faults.filter(f=>{
-    const txt = [f.model,f.code,f.name,f.book,f.field,f.level].join(' ').toLowerCase();
-    return(!q||txt.includes(q))&&(!activeModel||q||f.model===activeModel);
+    const txt = [f.model,f.code,f.name,f.book,f.field,f.level,f.note,f.date].filter(Boolean).join(' ').toLowerCase();
+    const matchesText = !_words.length || _words.every(w => txt.includes(w));
+    const matchesModel = !activeModel || q || f.model === activeModel;
+    return matchesText && matchesModel;
   }).sort(function(a,b){
     // Sort by model first, then by fault code numerically
     if(a.model !== b.model) return a.model.localeCompare(b.model);
@@ -3051,13 +3055,19 @@ function pmCloseDetail(){
 
 function pmRenderList(){
   var el=document.getElementById('pm-list'); if(!el) return;
-  if(!_pmList.length){
-    el.innerHTML='<div class="empty"><div class="empty-icon">⚙️</div><p>אין פרמטרים עדיין</p></div>';
+  var pmQ = ((document.getElementById('pm-search')||{}).value||'').toLowerCase().trim();
+  var pmWords = pmQ ? pmQ.split(/\s+/).filter(Boolean) : [];
+  var list = pmWords.length ? _pmList.filter(function(p){
+    var txt = [p.paramCode,p.paramName,p.description,p.notes,(p.models||[]).join(' '),p.range,p.defaultValue].filter(Boolean).join(' ').toLowerCase();
+    return pmWords.every(function(w){ return txt.includes(w); });
+  }) : _pmList;
+  if(!list.length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">⚙️</div><p>'+(pmWords.length?'לא נמצאו תוצאות':'אין פרמטרים עדיין')+'</p></div>';
     return;
   }
   if(_pmView==='model'){
     var map={};
-    _pmList.forEach(function(p){
+    list.forEach(function(p){
       if(!(p.models&&p.models.length)) return;
       p.models.forEach(function(m){ if(!map[m]) map[m]=[]; map[m].push(p); });
     });
@@ -3078,7 +3088,7 @@ function pmRenderList(){
     }).join('');
     if(!Object.keys(map).length) el.innerHTML='<div class="empty"><div class="empty-icon">⚙️</div><p>אין פרמטרים משויכים לדגמים</p></div>';
   } else {
-    el.innerHTML=_pmList.map(pmCardHTML).join('');
+    el.innerHTML=list.map(pmCardHTML).join('');
   }
 }
 
@@ -4922,7 +4932,7 @@ function renderLearning(){
     if(_lrnActiveModel && item.model !== _lrnActiveModel) return false;
     if(_lrnActiveCat   && item.category !== _lrnActiveCat)   return false;
     if(!words.length) return true;
-    var txt = [item.model,item.category,item.title,item.desc,item.text].join(' ').toLowerCase();
+    var txt = [item.model,item.category,item.title,item.desc,item.text].filter(Boolean).join(' ').toLowerCase();
     return words.every(function(w){ return txt.includes(w); });
   });
   document.getElementById('lrn-count').textContent = filtered.length + ' פריטים';
