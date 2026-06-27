@@ -85,7 +85,7 @@ body{background:var(--bg);color:var(--text);font-family:'Heebo',sans-serif;min-h
 /* OVERLAY */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);z-index:100;display:none;align-items:flex-end;justify-content:center}
 .overlay.open{display:flex}
-.modal{background:var(--bg2);border:1px solid var(--border);border-radius:20px 20px 0 0;width:100%;max-width:680px;max-height:92vh;overflow-y:auto;overscroll-behavior:contain;padding:18px 16px 32px;animation:slideUp 0.22s ease}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:20px 20px 0 0;width:100%;max-width:680px;max-height:92vh;max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:18px 16px 32px;animation:slideUp 0.22s ease}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
 @keyframes slideDown{from{transform:translateY(0);opacity:1}to{transform:translateY(60px);opacity:0}}
@@ -102,7 +102,7 @@ label{display:block;font-size:11px;color:var(--text3);font-weight:600;text-trans
 input[type=text],select,textarea{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 11px;font-size:14px;color:var(--text);font-family:'Heebo',sans-serif;outline:none;transition:border-color 0.2s;-webkit-appearance:none}
 input[type=text]:focus,select:focus,textarea:focus{border-color:var(--orange-border)}
 input::placeholder,textarea::placeholder{color:var(--text3)}
-textarea{resize:none;line-height:1.6;overscroll-behavior:contain}
+textarea{resize:none;line-height:1.6}
 input[type=text],input[type=number]{overscroll-behavior:contain}
 .label-book{color:#fb8c40 !important}
 .label-field{color:#34d399 !important}
