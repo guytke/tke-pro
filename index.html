@@ -1407,7 +1407,7 @@ function saveFault(){
   if(!editId){
     const duplicate = faults.find(f=>f.model===model && f.code===code);
     if(duplicate){
-      function _readFormFault(useId){
+      var _readFormFault = function(useId){
         return {id:useId,model,code,
           name:document.getElementById('f-name').value.trim(),
           level:document.getElementById('f-level').value.trim(),
@@ -1417,7 +1417,7 @@ function saveFault(){
           note:document.getElementById('f-note')?document.getElementById('f-note').value.trim():'',
           date:new Date().toISOString().split('T')[0]
         };
-      }
+      };
       _showConflictDialog(code, model,
         function(){ // הוסף כחדש
           const fault=_readFormFault(id);
