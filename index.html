@@ -908,8 +908,11 @@ if('serviceWorker' in navigator){
     <div style="margin-bottom:12px">
       <div class="cl-label">תמונה</div>
       <div id="catalog-img-preview-wrap" style="display:none;margin-bottom:8px">
-        <img id="catalog-img-preview" style="width:100%;max-height:180px;object-fit:contain;border-radius:10px;background:#F0EBF4">
-        <button id="catalog-ai-identify-btn" onclick="catalogAIIdentify()" style="margin-top:8px;width:100%;background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-family:Heebo,sans-serif;cursor:pointer">🔍 נתח פרטי חלק</button>
+        <img id="catalog-img-preview" onerror="document.getElementById('catalog-img-preview-wrap').style.display='none'" style="width:100%;max-height:180px;object-fit:contain;border-radius:10px;background:#F0EBF4">
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button id="catalog-ai-identify-btn" onclick="catalogAIIdentify()" style="flex:1;background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-family:Heebo,sans-serif;cursor:pointer">🔍 נתח פרטי חלק</button>
+          <button id="catalog-img-clear-btn" onclick="clearCatalogImage()" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:8px;padding:10px 14px;font-size:13px;font-family:Heebo,sans-serif;cursor:pointer">🗑️ מחק תמונה</button>
+        </div>
         <div id="catalog-ai-identify-result" style="display:none"></div>
       </div>
       <div style="display:flex;gap:8px">
@@ -4088,6 +4091,7 @@ var _catalogSelectedModels = [];
 var _catalogFilterModel = null;
 var _catalogFilterCat = null;
 var _catalogEditId = null;
+var _catalogClearExistingImg = false;
 
 // ── Sub-tab switch ─────────────────────────────────────
 function switchPartsSubTab(tab){
@@ -4257,8 +4261,14 @@ function openCatalogLightbox(url){
   dlg.addEventListener('click',function(e){ if(e.target===dlg) dlg.remove(); });
 }
 // ── Add form ───────────────────────────────────────────
+function clearCatalogImage(){
+  _catalogImgBlob=null; _catalogClearExistingImg=true;
+  document.getElementById('catalog-img-preview-wrap').style.display='none';
+  var clearBtn=document.getElementById('catalog-img-clear-btn');
+  if(clearBtn) clearBtn.style.display='none';
+}
 function openCatalogAdd(){
-  _catalogImgBlob=null; _catalogSelectedCat=null; _catalogSelectedModels=[]; _catalogEditId=null;
+  _catalogImgBlob=null; _catalogClearExistingImg=false; _catalogSelectedCat=null; _catalogSelectedModels=[]; _catalogEditId=null;
   document.getElementById('catalog-add-name').value='';
   document.getElementById('catalog-add-sku').value='';
   document.getElementById('catalog-add-notes').value='';
@@ -4292,9 +4302,11 @@ function _catalogMarkFilePicker(){ _catalogFilePickerOpen=true; setTimeout(funct
 async function handleCatalogImage(input){
   if(!input.files||!input.files[0]) return;
   var blob=await compressImage(input.files[0]);
-  _catalogImgBlob=blob;
+  _catalogImgBlob=blob; _catalogClearExistingImg=false;
   document.getElementById('catalog-img-preview').src=URL.createObjectURL(blob);
   document.getElementById('catalog-img-preview-wrap').style.display='block';
+  var clearBtn=document.getElementById('catalog-img-clear-btn');
+  if(clearBtn) clearBtn.style.display='none';
   var res=document.getElementById('catalog-ai-identify-result');
   if(res){ res.style.display='none'; res.innerHTML=''; }
   var btn=document.getElementById('catalog-ai-identify-btn');
@@ -4486,7 +4498,7 @@ async function saveCatalogPart(){
   var part={
     id:id, name:name, partNumber:sku, quantity:existing?existing.quantity||0:0,
     models:_catalogSelectedModels.slice(), category:_catalogSelectedCat||'',
-    imageBlob:_catalogImgBlob||(existing?existing.imageBlob:null),
+    imageBlob:_catalogImgBlob||(_catalogClearExistingImg?null:(existing?existing.imageBlob:null)),
     notes:notes, fingerprint:existing?existing.fingerprint:null,
     createdAt:existing?existing.createdAt:Date.now()
   };
@@ -4575,15 +4587,23 @@ function openCatalogDetail(id){
 async function editCatalogPart(id){
   var p=_catalogParts.find(function(x){ return x.id===id; }); if(!p) return;
   closeModal('catalog-detail-modal');
-  _catalogEditId=id; _catalogImgBlob=null; _catalogSelectedCat=p.category||null;
+  _catalogEditId=id; _catalogImgBlob=null; _catalogClearExistingImg=false; _catalogSelectedCat=p.category||null;
   _catalogSelectedModels=(p.models||p.compatible_with||[]).slice();
   var pn=p.partNumber||p.sku||'';
   document.getElementById('catalog-add-name').value=p.name||'';
   document.getElementById('catalog-add-sku').value=pn;
   document.getElementById('catalog-add-notes').value=p.notes||'';
   var objURL=_catalogObjURLs[p.id];
-  if(objURL){ document.getElementById('catalog-img-preview').src=objURL; document.getElementById('catalog-img-preview-wrap').style.display='block'; }
-  else document.getElementById('catalog-img-preview-wrap').style.display='none';
+  if(!objURL && p.imageBlob){ try{ objURL=URL.createObjectURL(p.imageBlob); _catalogObjURLs[p.id]=objURL; }catch(e){} }
+  var clearBtn=document.getElementById('catalog-img-clear-btn');
+  if(objURL||p.imageBlob){
+    if(objURL) document.getElementById('catalog-img-preview').src=objURL;
+    document.getElementById('catalog-img-preview-wrap').style.display='block';
+    if(clearBtn) clearBtn.style.display='block';
+  } else {
+    document.getElementById('catalog-img-preview-wrap').style.display='none';
+    if(clearBtn) clearBtn.style.display='none';
+  }
   document.getElementById('catalog-model-picker').style.display='none';
   renderCatalogCatChipsAdd(); renderSelectedModels(); buildModelPicker();
   document.getElementById('catalog-add-modal').classList.add('open');
