@@ -1562,7 +1562,14 @@ async function exportBackup(){
       var out = Object.assign({},p);
       delete out.imageBlob;
       if(p.imageBlob){
-        try{ out.imageBase64 = await blobToBase64(p.imageBlob); }catch(e){}
+        try{
+          out.imageBase64 = await new Promise(function(resolve,reject){
+            var fr=new FileReader();
+            fr.onload=function(ev){resolve(ev.target.result);};
+            fr.onerror=reject;
+            fr.readAsDataURL(p.imageBlob);
+          });
+        }catch(e){}
       }
       return out;
     }));
@@ -2664,8 +2671,8 @@ function importBackup(e){
           var p = Object.assign({},importedCatalog[i]);
           if(p.imageBase64){
             try{
-              var res = await fetch(p.imageBase64);
-              p.imageBlob = await res.blob();
+              var dataUrl = p.imageBase64.startsWith('data:') ? p.imageBase64 : 'data:image/jpeg;base64,'+p.imageBase64;
+              p.imageBlob = dataURLtoBlob(dataUrl);
             }catch(e2){}
             delete p.imageBase64;
           }
