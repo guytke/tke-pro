@@ -1595,7 +1595,7 @@ async function exportBackup(){
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function _resizeTextareas(root){(root||document).querySelectorAll('textarea').forEach(function(t){t.style.height='auto';t.style.height=t.scrollHeight+'px';});}
 document.addEventListener('input',function(e){if(e.target.tagName==='TEXTAREA'){e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}});
-function openModal(id){document.getElementById(id).classList.add('open');setTimeout(function(){_resizeTextareas(document.getElementById(id));},50);}
+function openModal(id){document.getElementById(id).classList.add('open');history.pushState({tke:true},'');setTimeout(function(){_resizeTextareas(document.getElementById(id));},50);}
 function closeModal(id){
   var overlay=document.getElementById(id);
   if(!overlay) return;
