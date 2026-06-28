@@ -272,7 +272,7 @@ if('serviceWorker' in navigator){
   pushState();
   window.addEventListener('popstate', function(){
     pushState();
-    var modalIds = ['form-modal','view-modal','param-form-modal','param-view-modal','mfr-form-modal','mfr-view-modal','page-image-modal','catalog-add-modal','catalog-detail-modal','part-form-modal'];
+    var modalIds = ['form-modal','view-modal','param-form-modal','param-view-modal','mfr-form-modal','mfr-view-modal','page-image-modal','catalog-add-modal','catalog-detail-modal','part-form-modal','pm-modal','learning-form-modal','learning-view-modal'];
     for(var i = modalIds.length-1; i >= 0; i--){
       var el = document.getElementById(modalIds[i]);
       if(el && el.classList.contains('open')){
@@ -978,40 +978,41 @@ if('serviceWorker' in navigator){
 <div class="overlay" id="learning-form-modal" onclick="if(event.target.id==='learning-form-modal')_lrnGuardClose()">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="modal-title" id="lrn-form-title">➕ פריט חדש</div>
+    <div style="position:relative;margin-bottom:14px">
+      <div class="modal-title" id="lrn-form-title">➕ פריט חדש</div>
+      <button type="button" onclick="_lrnGuardClose()" style="position:absolute;top:0;left:0;background:var(--bg3);border:1px solid var(--border);border-radius:8px;width:32px;height:32px;font-size:18px;color:var(--text2);cursor:pointer;line-height:1">×</button>
+    </div>
     <input type="hidden" id="lrn-edit-id">
-    <div class="form-row">
-      <div>
-        <label>מודל *</label>
-        <select id="lrn-model" oninput="_lrnDirty=true" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-family:Heebo,sans-serif;font-size:14px">
-          <option value="">בחר מודל</option>
-          <option>NICE3000</option><option>CMC4</option><option>CMC3</option>
-          <option>20.50</option><option>KONE</option><option>כללי</option>
-        </select>
-      </div>
-      <div>
-        <label>קטגוריה *</label>
-        <select id="lrn-category" oninput="_lrnDirty=true" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-family:Heebo,sans-serif;font-size:14px">
-          <option value="">בחר קטגוריה</option>
-          <option>כרטיסים</option><option>פיר</option><option>לחצנים</option>
-          <option>בקר</option><option>חייגן</option><option>כללי</option>
-        </select>
-      </div>
+    <div style="margin-bottom:12px">
+      <label>דגם מעלית *</label>
+      <div id="lrn-model-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px"></div>
     </div>
     <div style="margin-bottom:12px">
-      <label>כותרת *</label>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <label style="margin:0">קטגוריה *</label>
+        <div style="display:flex;gap:4px">
+          <button type="button" onclick="lrnAddCatPrompt()" style="background:transparent;border:1px solid var(--border);color:var(--text2);font-size:11px;cursor:pointer;padding:2px 8px;border-radius:6px;font-family:Heebo,sans-serif">+ קטגוריה</button>
+          <button type="button" onclick="lrnDeleteCatPrompt()" style="background:transparent;border:1px solid rgba(239,68,68,0.3);color:#f87171;font-size:11px;cursor:pointer;padding:2px 8px;border-radius:6px;font-family:Heebo,sans-serif">× מחק</button>
+        </div>
+      </div>
+      <select id="lrn-category" oninput="_lrnDirty=true" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-family:Heebo,sans-serif;font-size:14px">
+        <option value="">בחר קטגוריה</option>
+      </select>
+    </div>
+    <div style="margin-bottom:12px">
+      <label>כותרת מרכזית *</label>
       <input id="lrn-title" type="text" placeholder="כותרת הפריט" oninput="_lrnDirty=true" style="width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-family:Heebo,sans-serif;font-size:14px">
     </div>
     <div style="margin-bottom:12px">
-      <label>תיאור קצר</label>
-      <input id="lrn-desc" type="text" placeholder="שורה אחת — מופיעה בכרטיס" oninput="_lrnDirty=true" style="width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-family:Heebo,sans-serif;font-size:14px">
+      <label>מספר הפרמטר</label>
+      <input id="lrn-desc" type="text" placeholder="מספר פרמטר / זיהוי טכני" oninput="_lrnDirty=true" style="width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-family:Heebo,sans-serif;font-size:14px">
     </div>
     <div style="margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
         <label style="margin:0">מלל חופשי</label>
-        <button id="lrn-ai-btn" onclick="lrnRephrase()" style="background:var(--orange);color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif">✨ AI</button>
+        <button id="lrn-ai-btn" onclick="lrnRephrase()" style="background:var(--orange);color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:Heebo,sans-serif">✨ AI ניסוח מלל חופשי</button>
       </div>
-      <textarea id="lrn-text" rows="5" placeholder="תוכן מפורט, הוראות, הערות..." oninput="_lrnDirty=true" style="width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-family:Heebo,sans-serif;font-size:14px;resize:vertical;line-height:1.6"></textarea>
+      <textarea id="lrn-text" rows="6" placeholder="תוכן מפורט, הוראות, הערות..." oninput="_lrnDirty=true" style="width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-family:Heebo,sans-serif;font-size:14px;resize:vertical;line-height:1.6;overflow-y:auto;min-height:120px"></textarea>
     </div>
     <div style="margin-bottom:16px">
       <label>תמונות</label>
@@ -2918,8 +2919,15 @@ function deleteParamsScannedPage(id){
   showToast('🗑 נמחק');
 }
 
+// ─── ELEVATOR MODELS (shared across tabs) ─────────────
+var _ELV_MODELS_KEY = 'tke_elevator_models_v1';
+var _ELV_DEFAULT    = ['NICE3000','CMC4','CMC4+','CMC3','20.50','KONE','כללי'];
+function getElevatorModels(){ try{ var s=localStorage.getItem(_ELV_MODELS_KEY); return s?JSON.parse(s):_ELV_DEFAULT.slice(); }catch(e){ return _ELV_DEFAULT.slice(); } }
+function saveElevatorModels(arr){ localStorage.setItem(_ELV_MODELS_KEY,JSON.stringify(arr)); }
+function addElevatorModel(name){ var arr=getElevatorModels(); if(!name||arr.includes(name)) return false; arr.push(name); saveElevatorModels(arr); return true; }
+function deleteElevatorModel(name){ saveElevatorModels(getElevatorModels().filter(function(m){ return m!==name; })); }
+
 // ─── PARAMS MODULE ────────────────────────────────────
-var PM_MODELS = ['NICE3000','NICE900','CMC4+','CMC3','SJEC M300','PENTA-C','Orion','DITEC SPRINT EL38','20.50'];
 var _pmSelected = [];
 var _pmList = [];
 var _pmView = 'all';
@@ -3138,10 +3146,32 @@ function pmOpenEditScan(idx){
 
 function pmRenderChips(){
   var el=document.getElementById('pm-chips'); if(!el) return;
-  el.innerHTML=PM_MODELS.map(function(m){
+  var models=getElevatorModels();
+  el.innerHTML=models.map(function(m){
     var on=_pmSelected.includes(m);
-    return '<button onclick="pmToggleChip(\''+m.replace(/'/g,"\\'")+'\')" style="padding:4px 10px;border-radius:14px;border:1px solid '+(on?'rgba(59,130,246,0.5)':'var(--border)')+';background:'+(on?'rgba(59,130,246,0.15)':'var(--bg3)')+';color:'+(on?'#60a5fa':'var(--text2)')+';font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:'+(on?'700':'400')+'">'+esc(m)+'</button>';
-  }).join('');
+    var ms=m.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return '<span style="display:inline-flex;align-items:center;gap:0;margin:2px">'+
+      '<button type="button" onclick="pmToggleChip(\''+ms+'\')" style="padding:4px 9px;border-radius:14px 0 0 14px;border:1px solid '+(on?'rgba(59,130,246,0.5)':'var(--border)')+';border-left:none;background:'+(on?'rgba(59,130,246,0.15)':'var(--bg3)')+';color:'+(on?'#60a5fa':'var(--text2)')+';font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:'+(on?'700':'400')+'">'+esc(m)+'</button>'+
+      '<button type="button" onclick="pmDeleteModelChip(\''+ms+'\')" title="מחק דגם" style="padding:2px 6px;border-radius:0 14px 14px 0;border:1px solid '+(on?'rgba(59,130,246,0.5)':'var(--border)')+';background:'+(on?'rgba(59,130,246,0.15)':'var(--bg3)')+';color:#f87171;font-size:10px;cursor:pointer;line-height:1">×</button>'+
+    '</span>';
+  }).join('')+
+  '<button type="button" onclick="pmAddModelPrompt()" style="padding:4px 10px;border-radius:14px;border:1px dashed var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;margin:2px">+ דגם</button>';
+}
+
+function pmDeleteModelChip(m){
+  if(!confirm('למחוק את הדגם "'+m+'" מהרשימה?\nהפרמטרים הקיימים לא יימחקו.')) return;
+  deleteElevatorModel(m);
+  _pmSelected=_pmSelected.filter(function(x){ return x!==m; });
+  pmRenderChips();
+  showToast('✅ דגם הוסר');
+}
+
+function pmAddModelPrompt(){
+  var name=(prompt('שם הדגם החדש:','')||'').trim();
+  if(!name) return;
+  if(!addElevatorModel(name)){ showToast('⚠️ הדגם כבר קיים'); return; }
+  pmRenderChips();
+  showToast('✅ דגם נוסף');
 }
 
 function pmToggleChip(m){
@@ -3180,7 +3210,19 @@ async function pmSave(){
   });
   if(dup){
     var dupM=models.find(function(m){return (dup.models||[]).includes(m);});
-    showToast('⚠️ פרמטר '+code+' כבר קיים לדגם '+dupM); return;
+    var _buildP=function(useId){ return Object.assign({id:useId,createdAt:dup.createdAt||Date.now()},pData); };
+    _showConflictDialog(code, dupM,
+      function(){ // הוסף כחדש
+        var np=_buildP(Date.now().toString(36)+Math.random().toString(36).slice(2,5));
+        _pmIdbPut(np).then(function(){ pmClose(); pmRefresh(); showToast('✅ נוסף כחדש!'); }).catch(function(e){ showToast('❌ '+e.message); });
+      },
+      function(){ // החלף קיים
+        var rp=_buildP(dup.id);
+        _pmIdbPut(rp).then(function(){ pmClose(); pmRefresh(); showToast('✅ עודכן!'); }).catch(function(e){ showToast('❌ '+e.message); });
+      },
+      function(){} // ביטול
+    );
+    return;
   }
   var p=Object.assign({
     id:(document.getElementById('pm-edit-id').value)||Date.now().toString(36)+Math.random().toString(36).slice(2,5),
@@ -4930,29 +4972,99 @@ const LRN_D1_SAVE   = 'https://tke-proxy.guyshtaiger.workers.dev/learning/save';
 const LRN_D1_LIST   = 'https://tke-proxy.guyshtaiger.workers.dev/learning/list';
 const LRN_D1_DELETE = 'https://tke-proxy.guyshtaiger.workers.dev/learning/delete';
 
-const LRN_MODEL_COLORS = {'NICE3000':'#7F77DD','CMC4':'#4a9eff','CMC3':'#4caf50','20.50':'#FF9800','KONE':'#E91E63','כללי':'#888'};
-const LRN_CAT_ICONS    = {'כרטיסים':'🃏','פיר':'🏗️','לחצנים':'🔘','בקר':'🖥️','חייגן':'📟','כללי':'📋'};
+// Learning categories (dynamic)
+var _LRN_CATS_KEY  = 'tke_lrn_cats_v1';
+var _LRN_CATS_DEF  = ['כרטיסים','פיר','לחצנים','בקר','חייגן','כללי'];
+function getLrnCats(){ try{ var s=localStorage.getItem(_LRN_CATS_KEY); return s?JSON.parse(s):_LRN_CATS_DEF.slice(); }catch(e){ return _LRN_CATS_DEF.slice(); } }
+function saveLrnCats(arr){ localStorage.setItem(_LRN_CATS_KEY,JSON.stringify(arr)); }
+function addLrnCat(name){ var arr=getLrnCats(); if(!name||arr.includes(name)) return false; arr.push(name); saveLrnCats(arr); return true; }
+function deleteLrnCat(name){ saveLrnCats(getLrnCats().filter(function(c){ return c!==name; })); }
+
+var LRN_MODEL_COLORS = {'NICE3000':'#7F77DD','CMC4':'#4a9eff','CMC3':'#4caf50','20.50':'#FF9800','KONE':'#E91E63','כללי':'#888'};
+var LRN_CAT_ICONS    = {'כרטיסים':'🃏','פיר':'🏗️','לחצנים':'🔘','בקר':'🖥️','חייגן':'📟','כללי':'📋'};
 function _lrnColor(m){ return LRN_MODEL_COLORS[m]||'#888'; }
 function _lrnIcon(c){  return LRN_CAT_ICONS[c]||'📋'; }
+function _lrnModels(item){ return item.models||(item.model?[item.model]:[]); }
 
 function loadLearning(){ try{ return JSON.parse(localStorage.getItem(LRN_KEY))||[]; }catch(e){ return []; } }
 function saveLearning(d){ localStorage.setItem(LRN_KEY, JSON.stringify(d)); }
 
-var learningItems = loadLearning();
-var _lrnActiveModel = '';
-var _lrnActiveCat   = '';
-var _lrnImages      = [];
-var _lrnDirty       = false;
+var learningItems       = loadLearning();
+var _lrnActiveModel     = '';
+var _lrnActiveCat       = '';
+var _lrnImages          = [];
+var _lrnDirty           = false;
+var _lrnSelectedModels  = [];
+
+// ── Model chips in form ───────────────────────────────────
+function renderLrnModelChips(){
+  var el=document.getElementById('lrn-model-chips'); if(!el) return;
+  var models=getElevatorModels();
+  el.innerHTML=models.map(function(m){
+    var on=_lrnSelectedModels.includes(m);
+    var ms=m.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return '<span style="display:inline-flex;align-items:center;gap:0;margin:2px">'+
+      '<button type="button" onclick="lrnToggleModelChip(\''+ms+'\')" style="padding:5px 9px;border-radius:14px 0 0 14px;border:1px solid '+(on?'rgba(127,119,221,0.5)':'var(--border)')+';border-left:none;background:'+(on?'rgba(127,119,221,0.15)':'var(--bg3)')+';color:'+(on?'#7F77DD':'var(--text2)')+';font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:'+(on?'700':'400')+'">'+esc(m)+'</button>'+
+      '<button type="button" onclick="lrnDeleteModelChip(\''+ms+'\')" title="מחק דגם" style="padding:3px 6px;border-radius:0 14px 14px 0;border:1px solid '+(on?'rgba(127,119,221,0.5)':'var(--border)')+';background:'+(on?'rgba(127,119,221,0.15)':'var(--bg3)')+';color:#f87171;font-size:10px;cursor:pointer;line-height:1">×</button>'+
+    '</span>';
+  }).join('')+
+  '<button type="button" onclick="lrnAddModelPrompt()" style="padding:5px 10px;border-radius:14px;border:1px dashed var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;margin:2px">+ דגם</button>';
+}
+function lrnToggleModelChip(m){
+  if(_lrnSelectedModels.includes(m)) _lrnSelectedModels=_lrnSelectedModels.filter(function(x){return x!==m;});
+  else _lrnSelectedModels.push(m);
+  renderLrnModelChips(); _lrnDirty=true;
+}
+function lrnDeleteModelChip(m){
+  if(!confirm('למחוק את הדגם "'+m+'" מהרשימה?\nהפריטים הקיימים לא יימחקו.')) return;
+  deleteElevatorModel(m);
+  _lrnSelectedModels=_lrnSelectedModels.filter(function(x){return x!==m;});
+  renderLrnModelChips(); showToast('✅ דגם הוסר');
+}
+function lrnAddModelPrompt(){
+  var name=(prompt('שם הדגם החדש:','')||'').trim();
+  if(!name) return;
+  if(!addElevatorModel(name)){ showToast('⚠️ הדגם כבר קיים'); return; }
+  renderLrnModelChips(); showToast('✅ דגם נוסף');
+}
+
+// ── Category select (dynamic) ─────────────────────────────
+function renderLrnCatSelect(){
+  var sel=document.getElementById('lrn-category'); if(!sel) return;
+  var cur=sel.value;
+  var cats=getLrnCats();
+  sel.innerHTML='<option value="">בחר קטגוריה</option>'+cats.map(function(c){
+    return '<option'+(c===cur?' selected':'')+'>'+esc(c)+'</option>';
+  }).join('');
+}
+function lrnAddCatPrompt(){
+  var name=(prompt('שם הקטגוריה החדשה:','')||'').trim();
+  if(!name) return;
+  if(!addLrnCat(name)){ showToast('⚠️ קטגוריה כבר קיימת'); return; }
+  renderLrnCatSelect();
+  var sel=document.getElementById('lrn-category'); if(sel) sel.value=name;
+  showToast('✅ קטגוריה נוספה');
+}
+function lrnDeleteCatPrompt(){
+  var cats=getLrnCats();
+  var name=(prompt('מחיקת קטגוריה — הקלד את שמה:\n'+cats.join(', '),'')||'').trim();
+  if(!name) return;
+  if(!cats.includes(name)){ showToast('⚠️ קטגוריה לא נמצאה'); return; }
+  if(!confirm('למחוק "'+name+'"?\nהפריטים לא יימחקו.')) return;
+  deleteLrnCat(name);
+  renderLrnCatSelect(); showToast('✅ קטגוריה הוסרה');
+}
 
 // ── Render ───────────────────────────────────────────────
 function renderLearning(){
   var q     = (document.getElementById('lrn-search').value||'').toLowerCase().trim();
   var words = q ? q.split(/\s+/).filter(Boolean) : [];
   var filtered = learningItems.filter(function(item){
-    if(_lrnActiveModel && item.model !== _lrnActiveModel) return false;
-    if(_lrnActiveCat   && item.category !== _lrnActiveCat)   return false;
+    var ms=_lrnModels(item);
+    if(_lrnActiveModel && !ms.includes(_lrnActiveModel)) return false;
+    if(_lrnActiveCat   && item.category !== _lrnActiveCat) return false;
     if(!words.length) return true;
-    var txt = [item.model,item.category,item.title,item.desc,item.text].filter(Boolean).join(' ').toLowerCase();
+    var txt=[ms.join(' '),item.category,item.title,item.desc,item.text].filter(Boolean).join(' ').toLowerCase();
     return words.every(function(w){ return txt.includes(w); });
   });
   document.getElementById('lrn-count').textContent = filtered.length + ' פריטים';
@@ -4962,21 +5074,23 @@ function renderLearning(){
     return;
   }
   list.innerHTML = filtered.map(function(item, i){
-    var color  = _lrnColor(item.model);
-    var icon   = _lrnIcon(item.category);
-    var num    = String(i+1).padStart(2,'0');
+    var ms    = _lrnModels(item);
+    var color = _lrnColor(ms[0]||'');
+    var icon  = _lrnIcon(item.category);
+    var num   = String(i+1).padStart(2,'0');
     var hasImg = item.images && item.images.length;
     var hasTxt = item.text && item.text.trim();
+    var modelBadges = ms.map(function(m){ return '<span style="font-size:11px;color:'+_lrnColor(m)+';font-weight:700">'+esc(m)+'</span>'; }).join('<span style="color:var(--text3);font-size:9px;margin:0 1px">·</span>');
     return '<div style="position:relative;background:var(--bg2);border-radius:12px;margin-bottom:10px;overflow:hidden;border:1px solid var(--border);display:flex;cursor:pointer" onclick="viewLearningItem(\''+item.id+'\')">'+
-      '<div style="width:4px;background:'+color+';flex-shrink:0;border-radius:0 0 0 0"></div>'+
+      '<div style="width:4px;background:'+color+';flex-shrink:0"></div>'+
       '<div style="position:absolute;left:6px;top:50%;transform:translateY(-50%);font-size:50px;font-weight:900;color:rgba(128,128,128,0.06);pointer-events:none;line-height:1;user-select:none;font-family:monospace">'+num+'</div>'+
       '<div style="flex:1;padding:12px 14px 10px;direction:rtl;min-width:0">'+
-        '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;flex-wrap:wrap">'+
+        '<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;flex-wrap:wrap">'+
           '<span style="font-size:15px">'+icon+'</span>'+
-          '<span style="font-size:11px;color:'+color+';font-weight:700">'+esc(item.model||'')+'</span>'+
+          modelBadges+
           '<span style="font-size:10px;color:var(--text2);background:var(--bg3);border-radius:5px;padding:1px 6px">'+esc(item.category||'')+'</span>'+
           (hasImg?'<span style="font-size:10px;background:rgba(74,158,255,0.13);color:#4a9eff;border-radius:5px;padding:1px 6px">📷 '+item.images.length+'</span>':'')+
-          (hasTxt?'<span style="font-size:10px;background:rgba(76,175,80,0.13);color:#4caf50;border-radius:5px;padding:1px 6px">📄 מסמך</span>':'')+
+          (hasTxt?'<span style="font-size:10px;background:rgba(76,175,80,0.13);color:#4caf50;border-radius:5px;padding:1px 6px">📄</span>':'')+
         '</div>'+
         '<div style="font-weight:600;color:var(--text);font-size:14px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(item.title||'')+'</div>'+
         (item.desc?'<div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(item.desc)+'</div>':'')+
@@ -4990,7 +5104,7 @@ function renderLearning(){
 }
 
 function updateLearningFilters(){
-  var models = [...new Set(learningItems.map(function(x){ return x.model; }).filter(Boolean))].sort();
+  var models = [...new Set(learningItems.flatMap(function(x){ return _lrnModels(x); }))].sort();
   var cats   = [...new Set(learningItems.map(function(x){ return x.category; }).filter(Boolean))].sort();
   var mt = document.getElementById('lrn-model-tabs');
   if(!mt) return;
@@ -5016,22 +5130,31 @@ function refreshLearning(){ updateLearningFilters(); renderLearning(); }
 function viewLearningItem(id){
   var item = learningItems.find(function(x){ return x.id===id; });
   if(!item) return;
-  var color = _lrnColor(item.model);
+  var ms    = _lrnModels(item);
+  var color = _lrnColor(ms[0]||'');
   var icon  = _lrnIcon(item.category);
   document.getElementById('lrn-view-content').innerHTML =
-    '<div style="border-right:3px solid '+color+';padding-right:10px;margin-bottom:14px">'+
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">'+
-        '<span>'+icon+'</span>'+
-        '<span style="color:'+color+';font-weight:700;font-size:12px">'+esc(item.model||'')+'</span>'+
-        '<span style="background:var(--bg3);border-radius:5px;padding:1px 7px;font-size:11px;color:var(--text2)">'+esc(item.category||'')+'</span>'+
+    '<div style="position:sticky;top:0;background:var(--bg2);z-index:1;padding-bottom:10px;margin-bottom:12px;border-bottom:1px solid var(--border)">'+
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;flex-wrap:wrap">'+
+            '<span>'+icon+'</span>'+
+            ms.map(function(m){ return '<span style="color:'+_lrnColor(m)+';font-weight:700;font-size:12px">'+esc(m)+'</span>'; }).join('<span style="color:var(--text3);font-size:9px;margin:0 2px">·</span>')+
+            '<span style="background:var(--bg3);border-radius:5px;padding:1px 7px;font-size:11px;color:var(--text2)">'+esc(item.category||'')+'</span>'+
+          '</div>'+
+          '<div style="font-size:17px;font-weight:700;color:var(--text);line-height:1.3">'+esc(item.title||'')+'</div>'+
+          (item.desc?'<div style="font-size:12px;color:var(--text2);margin-top:3px">'+esc(item.desc)+'</div>':'')+
+        '</div>'+
+        '<button onclick="closeModal(\'learning-view-modal\')" style="flex-shrink:0;background:var(--bg3);border:1px solid var(--border);border-radius:8px;width:32px;height:32px;font-size:18px;color:var(--text2);cursor:pointer;line-height:1">×</button>'+
       '</div>'+
-      '<div style="font-size:17px;font-weight:700;color:var(--text)">'+esc(item.title||'')+'</div>'+
-      (item.desc?'<div style="font-size:13px;color:var(--text2);margin-top:3px">'+esc(item.desc)+'</div>':'')+
     '</div>'+
-    (item.text?'<div style="white-space:pre-wrap;font-size:14px;color:var(--text);line-height:1.7;margin-bottom:14px;direction:rtl">'+esc(item.text)+'</div>':'')+
+    (item.text
+      ? '<div style="white-space:pre-wrap;font-size:15px;color:var(--text);line-height:1.8;margin-bottom:16px;direction:rtl">'+esc(item.text)+'</div>'
+      : '<div style="color:var(--text3);font-size:14px;text-align:center;padding:20px 0">אין מלל חופשי לפריט זה</div>')+
     (item.images&&item.images.length?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'+item.images.map(function(src){
       return '<img src="'+src+'" style="max-width:100%;max-height:220px;border-radius:8px;cursor:pointer;object-fit:contain" onclick="openPageImageModal(this.src)">';
     }).join('')+'</div>':'')+
+    (ms.length?'<div style="margin-bottom:12px;padding:10px 12px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--text2)">📌 שייך לדגמי מעליות: <span style="color:var(--text);font-weight:600">'+ms.map(esc).join(', ')+'</span></div>':'')+
     '<div style="display:flex;gap:8px;margin-top:4px">'+
       '<button onclick="openLearningEdit(\''+id+'\');closeModal(\'learning-view-modal\')" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px;font-size:14px;cursor:pointer;color:var(--text);font-family:Heebo,sans-serif">✏️ ערוך</button>'+
       '<button onclick="deleteLearningItem(\''+id+'\');closeModal(\'learning-view-modal\')" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:10px;padding:11px;font-size:14px;cursor:pointer;color:#ef4444;font-family:Heebo,sans-serif">🗑</button>'+
@@ -5043,10 +5166,11 @@ function viewLearningItem(id){
 function openLearningAdd(){
   document.getElementById('lrn-form-title').textContent = '➕ פריט חדש';
   document.getElementById('lrn-edit-id').value = '';
-  ['lrn-model','lrn-category','lrn-title','lrn-desc','lrn-text'].forEach(function(id){
+  ['lrn-category','lrn-title','lrn-desc','lrn-text'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
   });
-  _lrnImages=[]; _lrnRenderImages(); _lrnDirty=false;
+  _lrnSelectedModels=[]; _lrnImages=[]; _lrnRenderImages(); _lrnDirty=false;
+  renderLrnModelChips(); renderLrnCatSelect();
   openModal('learning-form-modal');
 }
 
@@ -5054,14 +5178,15 @@ function openLearningEdit(id){
   var item = learningItems.find(function(x){ return x.id===id; });
   if(!item) return;
   document.getElementById('lrn-form-title').textContent = '✏️ עריכת פריט';
-  document.getElementById('lrn-edit-id').value    = id;
-  document.getElementById('lrn-model').value      = item.model||'';
-  document.getElementById('lrn-category').value   = item.category||'';
-  document.getElementById('lrn-title').value      = item.title||'';
-  document.getElementById('lrn-desc').value       = item.desc||'';
-  document.getElementById('lrn-text').value       = item.text||'';
+  document.getElementById('lrn-edit-id').value  = id;
+  document.getElementById('lrn-title').value    = item.title||'';
+  document.getElementById('lrn-desc').value     = item.desc||'';
+  document.getElementById('lrn-text').value     = item.text||'';
+  _lrnSelectedModels = _lrnModels(item).slice();
   _lrnImages = item.images ? [...item.images] : [];
   _lrnRenderImages(); _lrnDirty=false;
+  renderLrnModelChips(); renderLrnCatSelect();
+  setTimeout(function(){ var s=document.getElementById('lrn-category'); if(s) s.value=item.category||''; },0);
   openModal('learning-form-modal');
 }
 
@@ -5107,28 +5232,30 @@ async function lrnRephrase(){
   }catch(e){
     showToast(e.message==='no_key'?'⚠️ נא להגדיר מפתח API':'שגיאת חיבור לשרת');
   }finally{
-    btn.disabled=false; btn.textContent='✨ AI';
+    btn.disabled=false; btn.textContent='✨ AI ניסוח מלל חופשי';
   }
 }
 
 function saveLearningItem(){
-  var model    = document.getElementById('lrn-model').value;
+  var models   = _lrnSelectedModels.slice();
   var category = document.getElementById('lrn-category').value;
   var title    = document.getElementById('lrn-title').value.trim();
-  if(!model||!category||!title){ showToast('⚠️ נא למלא מודל, קטגוריה וכותרת'); return; }
+  if(!models.length||!category||!title){ showToast('⚠️ נא למלא דגם מעלית, קטגוריה וכותרת'); return; }
   var editId = document.getElementById('lrn-edit-id').value;
   var id     = editId || Date.now().toString();
   if(!editId){
-    var dup = learningItems.find(function(x){ return x.model===model && x.category===category && x.title===title; });
+    var dup = learningItems.find(function(x){
+      return _lrnModels(x).some(function(m){ return models.includes(m); }) && x.category===category && x.title===title;
+    });
     if(dup){
-      _showConflictDialog(title, model+' / '+category,
+      _showConflictDialog(title, models.join(', ')+' / '+category,
         function(){
-          var item=_lrnBuild(id,model,category,title);
+          var item=_lrnBuild(id,models,category,title);
           learningItems.unshift(item); saveLearning(learningItems); _lrnSyncToD1(item);
           closeModal('learning-form-modal'); refreshLearning(); showToast('✅ נוסף!'); _lrnDirty=false;
         },
         function(){
-          var item=_lrnBuild(dup.id,model,category,title);
+          var item=_lrnBuild(dup.id,models,category,title);
           var idx=learningItems.findIndex(function(x){ return x.id===dup.id; });
           if(idx>=0) learningItems[idx]=item; saveLearning(learningItems); _lrnSyncToD1(item);
           closeModal('learning-form-modal'); refreshLearning(); showToast('✅ עודכן!'); _lrnDirty=false;
@@ -5138,15 +5265,15 @@ function saveLearningItem(){
       return;
     }
   }
-  var item=_lrnBuild(id,model,category,title);
+  var item=_lrnBuild(id,models,category,title);
   var idx=learningItems.findIndex(function(x){ return x.id===id; });
   if(idx>=0) learningItems[idx]=item; else learningItems.unshift(item);
   saveLearning(learningItems); _lrnSyncToD1(item);
   closeModal('learning-form-modal'); refreshLearning(); showToast('✅ נשמר!'); _lrnDirty=false;
 }
 
-function _lrnBuild(id,model,category,title){
-  return { id:id, model:model, category:category, title:title,
+function _lrnBuild(id,models,category,title){
+  return { id:id, models:models, category:category, title:title,
     desc:  document.getElementById('lrn-desc').value.trim(),
     text:  document.getElementById('lrn-text').value.trim(),
     images:[..._lrnImages],
