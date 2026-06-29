@@ -4365,7 +4365,7 @@ async function catalogAIIdentify(){
   res.style.display='none'; res.innerHTML='';
   try{
     var b64=await blobToBase64(_catalogImgBlob);
-    var sys='אתה מזהה חלקי חילוף של מעליות. נתח את התמונה וחלץ:\n- שם החלק (קצר ומדויק)\n- מק"ט/P/N שמודפס על התווית או המעגל (OCR — זה הכי חשוב)\n\nהחזר JSON בלבד, ללא markdown:\n{"name":"","sku":""}\n\nאם לא רואים מק"ט — השאר sku ריק.\nאל תנחש מק"ט שלא מופיע בבירור בתמונה.';
+    var sys='אתה מזהה חלקי חילוף של מעליות TKE. נתח את התמונה וחלץ:\n- שם החלק המלא כולל מספר KM שלו (לדוגמה: "Relay KM 12345")\n- מק"ט: חפש מספר בעל 9 ספרות בלבד — אם אין מספר כזה השאר ריק\n\nהחזר JSON בלבד, ללא markdown:\n{"name":"","sku":""}\n\nחוקים מחייבים:\n- name = שם החלק המלא + מספר KM בלבד\n- sku = מספר בעל 9 ספרות בלבד, ללא אותיות, ללא רווחים\n- אל תמציא מידע שלא מופיע בתמונה';
     var r=await fetch('https://tke-proxy.guyshtaiger.workers.dev',{method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
       body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:500,system:sys,
