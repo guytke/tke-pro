@@ -931,7 +931,10 @@ if('serviceWorker' in navigator){
 
     <!-- Category -->
     <div style="margin-bottom:12px">
-      <label class="cl-label" style="margin-bottom:6px">קטגוריית רכיב</label>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <label class="cl-label" style="margin:0">קטגוריית רכיב</label>
+        <input type="text" id="cat-chips-search" placeholder="🔍 חפש קטגוריה..." oninput="filterCatalogCatChips(this.value)" style="border:1px solid #E8E2EC;border-radius:8px;padding:4px 10px;font-size:12px;font-family:Heebo,sans-serif;outline:none;color:#2A1F33;width:160px">
+      </div>
       <div id="catalog-cat-chips-add" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
       <div style="display:flex;gap:6px">
         <input id="catalog-new-cat" type="text" class="cl-input" style="flex:1;width:auto" placeholder="קטגוריה חדשה...">
@@ -4470,7 +4473,14 @@ function renderCatalogCatChipsAdd(){
     var cs=c.replace(/'/g,"\\'");
     return '<button onmousedown="startCatLongPress(event,\''+cs+'\')" onmouseup="cancelCatLongPress()" onmouseleave="cancelCatLongPress()" ontouchstart="startCatLongPress(event,\''+cs+'\')" ontouchend="cancelCatLongPress()" onclick="if(_catLpFired){_catLpFired=false;return;}selectCatalogCat(\''+cs+'\')" style="background:'+bg+';color:'+col+';border:1px solid '+bc+';border-radius:20px;padding:5px 12px;font-size:12px;font-family:Heebo,sans-serif;cursor:pointer">'+c+'</button>';
   }).join('');
+  var q=document.getElementById('cat-chips-search'); if(q&&q.value) filterCatalogCatChips(q.value);
 }
+window.filterCatalogCatChips = function(q){
+  var btns = document.querySelectorAll('#catalog-cat-chips-add button');
+  btns.forEach(function(btn){
+    btn.style.display = !q || btn.textContent.includes(q) ? '' : 'none';
+  });
+};
 function selectCatalogCat(c){
   _catalogSelectedCat=(_catalogSelectedCat===c)?null:c;
   renderCatalogCatChipsAdd();
