@@ -272,7 +272,7 @@ if('serviceWorker' in navigator){
   pushState();
   window.addEventListener('popstate', function(){
     pushState();
-    var modalIds = ['form-modal','view-modal','param-form-modal','param-view-modal','mfr-form-modal','mfr-view-modal','page-image-modal','catalog-add-modal','catalog-detail-modal','part-form-modal','pm-modal','learning-form-modal','learning-view-modal'];
+    var modalIds = ['form-modal','view-modal','param-form-modal','param-view-modal','mfr-form-modal','mfr-view-modal','page-image-modal','catalog-add-modal','catalog-detail-modal','part-form-modal','pm-modal','pm-paste-modal','pm-scan-modal','learning-form-modal','learning-view-modal'];
     for(var i = modalIds.length-1; i >= 0; i--){
       var el = document.getElementById(modalIds[i]);
       if(el && el.classList.contains('open')){
