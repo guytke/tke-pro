@@ -271,27 +271,20 @@ if('serviceWorker' in navigator){
   function pushState(){ history.pushState({tke:true}, ''); }
   pushState();
   window.addEventListener('popstate', function(){
-    pushState();
     var fullImg = document.querySelector('.img-fullscreen');
-    if(fullImg){ fullImg.remove(); return; }
+    if(fullImg){ fullImg.remove(); pushState(); return; }
     var lb = document.querySelector('.catalog-lightbox');
-    if(lb){ lb.remove(); return; }
+    if(lb){ lb.remove(); pushState(); return; }
     var pmDetail = document.getElementById('_pm_detail_modal');
     if(pmDetail && pmDetail.style.display !== 'none'){
-      pmDetail.style.display = 'none';
-      switchMainTab('faults');
-      return;
+      pmDetail.style.display = 'none'; pushState(); return;
     }
     var modalIds = ['form-modal','view-modal','param-form-modal','param-view-modal','mfr-form-modal','mfr-view-modal','page-image-modal','catalog-add-modal','catalog-detail-modal','part-form-modal','pm-modal','pm-paste-modal','pm-scan-modal','learning-form-modal','learning-view-modal'];
     for(var i = modalIds.length-1; i >= 0; i--){
       var el = document.getElementById(modalIds[i]);
       if(el && el.classList.contains('open')){
         el.classList.remove('open');
-        var stillOpen = modalIds.some(function(id){
-          var m = document.getElementById(id);
-          return m && m.classList.contains('open');
-        });
-        if(!stillOpen) switchMainTab('faults');
+        pushState();
         return;
       }
     }
