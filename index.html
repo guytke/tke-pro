@@ -3065,9 +3065,15 @@ function pmOpenDetail(id){
       (p.defaultValue?'<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg2);border-radius:8px;padding:10px 14px"><span style="font-size:12px;color:var(--text3)">ערך יצרן</span><span style="font-size:14px;font-weight:700;color:var(--text);font-family:monospace">'+esc(p.defaultValue)+'</span></div>':'')+
       (p.range?'<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg2);border-radius:8px;padding:10px 14px"><span style="font-size:12px;color:var(--text3)">טווח ערכים</span><span style="font-size:13px;font-weight:600;color:var(--text);font-family:monospace">'+esc(p.range)+'</span></div>':'')+
       (p.notes?'<div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">גבולות / הערות</div><div style="font-size:13px;color:var(--text2);line-height:1.6;white-space:pre-wrap">'+esc(p.notes)+'</div></div>':'')+
-      (p.image?'<div><div style="font-size:10px;color:var(--text3);margin-bottom:6px">📸 תמונה</div><div class="img-previews"><div class="img-thumb-wrap"><img class="img-thumb" src="'+URL.createObjectURL(p.image)+'" onclick="showFullImg(this.src)"></div></div></div>':'')+
     '</div>'+
   '</div>';
+  if(p.image){
+    var imgUrl=URL.createObjectURL(p.image);
+    var imgWrap=document.createElement('div');
+    imgWrap.innerHTML='<div style="font-size:10px;color:var(--text3);margin-bottom:6px">📸 תמונה</div><div class="img-previews"><div class="img-thumb-wrap"><img class="img-thumb" src="'+imgUrl+'"></div></div>';
+    imgWrap.querySelector('img').onclick=function(){ showFullImg(imgUrl); };
+    el.querySelector('div > div:last-child').appendChild(imgWrap);
+  }
   el.onclick=function(e){ if(e.target===el) pmCloseDetail(); };
   history.pushState({tke:true},'');
 }
