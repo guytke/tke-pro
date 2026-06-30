@@ -289,6 +289,13 @@ if('serviceWorker' in navigator){
         return;
       }
     }
+    // אם אין שום דבר פתוח — חזור לדף הבית
+    var anyOpen = false;
+    for(var j = modalIds.length-1; j >= 0; j--){
+      var el2 = document.getElementById(modalIds[j]);
+      if(el2 && el2.classList.contains('open')){ anyOpen = true; break; }
+    }
+    if(!anyOpen){ switchMainTab('faults'); return; }
   });
 })();
 </script>
