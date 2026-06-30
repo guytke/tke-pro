@@ -279,6 +279,7 @@ if('serviceWorker' in navigator){
     var pmDetail = document.getElementById('_pm_detail_modal');
     if(pmDetail && pmDetail.style.display !== 'none'){
       pmDetail.style.display = 'none';
+      switchMainTab('faults');
       return;
     }
     var modalIds = ['form-modal','view-modal','param-form-modal','param-view-modal','mfr-form-modal','mfr-view-modal','page-image-modal','catalog-add-modal','catalog-detail-modal','part-form-modal','pm-modal','pm-paste-modal','pm-scan-modal','learning-form-modal','learning-view-modal'];
