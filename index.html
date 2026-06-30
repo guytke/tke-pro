@@ -1688,6 +1688,19 @@ function showFullImg(src){
   dlg.appendChild(closeBtn);
   dlg.appendChild(img);
   document.body.appendChild(dlg);
+  // hide any underlying fixed modal so touch events reach dlg
+  var _hiddenModal = null;
+  var _pmDetail = document.getElementById('_pm_detail_modal');
+  if(_pmDetail && _pmDetail.style.display !== 'none'){
+    _hiddenModal = _pmDetail;
+    _pmDetail.style.visibility = 'hidden';
+  }
+  var _origRemove = dlg.remove.bind(dlg);
+  dlg.remove = function(){
+    if(_hiddenModal) _hiddenModal.style.visibility = '';
+    _origRemove();
+  };
+  closeBtn.onclick = function(){ dlg.remove(); };
   // pinch-to-zoom + pan
   var scale=1,lastScale=1,startDist=0,panX=0,panY=0,lastPanX=0,lastPanY=0,isDragging=false,dragStart={x:0,y:0};
   function dist(t){ return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY); }
