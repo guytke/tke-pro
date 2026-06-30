@@ -272,6 +272,8 @@ if('serviceWorker' in navigator){
   pushState();
   window.addEventListener('popstate', function(){
     pushState();
+    var fullImg = document.querySelector('.img-fullscreen');
+    if(fullImg){ fullImg.remove(); return; }
     var lb = document.querySelector('.catalog-lightbox');
     if(lb){ lb.remove(); return; }
     var pmDetail = document.getElementById('_pm_detail_modal');
