@@ -1673,14 +1673,36 @@ function removeFormImg(i){
 }
 
 function showFullImg(src){
-  // src can be index (from form) or actual src string (from view)
   const actual = (typeof src === 'number' || !isNaN(src)) ? formImages[parseInt(src)] : src;
   if(!actual) return;
-  const div = document.createElement('div');
-  div.className = 'img-fullscreen';
-  div.innerHTML = '<button class="img-fullscreen-close" onclick="this.parentElement.remove()">×</button><img src="'+actual+'">';
-  div.onclick = function(e){ if(e.target===div) div.remove(); };
-  document.body.appendChild(div);
+  const dlg = document.createElement('div');
+  dlg.className = 'img-fullscreen';
+  dlg.style.touchAction = 'none';
+  const img = document.createElement('img');
+  img.src = actual;
+  img.style.cssText = 'max-width:94vw;max-height:88vh;border-radius:10px;object-fit:contain;touch-action:none;user-select:none;transform-origin:center center;transition:transform 0.05s';
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'img-fullscreen-close';
+  closeBtn.textContent = '×';
+  closeBtn.onclick = function(){ dlg.remove(); };
+  dlg.appendChild(closeBtn);
+  dlg.appendChild(img);
+  document.body.appendChild(dlg);
+  // pinch-to-zoom + pan
+  var scale=1,lastScale=1,startDist=0,panX=0,panY=0,lastPanX=0,lastPanY=0,isDragging=false,dragStart={x:0,y:0};
+  function dist(t){ return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY); }
+  function apply(){ img.style.transform='translate('+panX+'px,'+panY+'px) scale('+scale+')'; }
+  dlg.addEventListener('touchstart',function(e){
+    if(e.touches.length===2){ e.preventDefault(); startDist=dist(e.touches); lastScale=scale; lastPanX=panX; lastPanY=panY; isDragging=false; }
+    else if(e.touches.length===1&&scale>1){ e.preventDefault(); isDragging=true; dragStart={x:e.touches[0].clientX-panX,y:e.touches[0].clientY-panY}; }
+  },{passive:false});
+  dlg.addEventListener('touchmove',function(e){
+    if(e.touches.length===2){ e.preventDefault(); scale=Math.min(5,Math.max(1,lastScale*(dist(e.touches)/startDist))); apply(); }
+    else if(e.touches.length===1&&isDragging){ e.preventDefault(); panX=e.touches[0].clientX-dragStart.x; panY=e.touches[0].clientY-dragStart.y; apply(); }
+  },{passive:false});
+  dlg.addEventListener('touchend',function(e){ if(e.touches.length<2) isDragging=false; if(scale<=1){scale=1;panX=0;panY=0;apply();} });
+  dlg.addEventListener('click',function(e){ if(e.target===dlg) dlg.remove(); });
+  history.pushState({tke:true},'');
 }
 
 
