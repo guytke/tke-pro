@@ -272,6 +272,8 @@ if('serviceWorker' in navigator){
   pushState();
   window.addEventListener('popstate', function(){
     pushState();
+    var lb = document.querySelector('.catalog-lightbox');
+    if(lb){ lb.remove(); return; }
     var pmDetail = document.getElementById('_pm_detail_modal');
     if(pmDetail && pmDetail.style.display !== 'none'){
       pmDetail.style.display = 'none';
@@ -4261,6 +4263,7 @@ function confirmCloseCatalogAdd(){
 // ── Catalog lightbox ────────────────────────────────────
 function openCatalogLightbox(url){
   var dlg=document.createElement('div');
+  dlg.className='catalog-lightbox';
   dlg.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none';
   var img=document.createElement('img');
   img.src=url;
@@ -4310,6 +4313,7 @@ function openCatalogLightbox(url){
     if(scale<=1){ scale=1; panX=0; panY=0; applyTransform(); }
   });
   dlg.addEventListener('click',function(e){ if(e.target===dlg) dlg.remove(); });
+  history.pushState({tke:true},'');
 }
 // ── Add form ───────────────────────────────────────────
 function clearCatalogImage(){
