@@ -3138,7 +3138,20 @@ function pmOpenEditIdb(id){
   document.getElementById('pm-range').value=p.range||'';
   document.getElementById('pm-default').value=p.defaultValue||'';
   document.getElementById('pm-notes').value=p.notes||'';
-  pmClearImage(); pmRenderChips(); openModal('pm-modal');
+  pmClearImage();
+  if(p.image){
+    _pmImageBlob=p.image;
+    var thumb=document.getElementById('pm-img-thumb');
+    var prev=document.getElementById('pm-img-preview');
+    if(thumb){
+      var objUrl=URL.createObjectURL(p.image);
+      thumb.src=objUrl;
+      thumb.style.cursor='pointer';
+      thumb.onclick=function(){ showFullImg(objUrl); };
+    }
+    if(prev) prev.style.display='inline-block';
+  }
+  pmRenderChips(); openModal('pm-modal');
 }
 
 function pmOpenEditScan(idx){
