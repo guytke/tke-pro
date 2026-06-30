@@ -4664,7 +4664,7 @@ async function editCatalogPart(id){
   }
   document.getElementById('catalog-model-picker').style.display='none';
   renderCatalogCatChipsAdd(); renderSelectedModels(); buildModelPicker();
-  document.getElementById('catalog-add-modal').classList.add('open');
+  openModal('catalog-add-modal');
 }
 
 async function deleteCatalogPart(id){
