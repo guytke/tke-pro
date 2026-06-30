@@ -1033,7 +1033,7 @@ if('serviceWorker' in navigator){
       <div id="lrn-img-preview" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:8px"></div>
     </div>
     <div style="display:flex;gap:10px">
-      <button onclick="saveLearningItem()" style="flex:1;background:var(--orange);color:#fff;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif">💾 שמור</button>
+      <button id="lrn-save-btn" onclick="saveLearningItem()" style="flex:1;background:var(--orange);color:#fff;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif">💾 שמור</button>
       <button onclick="_lrnGuardClose()" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:13px;font-size:15px;cursor:pointer;color:var(--text2);font-family:Heebo,sans-serif">ביטול</button>
     </div>
   </div>
@@ -5171,9 +5171,13 @@ function viewLearningItem(id){
     (item.text
       ? '<div style="white-space:pre-wrap;font-size:15px;color:var(--text);line-height:1.8;margin-bottom:16px;direction:rtl">'+esc(item.text)+'</div>'
       : '<div style="color:var(--text3);font-size:14px;text-align:center;padding:20px 0">אין מלל חופשי לפריט זה</div>')+
-    (item.images&&item.images.length?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'+item.images.map(function(src){
-      return '<img src="'+src+'" style="max-width:100%;max-height:220px;border-radius:8px;cursor:pointer;object-fit:contain" onclick="openPageImageModal(this.src)">';
-    }).join('')+'</div>':'')+
+    (item.images&&item.images.length
+      ? '<div style="margin-bottom:14px"><div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:600">📷 תמונות ('+item.images.length+')</div>'+
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px">'+
+        item.images.map(function(src){
+          return '<img src="'+src+'" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;cursor:pointer;border:1px solid var(--border)" onclick="openPageImageModal(this.src)">';
+        }).join('')+'</div></div>'
+      : '')+
     (ms.length?'<div style="margin-bottom:12px;padding:10px 12px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--text2)">📌 שייך לדגמי מעליות: <span style="color:var(--text);font-weight:600">'+ms.map(esc).join(', ')+'</span></div>':'')+
     '<div style="display:flex;gap:8px;margin-top:4px">'+
       '<button onclick="openLearningEdit(\''+id+'\');closeModal(\'learning-view-modal\')" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px;font-size:14px;cursor:pointer;color:var(--text);font-family:Heebo,sans-serif">✏️ ערוך</button>'+
@@ -5218,23 +5222,42 @@ function _lrnGuardClose(){
 
 function _lrnRenderImages(){
   var wrap=document.getElementById('lrn-img-preview'); if(!wrap) return;
-  wrap.innerHTML=_lrnImages.map(function(src,i){
-    return '<div style="position:relative;display:inline-block">'+
-      '<img src="'+src+'" style="width:72px;height:72px;object-fit:cover;border-radius:8px;margin:2px">'+
-      '<button onclick="_lrnRemoveImg('+i+')" style="position:absolute;top:0;right:0;background:#ef4444;color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:1;padding:0">×</button>'+
-    '</div>';
-  }).join('');
+  wrap.innerHTML='';
+  _lrnImages.forEach(function(src,i){
+    var d=document.createElement('div');
+    d.className='img-thumb-wrap';
+    var img=document.createElement('img');
+    img.className='img-thumb';
+    img.src=src;
+    img.onclick=function(){ showFullImg(src); };
+    var btn=document.createElement('button');
+    btn.className='img-del';
+    btn.textContent='×';
+    btn.onclick=function(){ _lrnRemoveImg(i); };
+    d.appendChild(img);
+    d.appendChild(btn);
+    wrap.appendChild(d);
+  });
 }
 
 function _lrnRemoveImg(i){ _lrnImages.splice(i,1); _lrnRenderImages(); _lrnDirty=true; }
 
-function lrnAddImages(input){
-  Array.from(input.files).forEach(function(file){
-    var r=new FileReader();
-    r.onload=function(e){ _lrnImages.push(e.target.result); _lrnRenderImages(); _lrnDirty=true; };
-    r.readAsDataURL(file);
-  });
+async function lrnAddImages(input){
+  var files=Array.from(input.files);
   input.value='';
+  for(var f of files){
+    try{
+      var blob=await compressImage(f);
+      var dataUrl=await new Promise(function(res){
+        var fr=new FileReader();
+        fr.onload=function(ev){ res(ev.target.result); };
+        fr.readAsDataURL(blob);
+      });
+      _lrnImages.push(dataUrl);
+      _lrnRenderImages();
+      _lrnDirty=true;
+    }catch(err){ console.error('[lrnAddImages]',err); }
+  }
 }
 
 async function lrnRephrase(){
@@ -5256,11 +5279,20 @@ async function lrnRephrase(){
   }
 }
 
+var _savingLrn = false;
 function saveLearningItem(){
+  if(_savingLrn) return;
+  _savingLrn = true;
+  var _saveBtn = document.getElementById('lrn-save-btn');
+  if(_saveBtn){ _saveBtn.disabled=true; _saveBtn.textContent='⏳ שומר...'; }
+  function _lrnSaveDone(){
+    _savingLrn=false;
+    if(_saveBtn){ _saveBtn.disabled=false; _saveBtn.textContent='💾 שמור'; }
+  }
   var models   = _lrnSelectedModels.slice();
   var category = document.getElementById('lrn-category').value;
   var title    = document.getElementById('lrn-title').value.trim();
-  if(!models.length||!category||!title){ showToast('⚠️ נא למלא דגם מעלית, קטגוריה וכותרת'); return; }
+  if(!models.length||!category||!title){ showToast('⚠️ נא למלא דגם מעלית, קטגוריה וכותרת'); _lrnSaveDone(); return; }
   var editId = document.getElementById('lrn-edit-id').value;
   var id     = editId || Date.now().toString();
   if(!editId){
@@ -5271,16 +5303,16 @@ function saveLearningItem(){
       _showConflictDialog(title, models.join(', ')+' / '+category,
         function(){
           var item=_lrnBuild(id,models,category,title);
-          learningItems.unshift(item); saveLearning(learningItems); _lrnSyncToD1(item);
-          closeModal('learning-form-modal'); refreshLearning(); showToast('✅ נוסף!'); _lrnDirty=false;
+          learningItems.unshift(item); try{saveLearning(learningItems);}catch(e){} _lrnSyncToD1(item);
+          closeModal('learning-form-modal'); refreshLearning(); showToast('✅ נוסף!'); _lrnDirty=false; _lrnSaveDone();
         },
         function(){
           var item=_lrnBuild(dup.id,models,category,title);
           var idx=learningItems.findIndex(function(x){ return x.id===dup.id; });
-          if(idx>=0) learningItems[idx]=item; saveLearning(learningItems); _lrnSyncToD1(item);
-          closeModal('learning-form-modal'); refreshLearning(); showToast('✅ עודכן!'); _lrnDirty=false;
+          if(idx>=0) learningItems[idx]=item; try{saveLearning(learningItems);}catch(e){} _lrnSyncToD1(item);
+          closeModal('learning-form-modal'); refreshLearning(); showToast('✅ עודכן!'); _lrnDirty=false; _lrnSaveDone();
         },
-        function(){}
+        function(){ _lrnSaveDone(); }
       );
       return;
     }
@@ -5288,8 +5320,9 @@ function saveLearningItem(){
   var item=_lrnBuild(id,models,category,title);
   var idx=learningItems.findIndex(function(x){ return x.id===id; });
   if(idx>=0) learningItems[idx]=item; else learningItems.unshift(item);
-  saveLearning(learningItems); _lrnSyncToD1(item);
-  closeModal('learning-form-modal'); refreshLearning(); showToast('✅ נשמר!'); _lrnDirty=false;
+  try { saveLearning(learningItems); } catch(e) { showToast('⚠️ אחסון מקומי מלא — הנתונים נשמרו בענן בלבד'); }
+  _lrnSyncToD1(item);
+  closeModal('learning-form-modal'); refreshLearning(); showToast('✅ נשמר!'); _lrnDirty=false; _lrnSaveDone();
 }
 
 function _lrnBuild(id,models,category,title){
