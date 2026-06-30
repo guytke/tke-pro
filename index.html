@@ -5171,13 +5171,7 @@ function viewLearningItem(id){
     (item.text
       ? '<div style="white-space:pre-wrap;font-size:15px;color:var(--text);line-height:1.8;margin-bottom:16px;direction:rtl">'+esc(item.text)+'</div>'
       : '<div style="color:var(--text3);font-size:14px;text-align:center;padding:20px 0">אין מלל חופשי לפריט זה</div>')+
-    (item.images&&item.images.length
-      ? '<div style="margin-bottom:14px"><div style="font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:600">📷 תמונות ('+item.images.length+')</div>'+
-        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px">'+
-        item.images.map(function(src){
-          return '<img src="'+src+'" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;cursor:pointer;border:1px solid var(--border)" onclick="openPageImageModal(this.src)">';
-        }).join('')+'</div></div>'
-      : '')+
+    (item.images&&item.images.length?'<div class="view-section"><div class="view-label">📸 תמונות</div><div class="img-previews">'+item.images.map(function(src){ return '<div class="img-thumb-wrap"><img class="img-thumb" src="'+src+'" onclick="showFullImg(this.src)"></div>'; }).join('')+'</div></div>':'')+
     (ms.length?'<div style="margin-bottom:12px;padding:10px 12px;background:var(--bg3);border-radius:8px;font-size:12px;color:var(--text2)">📌 שייך לדגמי מעליות: <span style="color:var(--text);font-weight:600">'+ms.map(esc).join(', ')+'</span></div>':'')+
     '<div style="display:flex;gap:8px;margin-top:4px">'+
       '<button onclick="openLearningEdit(\''+id+'\');closeModal(\'learning-view-modal\')" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px;font-size:14px;cursor:pointer;color:var(--text);font-family:Heebo,sans-serif">✏️ ערוך</button>'+
