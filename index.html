@@ -486,6 +486,7 @@ if('serviceWorker' in navigator){
     </div>
   </div>
   <input type="text" id="pm-search" placeholder="🔍 חיפוש פרמטר..." oninput="pmRenderList()" style="width:100%;margin-bottom:10px;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 11px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none">
+  <div class="model-tabs" id="pm-model-tabs"></div>
   <div id="pm-list"></div>
 </div>
 
@@ -3073,8 +3074,18 @@ async function pmTranslateDesc(){
   finally{ btn.disabled=false; btn.textContent='🔤 נתח לעברית'; }
 }
 
+var _pmActiveModel = '';
+function pmUpdateModelTabs(){
+  var tabs = document.getElementById('pm-model-tabs'); if(!tabs) return;
+  var models = [...new Set(_pmList.flatMap(function(p){ return p.models||[]; }))].sort();
+  tabs.innerHTML = '<button class="model-tab'+(_pmActiveModel===''?' active':'')+'" onclick="pmSetActiveModel(\'\')">כולם</button>'+
+    models.map(function(m){ return '<button class="model-tab'+(_pmActiveModel===m?' active':'')+'" onclick="pmSetActiveModel(\''+m.replace(/'/g,"\\'")+'\')">' +esc(m)+'</button>'; }).join('');
+}
+function pmSetActiveModel(m){ _pmActiveModel=m; pmUpdateModelTabs(); pmRenderList(); }
+
 async function pmRefresh(){
   _pmList = await _pmIdbGetAll();
+  pmUpdateModelTabs();
   pmRenderList();
 }
 
@@ -3145,10 +3156,12 @@ function pmRenderList(){
   var el=document.getElementById('pm-list'); if(!el) return;
   var pmQ = ((document.getElementById('pm-search')||{}).value||'').toLowerCase().trim();
   var pmWords = pmQ ? pmQ.split(/\s+/).filter(Boolean) : [];
-  var list = pmWords.length ? _pmList.filter(function(p){
+  var list = _pmList;
+  if(_pmActiveModel) list = list.filter(function(p){ return (p.models||[]).includes(_pmActiveModel); });
+  if(pmWords.length) list = list.filter(function(p){
     var txt = [p.paramCode,p.paramName,p.description,p.notes,(p.models||[]).join(' '),p.range,p.defaultValue].filter(Boolean).join(' ').toLowerCase();
     return pmWords.every(function(w){ return txt.includes(w); });
-  }) : _pmList;
+  });
   if(!list.length){
     el.innerHTML='<div class="empty"><div class="empty-icon">⚙️</div><p>'+(pmWords.length?'לא נמצאו תוצאות':'אין פרמטרים עדיין')+'</p></div>';
     return;
