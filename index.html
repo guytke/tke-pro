@@ -3595,13 +3595,25 @@ function pmPickImages(e){
 
 function pmRenderImageThumbs(){
   var container=document.getElementById('pm-img-thumbs'); if(!container) return;
-  container.innerHTML=_pmImages.map(function(blob,i){
+  container.innerHTML='';
+  _pmImages.forEach(function(blob,i){
     var url=URL.createObjectURL(blob);
-    return '<div class="img-thumb-wrap" style="position:relative;display:inline-block;margin:4px">'+
-      '<img class="img-thumb" src="'+url+'" onclick="showFullImg(\''+url+'\')" style="cursor:zoom-in">'+
-      '<button type="button" onclick="pmRemoveImage('+i+')" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#ef4444;color:#fff;font-size:13px;line-height:1;cursor:pointer;padding:0">×</button>'+
-    '</div>';
-  }).join('');
+    var wrap=document.createElement('div');
+    wrap.className='img-thumb-wrap';
+    var img=document.createElement('img');
+    img.className='img-thumb';
+    img.src=url;
+    img.style.cursor='zoom-in';
+    img.onclick=function(){ showFullImg(url); };
+    var btn=document.createElement('button');
+    btn.type='button';
+    btn.className='img-del';
+    btn.textContent='×';
+    btn.onclick=function(){ pmRemoveImage(i); };
+    wrap.appendChild(img);
+    wrap.appendChild(btn);
+    container.appendChild(wrap);
+  });
 }
 
 function pmRemoveImage(i){
