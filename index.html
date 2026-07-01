@@ -3582,10 +3582,29 @@ function pmPickImages(e){
   var files = Array.from(e.target.files||[]); e.target.value='';
   if(!files.length) return;
   files.forEach(function(file){
-    compressImage(file,100).then(function(blob){
-      _pmImages.push(blob);
-      pmRenderImageThumbs();
-    }).catch(function(err){ showToast('שגיאה בטעינת תמונה: '+(err&&err.message||err)); });
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      var dataUrl = ev.target.result;
+      var img = new Image();
+      img.onload = function(){
+        var canvas = document.createElement('canvas');
+        var maxW = 1200, scale = img.width > maxW ? maxW/img.width : 1;
+        canvas.width = img.width*scale; canvas.height = img.height*scale;
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        var quality = 0.7;
+        var tryQ = function(){
+          canvas.toBlob(function(blob){
+            if(!blob){ showToast('שגיאה בעיבוד תמונה'); return; }
+            if(blob.size > 150*1024 && quality > 0.2){ quality -= 0.15; tryQ(); return; }
+            _pmImages.push(blob);
+            pmRenderImageThumbs();
+          }, 'image/jpeg', quality);
+        };
+        tryQ();
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
   });
 }
 
