@@ -3589,7 +3589,7 @@ function pmPickImages(e){
     compressImage(file,100).then(function(blob){
       _pmImages.push(blob);
       pmRenderImageThumbs();
-    });
+    }).catch(function(err){ showToast('שגיאה בטעינת תמונה: '+(err&&err.message||err)); });
   });
 }
 
