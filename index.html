@@ -1474,7 +1474,18 @@ function saveFault(){
   };
   const idx = faults.findIndex(f=>f.id===id);
   if(idx>=0) faults[idx]=fault; else faults.unshift(fault);
-  save(faults); syncFaultToD1(fault); closeModal('form-modal'); refresh(); renderParams();
+  try {
+    save(faults);
+  } catch(e) {
+    if(e.name === 'QuotaExceededError') {
+      var faultNoImg = Object.assign({}, fault, {images: []});
+      var idx2 = faults.findIndex(function(f){ return f.id===faultNoImg.id; });
+      if(idx2>=0) faults[idx2]=faultNoImg; else faults.unshift(faultNoImg);
+      save(faults);
+      showToast('⚠️ נשמר ללא תמונות — אחסון מלא');
+    } else { throw e; }
+  }
+  syncFaultToD1(fault); closeModal('form-modal'); refresh(); renderParams();
   setTimeout(function(){ flashSavedCard(fault.code); },280);
   if(window.clearDraftPrefix) clearDraftPrefix('f-');
   showToast('✅ נשמר!');
@@ -4139,7 +4150,7 @@ function compressImage(file){
         var maxW=800, scale=img.width>maxW?maxW/img.width:1;
         canvas.width=img.width*scale; canvas.height=img.height*scale;
         canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-        canvas.toBlob(function(blob){ resolve(blob); },'image/jpeg',0.7);
+        canvas.toBlob(function(blob){ resolve(blob); },'image/jpeg',0.5);
       };
       img.src=e.target.result;
     };
