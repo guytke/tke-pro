@@ -538,12 +538,9 @@ if('serviceWorker' in navigator){
         <button type="button" onclick="document.getElementById('pm-img-camera').click()" style="flex:1;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;cursor:pointer;font-family:Heebo,sans-serif">📷 צלם תמונה</button>
         <button type="button" onclick="document.getElementById('pm-img-gallery').click()" style="flex:1;padding:8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;cursor:pointer;font-family:Heebo,sans-serif">🖼️ בחר מגלריה</button>
       </div>
-      <input type="file" id="pm-img-camera" accept="image/*" capture="environment" style="display:none" onchange="pmPickImage(event)">
-      <input type="file" id="pm-img-gallery" accept="image/*" style="display:none" onchange="pmPickImage(event)">
-      <div id="pm-img-preview" style="display:none;position:relative;display:inline-block">
-        <img id="pm-img-thumb" style="width:100px;height:100px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">
-        <button type="button" onclick="pmClearImage()" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#ef4444;color:#fff;font-size:13px;line-height:1;cursor:pointer;padding:0">×</button>
-      </div>
+      <input type="file" id="pm-img-camera" accept="image/*" capture="environment" style="display:none" onchange="pmPickImages(event)">
+      <input type="file" id="pm-img-gallery" accept="image/*" multiple style="display:none" onchange="pmPickImages(event)">
+      <div id="pm-img-thumbs" class="img-previews" style="margin-top:6px"></div>
     </div>
     <div class="form-actions">
       <button class="btn btn-primary" onclick="pmSave()">💾 שמור</button>
@@ -3099,10 +3096,11 @@ function pmSetView(v){
 
 function pmCardHTML(p,extraTag){
   extraTag=extraTag||'';
+  var firstImg=(p.images&&p.images.length)?'<img src="'+URL.createObjectURL(p.images[0])+'" style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--border);flex-shrink:0;cursor:zoom-in" onclick="event.stopPropagation();showFullImg(this.src)">':'';
   return '<div class="card" onclick="pmOpenDetail(\''+p.id+'\')" style="position:relative;cursor:pointer">'+
     '<button onclick="event.stopPropagation();pmOpenEditIdb(\''+p.id+'\')" style="position:absolute;top:8px;left:8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--text2);cursor:pointer">✏️</button>'+
     '<button onclick="event.stopPropagation();pmDelete(\''+p.id+'\')" style="position:absolute;top:8px;left:48px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:3px 8px;font-size:11px;color:#f87171;cursor:pointer">🗑️</button>'+
-    '<div style="padding-left:88px">'+
+    '<div style="padding-left:88px;display:flex;gap:10px;align-items:flex-start">'+firstImg+'<div style="flex:1">'+
       '<div style="font-family:monospace;font-size:15px;font-weight:700;color:var(--orange)">'+esc(p.paramCode)+'</div>'+
       (p.paramName?'<div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px">'+esc(p.paramName)+'</div>':'')+
       (p.description?'<div style="font-size:12px;color:var(--text2);margin-top:4px;line-height:1.5">'+esc(p.description)+'</div>':'')+
@@ -3112,7 +3110,7 @@ function pmCardHTML(p,extraTag){
         (p.defaultValue?'<span style="font-size:11px;color:var(--text3)">ברירה: <b style="color:var(--text2)">'+esc(p.defaultValue)+'</b></span>':'')+
       '</div>':'')+
       extraTag+
-    '</div>'+
+    '</div></div>'+
   '</div>';
 }
 
@@ -3137,11 +3135,14 @@ function pmOpenDetail(id){
       (p.notes?'<div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">גבולות / הערות</div><div style="font-size:13px;color:var(--text2);line-height:1.6;white-space:pre-wrap">'+esc(p.notes)+'</div></div>':'')+
     '</div>'+
   '</div>';
-  if(p.image){
-    var imgUrl=URL.createObjectURL(p.image);
+  if(p.images && p.images.length){
     var imgWrap=document.createElement('div');
-    imgWrap.innerHTML='<div style="font-size:10px;color:var(--text3);margin-bottom:6px">📸 תמונה</div><div class="img-previews"><div class="img-thumb-wrap"><img class="img-thumb" src="'+imgUrl+'"></div></div>';
-    imgWrap.querySelector('img').onclick=function(){ showFullImg(imgUrl); };
+    imgWrap.innerHTML='<div style="font-size:10px;color:var(--text3);margin-bottom:6px">📸 תמונות</div><div class="img-previews">'+
+      p.images.map(function(blob){
+        var u=URL.createObjectURL(blob);
+        return '<div class="img-thumb-wrap"><img class="img-thumb" src="'+u+'" data-url="'+u+'"></div>';
+      }).join('')+'</div>';
+    imgWrap.querySelectorAll('img').forEach(function(img){ img.onclick=function(){ showFullImg(img.dataset.url); }; });
     document.getElementById('_pm_detail_body').appendChild(imgWrap);
   }
   el.onclick=function(e){ if(e.target===el) pmCloseDetail(); };
@@ -3195,19 +3196,19 @@ function pmRenderList(){
 
 function pmOpenAdd(){
   _pmEditMode='idb'; _pmEditScanIdx=-1;
-  _pmSelected=[]; _pmImageBlob=null;
+  _pmSelected=[]; _pmImages=[];
   document.getElementById('pm-title').textContent='⚙️ פרמטר חדש';
   document.getElementById('pm-edit-id').value='';
   ['pm-code','pm-name','pm-desc','pm-range','pm-default','pm-notes'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
   });
-  pmClearImage(); pmRenderChips(); openModal('pm-modal');
+  pmClearImages(); pmRenderChips(); openModal('pm-modal');
 }
 
 function pmOpenEditIdb(id){
   var p=_pmList.find(function(x){ return x.id===id; }); if(!p) return;
   _pmEditMode='idb'; _pmEditScanIdx=-1;
-  _pmSelected=(p.models||[]).slice(); _pmImageBlob=null;
+  _pmSelected=(p.models||[]).slice(); _pmImages=[];
   document.getElementById('pm-title').textContent='✏️ עריכת פרמטר';
   document.getElementById('pm-edit-id').value=id;
   document.getElementById('pm-code').value=p.paramCode||'';
@@ -3216,26 +3217,15 @@ function pmOpenEditIdb(id){
   document.getElementById('pm-range').value=p.range||'';
   document.getElementById('pm-default').value=p.defaultValue||'';
   document.getElementById('pm-notes').value=p.notes||'';
-  pmClearImage();
-  if(p.image){
-    _pmImageBlob=p.image;
-    var thumb=document.getElementById('pm-img-thumb');
-    var prev=document.getElementById('pm-img-preview');
-    if(thumb){
-      var objUrl=URL.createObjectURL(p.image);
-      thumb.src=objUrl;
-      thumb.style.cursor='pointer';
-      thumb.onclick=function(){ showFullImg(objUrl); };
-    }
-    if(prev) prev.style.display='inline-block';
-  }
+  pmClearImages();
+  if(p.images && p.images.length){ _pmImages=p.images.slice(); pmRenderImageThumbs(); }
   pmRenderChips(); openModal('pm-modal');
 }
 
 function pmOpenEditScan(idx){
   var p=_pmScanParsed[idx]; if(!p) return;
   _pmEditMode='scan'; _pmEditScanIdx=idx;
-  _pmSelected=(p.models||[]).slice(); _pmImageBlob=null;
+  _pmSelected=(p.models||[]).slice(); _pmImages=[];
   document.getElementById('pm-title').textContent='✏️ עריכת פרמטר (טרם נשמר)';
   document.getElementById('pm-edit-id').value='';
   document.getElementById('pm-code').value=p.paramCode||'';
@@ -3244,7 +3234,7 @@ function pmOpenEditScan(idx){
   document.getElementById('pm-range').value=p.range||'';
   document.getElementById('pm-default').value=p.defaultValue||'';
   document.getElementById('pm-notes').value=p.notes||'';
-  pmClearImage(); pmRenderChips(); openModal('pm-modal');
+  pmClearImages(); pmRenderChips(); openModal('pm-modal');
 }
 
 function pmRenderChips(){
@@ -3295,7 +3285,7 @@ async function pmSave(){
     range: (document.getElementById('pm-range').value||'').trim(),
     defaultValue: (document.getElementById('pm-default').value||'').trim(),
     notes: (document.getElementById('pm-notes').value||'').trim(),
-    image: _pmImageBlob||null
+    images: _pmImages.slice()
   };
   if(_pmEditMode==='scan' && _pmEditScanIdx>=0){
     // update scan preview in-memory, don't save to IDB yet
@@ -3590,41 +3580,38 @@ async function pmScanSave(){
   showToast('✅ נשמרו '+saved+' פרמטרים!');
 }
 
-var _pmImageBlob = null;
+var _pmImages = [];
 
-function pmPickImage(e){
-  var file = e.target.files&&e.target.files[0]; if(!file) return;
+function pmPickImages(e){
+  var files = e.target.files; if(!files||!files.length) return;
   e.target.value='';
-  var img = new Image();
-  var url = URL.createObjectURL(file);
-  img.onload = function(){
-    var MAX=800, w=img.width, h=img.height;
-    if(w>MAX||h>MAX){ if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;} }
-    var canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
-    canvas.getContext('2d').drawImage(img,0,0,w,h);
-    canvas.toBlob(function(blob){
-      _pmImageBlob=blob;
-      var thumb=document.getElementById('pm-img-thumb');
-      var prev=document.getElementById('pm-img-preview');
-      if(thumb){
-        var objUrl=URL.createObjectURL(blob);
-        thumb.src=objUrl;
-        thumb.style.cursor='pointer';
-        thumb.onclick=function(){ showFullImg(objUrl); };
-      }
-      if(prev) prev.style.display='inline-block';
-    },'image/jpeg',0.7);
-    URL.revokeObjectURL(url);
-  };
-  img.src=url;
+  Array.from(files).forEach(function(file){
+    compressImage(file,100).then(function(blob){
+      _pmImages.push(blob);
+      pmRenderImageThumbs();
+    });
+  });
 }
 
-function pmClearImage(){
-  _pmImageBlob=null;
-  var thumb=document.getElementById('pm-img-thumb');
-  var prev=document.getElementById('pm-img-preview');
-  if(thumb) thumb.src='';
-  if(prev) prev.style.display='none';
+function pmRenderImageThumbs(){
+  var container=document.getElementById('pm-img-thumbs'); if(!container) return;
+  container.innerHTML=_pmImages.map(function(blob,i){
+    var url=URL.createObjectURL(blob);
+    return '<div class="img-thumb-wrap" style="position:relative;display:inline-block;margin:4px">'+
+      '<img class="img-thumb" src="'+url+'" onclick="showFullImg(\''+url+'\')" style="cursor:zoom-in">'+
+      '<button type="button" onclick="pmRemoveImage('+i+')" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#ef4444;color:#fff;font-size:13px;line-height:1;cursor:pointer;padding:0">×</button>'+
+    '</div>';
+  }).join('');
+}
+
+function pmRemoveImage(i){
+  _pmImages.splice(i,1);
+  pmRenderImageThumbs();
+}
+
+function pmClearImages(){
+  _pmImages=[];
+  var container=document.getElementById('pm-img-thumbs'); if(container) container.innerHTML='';
   var c=document.getElementById('pm-img-camera'); if(c) c.value='';
   var g=document.getElementById('pm-img-gallery'); if(g) g.value='';
 }
