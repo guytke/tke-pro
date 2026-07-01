@@ -3579,9 +3579,9 @@ async function pmScanSave(){
 var _pmImages = [];
 
 function pmPickImages(e){
-  var files = e.target.files; if(!files||!files.length) return;
-  e.target.value='';
-  Array.from(files).forEach(function(file){
+  var files = Array.from(e.target.files||[]); e.target.value='';
+  if(!files.length) return;
+  files.forEach(function(file){
     compressImage(file,100).then(function(blob){
       _pmImages.push(blob);
       pmRenderImageThumbs();
