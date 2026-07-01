@@ -3319,10 +3319,24 @@ async function pmSave(){
   },pData);
   try{
     await _pmIdbPut(p); pmClose(); await pmRefresh(); showToast('✅ נשמר!');
+    setTimeout(function(){ flashSavedParam(code); }, 280);
   }catch(e){ showToast('❌ שגיאה: '+e.message); }
 }
 
 function pmClose(){ closeModal('pm-modal'); }
+
+function flashSavedParam(code){
+  var cards=document.querySelectorAll('#pm-list .card');
+  for(var i=0;i<cards.length;i++){
+    var el=cards[i].querySelector('.card-code, [style*="monospace"]');
+    if(el && el.textContent.trim()===code){
+      cards[i].classList.add('saved-flash');
+      cards[i].scrollIntoView({behavior:'smooth',block:'center'});
+      setTimeout(function(c){ c.classList.remove('saved-flash'); },1100,cards[i]);
+      break;
+    }
+  }
+}
 
 // ── Paste + AI modal ────────────────────────────────────
 var _pmAIParsed = [];
