@@ -5214,6 +5214,18 @@ function lrnDeleteCatPrompt(){
   renderLrnCatSelect(); showToast('✅ קטגוריה הוסרה');
 }
 
+function flashSavedLrn(title){
+  var cards=document.querySelectorAll('#lrn-list [onclick^="viewLearningItem"]');
+  for(var i=0;i<cards.length;i++){
+    if(cards[i].textContent.indexOf(title)!==-1){
+      cards[i].classList.add('saved-flash');
+      cards[i].scrollIntoView({behavior:'smooth',block:'center'});
+      setTimeout(function(c){ c.classList.remove('saved-flash'); },1100,cards[i]);
+      break;
+    }
+  }
+}
+
 // ── Render ───────────────────────────────────────────────
 function renderLearning(){
   var q     = (document.getElementById('lrn-search').value||'').toLowerCase().trim();
@@ -5438,12 +5450,14 @@ function saveLearningItem(){
           var item=_lrnBuild(id,models,category,title);
           learningItems.unshift(item); try{saveLearning(learningItems);}catch(e){} _lrnSyncToD1(item);
           closeModal('learning-form-modal'); refreshLearning(); showToast('✅ נוסף!'); _lrnDirty=false; _lrnSaveDone();
+          setTimeout(function(){ flashSavedLrn(title); }, 280);
         },
         function(){
           var item=_lrnBuild(dup.id,models,category,title);
           var idx=learningItems.findIndex(function(x){ return x.id===dup.id; });
           if(idx>=0) learningItems[idx]=item; try{saveLearning(learningItems);}catch(e){} _lrnSyncToD1(item);
           closeModal('learning-form-modal'); refreshLearning(); showToast('✅ עודכן!'); _lrnDirty=false; _lrnSaveDone();
+          setTimeout(function(){ flashSavedLrn(title); }, 280);
         },
         function(){ _lrnSaveDone(); }
       );
@@ -5456,6 +5470,7 @@ function saveLearningItem(){
   try { saveLearning(learningItems); } catch(e) { showToast('⚠️ אחסון מקומי מלא — הנתונים נשמרו בענן בלבד'); }
   _lrnSyncToD1(item);
   closeModal('learning-form-modal'); refreshLearning(); showToast('✅ נשמר!'); _lrnDirty=false; _lrnSaveDone();
+  setTimeout(function(){ flashSavedLrn(title); }, 280);
 }
 
 function _lrnBuild(id,models,category,title){
