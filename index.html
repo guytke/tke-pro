@@ -1241,7 +1241,17 @@ const KEY = 'tke_faults_v2';
 const D1_URL      = 'https://tke-proxy.guyshtaiger.workers.dev/faults/save';
 const D1_LIST_URL = 'https://tke-proxy.guyshtaiger.workers.dev/faults/list';
 function load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return[];}}
-function save(d){localStorage.setItem(KEY,JSON.stringify(d));}
+function save(d){
+  try {
+    localStorage.setItem(KEY, JSON.stringify(d));
+  } catch(e) {
+    if(e.name === 'QuotaExceededError'){
+      var stripped = d.map(function(f){ return Object.assign({},f,{images:[]}); });
+      localStorage.setItem(KEY, JSON.stringify(stripped));
+      showToast('⚠️ אחסון מלא — תמונות לא נשמרו');
+    }
+  }
+}
 const SYNC_QUEUE_KEY = 'tke_sync_queue';
 function _getSyncQueue(){ try{ return JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY))||[]; }catch(e){ return []; } }
 function _saveSyncQueue(q){ localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(q)); }
@@ -5511,6 +5521,15 @@ async function syncFaultsFromD1() {
 function showApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('bio-offer-overlay').style.display = 'none';
+  // נקה תמונות ישנות גדולות מ-50KB base64
+  var cleaned = false;
+  faults = faults.map(function(f){
+    if(!f.images || !f.images.length) return f;
+    var imgs = f.images.filter(function(img){ return !img || img.length < 50*1024*4/3; });
+    if(imgs.length !== f.images.length){ cleaned = true; return Object.assign({},f,{images:imgs}); }
+    return f;
+  });
+  if(cleaned) try { localStorage.setItem(KEY, JSON.stringify(faults)); } catch(e){}
   flushSyncQueue();
   syncFaultsFromD1();
   syncLearningFromD1();
