@@ -4140,19 +4140,33 @@ function idbDelete(id){
 }
 
 // ── Image helpers ──────────────────────────────────────
-function compressImage(file){
+function compressImage(file, maxKB){
+  maxKB = maxKB || 100;
   return new Promise(function(resolve){
-    var reader=new FileReader();
-    reader.onload=function(e){
-      var img=new Image();
-      img.onload=function(){
-        var canvas=document.createElement('canvas');
-        var maxW=800, scale=img.width>maxW?maxW/img.width:1;
-        canvas.width=img.width*scale; canvas.height=img.height*scale;
-        canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-        canvas.toBlob(function(blob){ resolve(blob); },'image/jpeg',0.5);
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var img = new Image();
+      img.onload = function(){
+        var canvas = document.createElement('canvas');
+        var maxW = 1200;
+        var scale = img.width > maxW ? maxW/img.width : 1;
+        canvas.width = img.width*scale;
+        canvas.height = img.height*scale;
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        var quality = 0.7;
+        var tryCompress = function(){
+          canvas.toBlob(function(blob){
+            if(blob.size > maxKB*1024 && quality > 0.1){
+              quality -= 0.1;
+              tryCompress();
+            } else {
+              resolve(blob);
+            }
+          }, 'image/jpeg', quality);
+        };
+        tryCompress();
       };
-      img.src=e.target.result;
+      img.src = e.target.result;
     };
     reader.readAsDataURL(file);
   });
