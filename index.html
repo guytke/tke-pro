@@ -1373,7 +1373,7 @@ function render(){
 function updateModelTabs(){
   const models = [...new Set(faults.map(f=>f.model).filter(Boolean))].sort();
   const tabs = document.getElementById('model-tabs');
-  tabs.innerHTML = '<button class="model-tab" id="tab-params-btn" style="display:none">'+(activeModel===''?' active':'')+'" onclick="setModel(\'\')">כולם</button>'+
+  tabs.innerHTML = '<button class="model-tab'+(activeModel===''?' active':'')+'" onclick="setModel(\'\')">כולם</button>'+
     models.map(m=>'<button class="model-tab'+(activeModel===m?' active':'')+'" onclick="setModel(\''+esc(m)+'\')">'+esc(m)+'</button>').join('');
 
   // update datalist
