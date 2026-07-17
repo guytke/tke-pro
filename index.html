@@ -3034,7 +3034,7 @@ async function pmDelete(id){
 }
 
 async function pmDirectScan(event){
-  var files=event.target.files; if(!files||!files.length) return;
+  var files=Array.from(event.target.files||[]); if(!files.length) return;
   event.target.value='';
   pmOpenScan();
   await new Promise(function(r){ setTimeout(r,100); });
