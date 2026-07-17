@@ -3527,6 +3527,10 @@ async function pmScanRun(files){
   else allParams=allParams.map(function(p){ return Object.assign({},p,{models:[]}); });
 
   _pmScanParsed=allParams;
+  if(allParams.length===1){
+    pmOpenEditScan(0);
+    return;
+  }
   var foundTxt='✅ נמצאו '+allParams.length+' פרמטרים';
   if(files.length>1) foundTxt+=' מ-'+files.length+' קבצים';
   if(errors.length) foundTxt+=' ('+errors.length+' קבצים נכשלו)';
