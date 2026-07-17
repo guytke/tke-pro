@@ -3503,7 +3503,10 @@ async function pmScanRun(files){
       console.log('[pmScanRun] response status:', data);
       if(data.error) throw new Error(data.error.message||JSON.stringify(data.error));
       var raw=((data.content||[])[0]||{}).text||'';
-      var arr=JSON.parse(raw.replace(/```json|```/g,'').trim());
+      raw=raw.replace(/```json|```/g,'').trim();
+      var m=raw.match(/\[[\s\S]*\]/);
+      if(m) raw=m[0];
+      var arr=JSON.parse(raw);
       if(!Array.isArray(arr)) throw new Error('תשובה לא תקינה מה-AI');
       allParams=allParams.concat(arr);
     }catch(err){
