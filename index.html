@@ -483,6 +483,7 @@ if('serviceWorker' in navigator){
   </div>
   <input type="text" id="pm-search" placeholder="🔍 חיפוש פרמטר..." oninput="pmRenderList()" style="width:100%;margin-bottom:10px;box-sizing:border-box;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 11px;font-size:14px;color:var(--text);font-family:Heebo,sans-serif;outline:none">
   <div class="model-tabs" id="pm-model-tabs"></div>
+  <div class="stats" id="pm-stats-bar"></div>
   <div id="pm-list"></div>
 </div>
 
@@ -3073,6 +3074,13 @@ function pmUpdateModelTabs(){
   var models = [...new Set(_pmList.flatMap(function(p){ return p.models||[]; }))].sort();
   tabs.innerHTML = '<button class="model-tab'+(_pmActiveModel===''?' active':'')+'" onclick="pmSetActiveModel(\'\')">כולם</button>'+
     models.map(function(m){ return '<button class="model-tab'+(_pmActiveModel===m?' active':'')+'" onclick="pmSetActiveModel(\''+m.replace(/'/g,"\\'")+'\')">' +esc(m)+'</button>'; }).join('');
+
+  var statsBar = document.getElementById('pm-stats-bar');
+  if(statsBar){
+    statsBar.innerHTML =
+      '<div class="stat">פרמטרים <strong>'+_pmList.length+'</strong></div>'+
+      '<div class="stat">דגמים <strong>'+models.length+'</strong></div>';
+  }
 }
 function pmSetActiveModel(m){ _pmActiveModel=m; pmUpdateModelTabs(); pmRenderList(); }
 
