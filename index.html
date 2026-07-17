@@ -3532,6 +3532,19 @@ async function pmScanRun(files){
   document.getElementById('pm-scan-results').style.display='block';
 }
 
+function pmScanFieldInput(i,field,label,val,multiline){
+  var esc2=esc(val||'').replace(/"/g,'&quot;');
+  var common='data-idx="'+i+'" data-field="'+field+'" oninput="pmScanFieldEdit(this)" placeholder="'+label+'" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 6px;font-size:12px;color:var(--text);font-family:Heebo,sans-serif;margin-top:3px"';
+  if(multiline) return '<textarea rows="2" class="pm-scan-field" '+common+'>'+esc(val||'')+'</textarea>';
+  return '<input type="text" class="pm-scan-field" value="'+esc2+'" '+common+'>';
+}
+
+function pmScanFieldEdit(elm){
+  var i=parseInt(elm.dataset.idx), field=elm.dataset.field;
+  var p=_pmScanParsed[i]; if(!p) return;
+  p[field]=elm.value;
+}
+
 function pmScanRerenderList(){
   var el=document.getElementById('pm-scan-list'); if(!el) return;
   el.innerHTML=_pmScanParsed.map(function(p,i){
@@ -3539,15 +3552,14 @@ function pmScanRerenderList(){
       '<input type="checkbox" class="pm-scan-cb" data-idx="'+i+'" checked style="width:16px;height:16px;accent-color:#3b82f6;flex-shrink:0;margin-top:3px">'+
       '<div style="flex:1;min-width:0">'+
         '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
-          '<span style="font-family:monospace;font-size:13px;font-weight:700;color:var(--orange)">'+esc(p.paramCode)+'</span>'+
-          (p.paramName?'<span style="font-size:12px;font-weight:600;color:var(--text)">'+esc(p.paramName)+'</span>':'')+
           ((p.models||[]).length?p.models.map(function(m){ return '<span style="font-size:10px;background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);border-radius:8px;padding:1px 6px">'+esc(m)+'</span>'; }).join(''):'')+
         '</div>'+
-        (p.description?'<div style="font-size:11px;color:var(--text2);margin-top:3px;line-height:1.5">'+esc(p.description)+'</div>':'')+
-        ((p.range||p.defaultValue)?'<div style="font-size:10px;color:var(--text3);margin-top:3px">'+
-          (p.range?'טווח: '+esc(p.range)+'  ':'')+
-          (p.defaultValue?'ברירה: '+esc(p.defaultValue):'')+
-        '</div>':'')+
+        pmScanFieldInput(i,'paramCode','קוד פרמטר',p.paramCode)+
+        pmScanFieldInput(i,'paramName','שם פרמטר',p.paramName)+
+        pmScanFieldInput(i,'description','תיאור',p.description,true)+
+        pmScanFieldInput(i,'range','טווח',p.range)+
+        pmScanFieldInput(i,'defaultValue','ברירת מחדל',p.defaultValue)+
+        pmScanFieldInput(i,'notes','הערות',p.notes,true)+
       '</div>'+
       '<button onclick="pmOpenEditScan('+i+')" style="flex-shrink:0;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--text2);cursor:pointer">✏️</button>'+
     '</div>';
