@@ -3607,11 +3607,11 @@ async function pmScanSave(){
   }
   if(saved>0){ _pmActiveModel=''; pmSetView('all'); }
   await pmRefresh();
-  if(saved<cbs.length){
-    // חלק מהפרמטרים נדלגו (למשל בוטל החלפת כפילות) — השאר אותם ברשימה במקום לסגור ולאבד אותם
-    _pmScanParsed=_pmScanParsed.filter(function(p,i){ return savedIdx.indexOf(i)===-1; });
+  if(savedIdx.length) _pmScanParsed=_pmScanParsed.filter(function(p,i){ return savedIdx.indexOf(i)===-1; });
+  if(_pmScanParsed.length){
+    // נשארו פרמטרים שלא נשמרו (בוטלה החלפת כפילות, או לא היו מסומנים) — השאר אותם ברשימה במקום לסגור ולאבד אותם
     pmScanRerenderList();
-    showToast('✅ נשמרו '+saved+' מתוך '+cbs.length+' — הנותרים נשארו ברשימה');
+    showToast('✅ נשמרו '+saved+' פרמטרים — '+_pmScanParsed.length+' נשארו ברשימה');
   } else {
     pmScanClose();
     showToast('✅ נשמרו '+saved+' פרמטרים!');
