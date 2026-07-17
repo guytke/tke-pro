@@ -3574,6 +3574,7 @@ async function pmScanSave(){
   var cbs=document.querySelectorAll('.pm-scan-cb:checked');
   if(!cbs.length){ showToast('לא נבחרו פרמטרים'); return; }
   var saved=0;
+  var savedIdx=[];
   var existing=await _pmIdbGetAll();
   var existingCodes=existing.map(function(x){ return (x.paramCode||'').trim().toLowerCase(); });
   for(var i=0;i<cbs.length;i++){
@@ -3599,10 +3600,18 @@ async function pmScanSave(){
       createdAt:Date.now()
     });
     saved++;
+    savedIdx.push(idx);
   }
-  pmScanClose();
   await pmRefresh();
-  showToast('✅ נשמרו '+saved+' פרמטרים!');
+  if(saved<cbs.length){
+    // חלק מהפרמטרים נדלגו (למשל בוטל החלפת כפילות) — השאר אותם ברשימה במקום לסגור ולאבד אותם
+    _pmScanParsed=_pmScanParsed.filter(function(p,i){ return savedIdx.indexOf(i)===-1; });
+    pmScanRerenderList();
+    showToast('✅ נשמרו '+saved+' מתוך '+cbs.length+' — הנותרים נשארו ברשימה');
+  } else {
+    pmScanClose();
+    showToast('✅ נשמרו '+saved+' פרמטרים!');
+  }
 }
 
 var _pmImages = [];
