@@ -3319,11 +3319,10 @@ async function pmSave(){
   // IDB save
   var dup=_pmList.find(function(p){
     if(p.id===(document.getElementById('pm-edit-id').value||'')) return false;
-    if(p.paramCode.toLowerCase()!==code.toLowerCase()) return false;
-    return models.some(function(m){return (p.models||[]).includes(m);});
+    return p.paramCode.toLowerCase()===code.toLowerCase();
   });
   if(dup){
-    var dupM=models.find(function(m){return (dup.models||[]).includes(m);});
+    var dupM=models.find(function(m){return (dup.models||[]).includes(m);})||(dup.models||[])[0]||'ללא דגם';
     var _buildP=function(useId){ return Object.assign({id:useId,createdAt:dup.createdAt||Date.now()},pData); };
     _showConflictDialog(code, dupM,
       function(){ // הוסף כחדש
