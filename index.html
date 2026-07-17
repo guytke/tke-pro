@@ -3284,8 +3284,33 @@ async function pmSave(){
     images: _pmImages.slice()
   };
   if(_pmEditMode==='scan' && _pmEditScanIdx>=0){
-    // update scan preview in-memory, don't save to IDB yet
     _pmScanParsed[_pmEditScanIdx]=Object.assign(_pmScanParsed[_pmEditScanIdx],pData);
+    if(_pmScanParsed.length===1){
+      // זרימת פרמטר בודד — אין מסך "שמור נבחרים" נגיש, אז שומרים ישירות ל-IDB וסוגרים את שני המסכים
+      var sp=_pmScanParsed[_pmEditScanIdx];
+      var existingSingle=await _pmIdbGetAll();
+      var codeKeySingle=(sp.paramCode||'').trim().toLowerCase();
+      var dupSingle=existingSingle.find(function(x){ return (x.paramCode||'').trim().toLowerCase()===codeKeySingle; });
+      if(dupSingle){
+        var okSingle=confirm('פרמטר "'+sp.paramCode+'" כבר קיים. להחליף?');
+        if(!okSingle) return;
+        await _pmIdbDelete(dupSingle.id);
+      }
+      await _pmIdbPut({
+        id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+        paramCode:sp.paramCode||'', paramName:sp.paramName||'', description:sp.description||'',
+        models:sp.models||[], range:sp.range||'', defaultValue:sp.defaultValue||'', notes:sp.notes||'',
+        images:sp.images||[], createdAt:Date.now()
+      });
+      _pmScanParsed=[];
+      pmClose();
+      pmScanClose();
+      _pmActiveModel=''; pmSetView('all');
+      await pmRefresh();
+      showToast('✅ פרמטר נשמר!');
+      return;
+    }
+    // כמה פרמטרים — עדכון בתצוגה המקדימה בלבד, השמירה הסופית דרך "שמור נבחרים"
     pmClose();
     pmScanRerenderList();
     showToast('✅ עודכן — לחץ עכשיו על השמור נבחרים למטה כדי לשמור סופית');
