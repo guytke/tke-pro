@@ -3461,7 +3461,9 @@ function pmScanRetry(){
 
 async function pmScanRun(files){
   if(!Array.isArray(files)) files=[files];
+  console.log('[pmScanRun] started, files:', files.length);
   var apiKey=localStorage.getItem('anthropic_api_key')||loadChatApiKey();
+  console.log('[pmScanRun] apiKey:', apiKey ? 'exists' : 'MISSING');
   if(!apiKey){ showToast('⚠️ נא להגדיר מפתח API בטאב כלים'); return; }
   var modelName=(document.getElementById('pm-scan-model').value||'').trim();
   var sys='אתה מומחה לבקרי מעליות TKE/ThyssenKrupp. סרוק את המסמך וחלץ את כל פרמטרי התכנות — גם אם זה כתב יד, הערות שטח, או טבלה מסודרת. חפש כל מופע של פרמטר בפורמט כמו: 32EF=00, F2-01, P105, 3001 וכדומה. עבור כל פרמטר שמצאת החזר JSON בלבד, ללא markdown: [{"paramCode":"","paramName":"","description":"","models":[],"range":"","defaultValue":"","notes":""}] - paramCode = קוד הפרמטר (לדוגמה 32EF) - defaultValue = הערך שנקבע (לדוגמה 00, 01, 02) - description = תיאור מה הפרמטר עושה אם מצוין - notes = כל הערה נוספת שמופיעה ליד הפרמטר - models = תמיד ריק חלץ את כולם, אל תדלג על שום פרמטר.';
@@ -3498,6 +3500,7 @@ async function pmScanRun(files){
           messages:[{role:'user',content:[contentBlock,{type:'text',text:'חלץ את כל הפרמטרים מהמסמך.'}]}]})
       });
       var data=await resp.json();
+      console.log('[pmScanRun] response status:', data);
       if(data.error) throw new Error(data.error.message||JSON.stringify(data.error));
       var raw=((data.content||[])[0]||{}).text||'';
       var arr=JSON.parse(raw.replace(/```json|```/g,'').trim());
