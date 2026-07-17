@@ -3553,7 +3553,15 @@ async function pmScanRun(files){
 
   _pmScanParsed=allParams;
   if(allParams.length===1){
-    pmOpenEditScan(0);
+    pmScanClose();
+    pmOpenAdd();
+    document.getElementById('pm-code').value = _pmScanParsed[0].paramCode||'';
+    document.getElementById('pm-name').value = _pmScanParsed[0].paramName||'';
+    document.getElementById('pm-desc').value = _pmScanParsed[0].description||'';
+    document.getElementById('pm-range').value = _pmScanParsed[0].range||'';
+    document.getElementById('pm-default').value = _pmScanParsed[0].defaultValue||'';
+    document.getElementById('pm-notes').value = _pmScanParsed[0].notes||'';
+    document.getElementById('pm-title').textContent = '✏️ פרמטר מסריקה — אמת ושמור';
     return;
   }
   var foundTxt='✅ נמצאו '+allParams.length+' פרמטרים';
