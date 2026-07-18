@@ -481,7 +481,10 @@ if('serviceWorker' in navigator){
       <input type="file" id="knowledge-file-input" accept=".pdf,image/*" multiple style="display:none" onchange="knowledgeHandleUpload(event)">
     </label>
   </div>
-  <div class="model-tabs" id="knowledge-model-tabs" style="margin-bottom:12px"></div>
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+    <div class="model-tabs" id="knowledge-model-tabs" style="margin-bottom:0;flex:1"></div>
+    <button onclick="knowledgeAddModel()" style="flex-shrink:0;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--text2);cursor:pointer;font-family:Heebo,sans-serif;white-space:nowrap">+ דגם חדש</button>
+  </div>
   <div id="knowledge-list" style="display:flex;flex-direction:column;gap:8px">
     <div class="empty"><div class="empty-icon">📂</div><p>בחר דגם מעלית מעל להצגת הקבצים</p></div>
   </div>
@@ -5623,8 +5626,17 @@ async function syncLearningFromD1(){
 const KNOWLEDGE_WORKER = 'https://tke-proxy.guyshtaiger.workers.dev';
 var _knowledgeModel = '';
 
+function knowledgeAddModel(){
+  var name = prompt('שם דגם חדש:');
+  if(!name || !name.trim()) return;
+  addElevatorModel(name.trim());
+  knowledgeInit();
+  knowledgeSelectModel(name.trim());
+}
+
 function knowledgeInit(){
-  var models = [...new Set(faults.map(function(f){ return f.model; }).filter(Boolean))].sort();
+  var fromFaults = faults.map(function(f){ return f.model; }).filter(Boolean);
+  var models = [...new Set([...getElevatorModels(), ...fromFaults])].sort();
   var tabs = document.getElementById('knowledge-model-tabs');
   if(!tabs) return;
   tabs.innerHTML = models.map(function(m){
