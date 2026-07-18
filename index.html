@@ -5788,7 +5788,11 @@ async function knowledgeUploadFile(file, model, token){
       body: file
     });
     if(res.ok) showToast('✅ '+file.name+' הועלה!');
-    else showToast('❌ שגיאה בהעלאת '+file.name);
+    else {
+      var errText = await res.text();
+      console.error('[knowledgeUpload] status:', res.status, 'body:', errText);
+      showToast('❌ שגיאה '+res.status+': '+errText.slice(0,80));
+    }
   }catch(e){ showToast('❌ שגיאת רשת'); }
 }
 
