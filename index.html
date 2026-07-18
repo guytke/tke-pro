@@ -3120,7 +3120,7 @@ function pmSetActiveModel(m){ _pmActiveModel=m; pmUpdateModelTabs(); pmRenderLis
 
 async function pmRefresh(){
   _pmList = await _pmIdbGetAll();
-  console.log('[pmRefresh] loaded params:', _pmList.length);
+  alert('[pmRefresh] loaded params: ' + _pmList.length);
   pmUpdateModelTabs();
   pmRenderList();
 }
