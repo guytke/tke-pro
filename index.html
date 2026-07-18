@@ -1635,7 +1635,7 @@ async function exportBackup(){
       return out;
     }));
     var pmParts = await _pmIdbGetAll();
-    const blob = new Blob([JSON.stringify({version:2,date:new Date().toISOString(),faults,params,mfr:mfrEntries,catalog:catalogExport,pmParams:pmParts},null,2)],{type:'application/json'});
+    const blob = new Blob([JSON.stringify({version:2,date:new Date().toISOString(),faults,params,mfr:mfrEntries,catalog:catalogExport,pmParams:pmParts,learningItems:loadLearning()},null,2)],{type:'application/json'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'tke-backup-'+new Date().toISOString().split('T')[0]+'.json';
@@ -2760,6 +2760,7 @@ function importBackup(e){
       const importedMfr = data.mfr || data.mfrEntries || data.manufacturer || [];
       const importedCatalog = data.catalog || [];
       const importedPmParams = data.pmParams || [];
+      const importedLearning = data.learningItems || [];
       var msg = 'שחזור יחליף ' + faults.length + ' תקלות קיימות ב-' + importedFaults.length + ' תקלות מהגיבוי.';
       if(importedCatalog.length) msg += '\nיובאו גם ' + importedCatalog.length + ' חלקים למאגר.';
       if(!confirm(msg + '\nלהמשיך?')) return;
@@ -2795,7 +2796,11 @@ function importBackup(e){
         for(var j=0;j<importedPmParams.length;j++) await _pmIdbPut(importedPmParams[j]);
         await pmRefresh();
       }
-      showToast('✅ שוחזרו ' + faults.length + ' תקלות' + (importedCatalog.length ? ' + ' + importedCatalog.length + ' חלקים' : '') + '!');
+      // ייבוא פריטי לימוד
+      if(importedLearning.length){
+        try{ saveLearning(importedLearning); }catch(eLrn){}
+      }
+      showToast('✅ שוחזרו ' + faults.length + ' תקלות' + (importedCatalog.length ? ' + ' + importedCatalog.length + ' חלקים' : '') + (importedLearning.length ? ' + ' + importedLearning.length + ' פריטי לימוד' : '') + '!');
     } catch(err){
       showToast('❌ שגיאה בקריאת הקובץ: ' + (err.message||''));
     }
