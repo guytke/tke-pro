@@ -3146,7 +3146,8 @@ function pmSetView(v){
 
 function pmCardHTML(p,extraTag){
   extraTag=extraTag||'';
-  var firstImg=(p.images&&p.images.length)?'<img src="'+URL.createObjectURL(p.images[0])+'" style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--border);flex-shrink:0;cursor:zoom-in" onclick="event.stopPropagation();showFullImg(this.src)">':'';
+  var firstImg='';
+  if(p.images&&p.images.length){ try{ firstImg='<img src="'+URL.createObjectURL(p.images[0])+'" style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--border);flex-shrink:0;cursor:zoom-in" onclick="event.stopPropagation();showFullImg(this.src)">'; }catch(e){} }
   return '<div class="card" onclick="pmOpenDetail(\''+p.id+'\')" style="position:relative;cursor:pointer">'+
     '<button onclick="event.stopPropagation();pmOpenEditIdb(\''+p.id+'\')" style="position:absolute;top:8px;left:8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--text2);cursor:pointer">✏️</button>'+
     '<button onclick="event.stopPropagation();pmDelete(\''+p.id+'\')" style="position:absolute;top:8px;left:48px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:3px 8px;font-size:11px;color:#f87171;cursor:pointer">🗑️</button>'+
