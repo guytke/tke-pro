@@ -750,6 +750,7 @@ if('serviceWorker' in navigator){
   <!-- Model filter tabs -->
   <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;overflow-x:auto;scrollbar-width:none">
     <div id="chat-model-tabs" style="display:flex;gap:5px;flex:1"></div>
+    <button onclick="chatAddModel()" style="flex-shrink:0;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px;color:var(--text2);cursor:pointer;font-family:Heebo,sans-serif;white-space:nowrap">+ דגם חדש</button>
   </div>
 
   <!-- Top bar: session tabs + new chat -->
@@ -3885,6 +3886,13 @@ function saveAllSessions(){
 }
 function getActiveSession(){
   return chatSessions.find(function(s){ return s.id===activeChatId; });
+}
+
+function chatAddModel(){
+  var name = prompt('שם דגם חדש:');
+  if(!name || !name.trim()) return;
+  addElevatorModel(name.trim());
+  chatSelectModel(name.trim());
 }
 
 function chatRenderModelTabs(){
