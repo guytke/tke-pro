@@ -747,6 +747,11 @@ if('serviceWorker' in navigator){
 <!-- CHAT SECTION -->
 <div id="section-chat" style="display:none">
 
+  <!-- Model filter tabs -->
+  <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;overflow-x:auto;scrollbar-width:none">
+    <div id="chat-model-tabs" style="display:flex;gap:5px;flex:1"></div>
+  </div>
+
   <!-- Top bar: session tabs + new chat -->
   <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
     <div id="chat-session-tabs" style="display:flex;gap:5px;overflow-x:auto;flex:1;scrollbar-width:none;padding-bottom:2px"></div>
@@ -3867,9 +3872,10 @@ function sendChatFile(){
 
 // ─── CHAT MULTI-SESSION ───────────────────────────────
 const CHAT_SESSIONS_KEY = 'tke_chat_sessions_v2';
-let chatSessions = [];      // [{id, title, messages:[]}]
+let chatSessions = [];      // [{id, title, messages:[], model}]
 let activeChatId = null;
 let chatContextEnabled = true;
+let _chatModel = null;
 
 function loadAllSessions(){
   try{ return JSON.parse(localStorage.getItem(CHAT_SESSIONS_KEY))||[]; }catch(e){ return []; }
@@ -3881,10 +3887,33 @@ function getActiveSession(){
   return chatSessions.find(function(s){ return s.id===activeChatId; });
 }
 
+function chatRenderModelTabs(){
+  var container = document.getElementById('chat-model-tabs');
+  if(!container) return;
+  var fromFaults = faults.map(function(f){ return f.model; }).filter(Boolean);
+  var models = [...new Set([...getElevatorModels(), ...fromFaults])].sort();
+  container.innerHTML =
+    '<button onclick="chatSelectModel(null)" style="flex-shrink:0;padding:5px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;cursor:pointer;white-space:nowrap;border:'
+    +(!_chatModel?'1px solid rgba(251,146,60,0.6);background:rgba(251,146,60,0.15);color:var(--orange);font-weight:600':'1px solid var(--border);background:var(--bg2);color:var(--text2)')
+    +'">הכל</button>'
+    + models.map(function(m){
+      var active = m===_chatModel;
+      return '<button onclick="chatSelectModel(\''+esc(m)+'\')" style="flex-shrink:0;padding:5px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;cursor:pointer;white-space:nowrap;border:'
+        +(active?'1px solid rgba(251,146,60,0.6);background:rgba(251,146,60,0.15);color:var(--orange);font-weight:600':'1px solid var(--border);background:var(--bg2);color:var(--text2)')
+        +'">'+esc(m)+'</button>';
+    }).join('');
+}
+
+function chatSelectModel(model){
+  _chatModel = model;
+  chatRenderModelTabs();
+  renderSessionTabs();
+}
+
 function newChatSession(){
   var id = Date.now().toString();
   var num = chatSessions.length + 1;
-  chatSessions.push({ id: id, title: 'שיחה '+num, messages: [] });
+  chatSessions.push({ id: id, title: 'שיחה '+num, messages: [], model: _chatModel||'' });
   saveAllSessions();
   switchToSession(id);
 }
@@ -3926,16 +3955,18 @@ function deleteCurrentSession(){
 function renderSessionTabs(){
   var container = document.getElementById('chat-session-tabs');
   if(!container) return;
-  container.innerHTML = chatSessions.map(function(s){
+  var visible = _chatModel
+    ? chatSessions.filter(function(s){ return s.model===_chatModel; })
+    : chatSessions;
+  container.innerHTML = visible.map(function(s){
     var isActive = s.id === activeChatId;
     return '<button onclick="switchToSession(\''+s.id+'\')" style="'
       +'flex-shrink:0;padding:5px 12px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;cursor:pointer;white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis;border:'
       +(isActive?'1px solid rgba(139,62,255,0.5);background:rgba(139,62,255,0.15);color:#a78bfa;font-weight:600':'1px solid var(--border);background:var(--bg2);color:var(--text2)')
       +'">'+esc(s.title)+'</button>';
   }).join('');
-  // Scroll active tab into view
   var btns = container.querySelectorAll('button');
-  var idx = chatSessions.findIndex(function(s){ return s.id===activeChatId; });
+  var idx = visible.findIndex(function(s){ return s.id===activeChatId; });
   if(btns[idx]) btns[idx].scrollIntoView({inline:'nearest',block:'nearest'});
 }
 
@@ -4048,6 +4079,21 @@ async function sendChatMsg(){
     var systemPrompt='אתה יועץ טכני מומחה למעליות — מנוסה בתחזוקה, תיקון ותכנות בקרים. עונה בעברית, בשפה מקצועית אך ישירה. שמור על מונחים טכניים באנגלית.';
     var ctx=buildChatContext();
     if(ctx) systemPrompt+='\n\nנתוני שטח:'+ctx;
+    // Inject knowledge file list for the session's model
+    var sessionModel = s.model || _chatModel || '';
+    if(sessionModel){
+      try{
+        var kToken=sessionStorage.getItem('tke_auth_token');
+        if(kToken){
+          var kRes=await fetch('https://tke-proxy.guyshtaiger.workers.dev/knowledge/list?model='+encodeURIComponent(sessionModel),{headers:{'Authorization':'Bearer '+kToken}});
+          if(kRes.ok){
+            var kData=await kRes.json();
+            var kFiles=(kData.files||[]).map(function(f){return f.name||f.key||f;}).filter(Boolean);
+            if(kFiles.length) systemPrompt+='\n\nקבצי מאגר ידע זמינים לדגם '+sessionModel+':\n'+kFiles.join('\n');
+          }
+        }
+      }catch(e){}
+    }
 
     var messages=s.messages.slice(-14);
     var lastMsg=messages[messages.length-1];
@@ -4194,12 +4240,13 @@ function savePart(){
 function initChatTab(){
   chatSessions=loadAllSessions();
   if(!chatSessions.length){
-    chatSessions=[{id:Date.now().toString(),title:'שיחה 1',messages:[]}];
+    chatSessions=[{id:Date.now().toString(),title:'שיחה 1',messages:[],model:''}];
     saveAllSessions();
   }
   if(!activeChatId||!chatSessions.find(function(s){return s.id===activeChatId;})){
     activeChatId=chatSessions[0].id;
   }
+  chatRenderModelTabs();
   switchToSession(activeChatId);
 }
 </script>
