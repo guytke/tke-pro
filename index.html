@@ -2772,22 +2772,24 @@ function importBackup(e){
       renderParams();
       // ייבוא מאגר חלקים עם תמונות
       if(importedCatalog.length){
-        showToast('⏳ מייבא מאגר חלקים...');
-        for(var i=0;i<importedCatalog.length;i++){
-          var p = Object.assign({},importedCatalog[i]);
-          if(p.imageBase64){
-            try{
-              var dataUrl = p.imageBase64.startsWith('data:') ? p.imageBase64 : 'data:image/jpeg;base64,'+p.imageBase64;
-              p.imageBlob = dataURLtoBlob(dataUrl);
-            }catch(e2){}
-            delete p.imageBase64;
+        try{
+          showToast('⏳ מייבא מאגר חלקים...');
+          for(var i=0;i<importedCatalog.length;i++){
+            var p = Object.assign({},importedCatalog[i]);
+            if(p.imageBase64){
+              try{
+                var dataUrl = p.imageBase64.startsWith('data:') ? p.imageBase64 : 'data:image/jpeg;base64,'+p.imageBase64;
+                p.imageBlob = dataURLtoBlob(dataUrl);
+              }catch(e2){}
+              delete p.imageBase64;
+            }
+            try{ await idbPut(p); }catch(e3){}
           }
-          await idbPut(p);
-        }
-        await refreshCatalogCache();
-        renderCatalog();
+          await refreshCatalogCache();
+          renderCatalog();
+        }catch(eCat){ showToast('⚠️ חלק ממאגר החלקים לא יובא: '+eCat.message); }
       }
-      // ייבוא פרמטרים
+      // ייבוא פרמטרים — תמיד מגיעים לכאן גם אם catalog נכשל
       if(importedPmParams.length){
         for(var j=0;j<importedPmParams.length;j++) await _pmIdbPut(importedPmParams[j]);
         await pmRefresh();
