@@ -360,6 +360,7 @@ if('serviceWorker' in navigator){
   <button id="main-tab-chat" onclick="switchMainTab('chat')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">🤖 ייעוץ שטח</button>
   <button id="main-tab-parts" onclick="switchMainTab('parts')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">🗂️ מאגר חלקים</button>
   <button id="main-tab-orders" onclick="switchMainTab('orders')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">📋 הזמנות</button>
+  <button id="main-tab-knowledge" onclick="switchMainTab('knowledge')" style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-family:Heebo,sans-serif;font-size:12px;font-weight:500;cursor:pointer">📚 מאגר ידע</button>
 </div>
 <div id="section-tools" style="display:none">
   <div style="padding:8px 0;color:var(--text2);font-size:13px;font-family:Heebo,sans-serif;margin-bottom:16px">כלי ניהול נתונים</div>
@@ -472,6 +473,20 @@ if('serviceWorker' in navigator){
 </div><!-- end section-faults -->
 
 <!-- PARAMS SECTION -->
+<div id="section-knowledge" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+    <div style="font-size:13px;font-weight:600;color:var(--text2)">📚 קבצי ידע לפי דגם</div>
+    <label class="btn btn-primary btn-sm" style="cursor:pointer">
+      ⬆️ העלה קובץ
+      <input type="file" id="knowledge-file-input" accept=".pdf,image/*" multiple style="display:none" onchange="knowledgeHandleUpload(event)">
+    </label>
+  </div>
+  <div class="model-tabs" id="knowledge-model-tabs" style="margin-bottom:12px"></div>
+  <div id="knowledge-list" style="display:flex;flex-direction:column;gap:8px">
+    <div class="empty"><div class="empty-icon">📂</div><p>בחר דגם מעלית מעל להצגת הקבצים</p></div>
+  </div>
+</div>
+
 <div id="section-params" style="display:none">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
     <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -2388,9 +2403,11 @@ function switchMainTab(tab){
   var to=document.getElementById('main-tab-orders');
   var sl=document.getElementById('section-learning');
   var tl=document.getElementById('main-tab-learning');
+  var sk=document.getElementById('section-knowledge');
+  var tk=document.getElementById('main-tab-knowledge');
   sf.style.display='none'; sp.style.display='none'; sm.style.display='none';
-  if(st)st.style.display='none'; if(sc)sc.style.display='none'; if(spt)spt.style.display='none'; if(so)so.style.display='none'; if(sl)sl.style.display='none';
-  [tf,tp,tm,tt,tc,tpt,to,tl].forEach(function(b){if(b){b.style.background='var(--bg2)';b.style.borderColor='var(--border)';b.style.color='var(--text2)';b.style.fontWeight='500';}});
+  if(st)st.style.display='none'; if(sc)sc.style.display='none'; if(spt)spt.style.display='none'; if(so)so.style.display='none'; if(sl)sl.style.display='none'; if(sk)sk.style.display='none';
+  [tf,tp,tm,tt,tc,tpt,to,tl,tk].forEach(function(b){if(b){b.style.background='var(--bg2)';b.style.borderColor='var(--border)';b.style.color='var(--text2)';b.style.fontWeight='500';}});
 
   var logoText = document.getElementById('logo-text');
   var logoIcon = document.getElementById('logo-icon');
@@ -2438,6 +2455,12 @@ function switchMainTab(tab){
     if(to){to.style.background='rgba(99,102,241,0.12)';to.style.borderColor='rgba(99,102,241,0.4)';to.style.color='#818cf8';to.style.fontWeight='600';}
     if(logoText){ logoText.textContent='הזמנות'; logoText.style.color='#818cf8'; }
     if(logoIcon) logoIcon.textContent='📋';
+  } else if(tab==='knowledge'){
+    if(sk)sk.style.display='block';
+    if(tk){tk.style.background='rgba(20,184,166,0.12)';tk.style.borderColor='rgba(20,184,166,0.4)';tk.style.color='#2dd4bf';tk.style.fontWeight='600';}
+    if(logoText){ logoText.textContent='מאגר ידע'; logoText.style.color='#2dd4bf'; }
+    if(logoIcon) logoIcon.textContent='📚';
+    knowledgeInit();
   }
 }
 
@@ -5596,6 +5619,97 @@ async function syncLearningFromD1(){
 </script>
 
 <script>
+// ── Knowledge Base ───────────────────────────────────────
+const KNOWLEDGE_WORKER = 'https://tke-proxy.guyshtaiger.workers.dev';
+var _knowledgeModel = '';
+
+function knowledgeInit(){
+  var models = [...new Set(faults.map(function(f){ return f.model; }).filter(Boolean))].sort();
+  var tabs = document.getElementById('knowledge-model-tabs');
+  if(!tabs) return;
+  tabs.innerHTML = models.map(function(m){
+    return '<button class="model-tab'+(m===_knowledgeModel?' active':'')+'" onclick="knowledgeSelectModel(\''+esc(m)+'\')">'+ esc(m)+'</button>';
+  }).join('');
+  if(_knowledgeModel) knowledgeListFiles(_knowledgeModel);
+}
+
+function knowledgeSelectModel(model){
+  _knowledgeModel = model;
+  var tabs = document.getElementById('knowledge-model-tabs');
+  if(tabs) tabs.querySelectorAll('.model-tab').forEach(function(b){
+    b.classList.toggle('active', b.textContent.trim()===model);
+  });
+  knowledgeListFiles(model);
+}
+
+async function knowledgeListFiles(model){
+  var list = document.getElementById('knowledge-list');
+  if(!list) return;
+  list.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px 0">טוען...</div>';
+  var token = sessionStorage.getItem('tke_auth_token');
+  if(!token){ list.innerHTML='<div class="empty"><div class="empty-icon">🔒</div><p>נא להתחבר תחילה</p></div>'; return; }
+  try{
+    var res = await fetch(KNOWLEDGE_WORKER+'/knowledge/list?model='+encodeURIComponent(model), {
+      headers:{ 'Authorization':'Bearer '+token }
+    });
+    var data = await res.json();
+    var files = data.files||[];
+    if(!files.length){
+      list.innerHTML='<div class="empty"><div class="empty-icon">📂</div><p>אין קבצים עבור '+esc(model)+'</p></div>';
+      return;
+    }
+    list.innerHTML = files.map(function(f){
+      var name = (f.key||f).split('/').pop();
+      return '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 13px;gap:10px">'+
+        '<span style="font-size:13px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📄 '+esc(name)+'</span>'+
+        '<button onclick="knowledgeDeleteFile(\''+esc(f.key||f)+'\')" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:4px 10px;font-size:12px;color:#ef4444;cursor:pointer;font-family:Heebo,sans-serif;flex-shrink:0">🗑 מחק</button>'+
+      '</div>';
+    }).join('');
+  }catch(e){
+    list.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><p>שגיאת חיבור לשרת</p></div>';
+  }
+}
+
+async function knowledgeHandleUpload(e){
+  var files = Array.from(e.target.files);
+  e.target.value='';
+  if(!files.length) return;
+  if(!_knowledgeModel){ showToast('⚠️ נא לבחור דגם מעלית תחילה'); return; }
+  var token = sessionStorage.getItem('tke_auth_token');
+  if(!token){ showToast('⚠️ נא להתחבר תחילה'); return; }
+  for(var f of files){
+    showToast('⬆️ מעלה '+f.name+'...');
+    await knowledgeUploadFile(f, _knowledgeModel, token);
+  }
+  knowledgeListFiles(_knowledgeModel);
+}
+
+async function knowledgeUploadFile(file, model, token){
+  try{
+    var res = await fetch(KNOWLEDGE_WORKER+'/knowledge/upload?model='+encodeURIComponent(model)+'&filename='+encodeURIComponent(file.name),{
+      method:'POST',
+      headers:{ 'Authorization':'Bearer '+token, 'Content-Type': file.type||'application/octet-stream' },
+      body: file
+    });
+    if(res.ok) showToast('✅ '+file.name+' הועלה!');
+    else showToast('❌ שגיאה בהעלאת '+file.name);
+  }catch(e){ showToast('❌ שגיאת רשת'); }
+}
+
+async function knowledgeDeleteFile(key){
+  if(!confirm('למחוק את הקובץ?')) return;
+  var token = sessionStorage.getItem('tke_auth_token');
+  if(!token){ showToast('⚠️ נא להתחבר תחילה'); return; }
+  try{
+    var res = await fetch(KNOWLEDGE_WORKER+'/knowledge/delete?key='+encodeURIComponent(key),{
+      method:'DELETE',
+      headers:{ 'Authorization':'Bearer '+token }
+    });
+    if(res.ok){ showToast('🗑 נמחק!'); knowledgeListFiles(_knowledgeModel); }
+    else showToast('❌ שגיאה במחיקה');
+  }catch(e){ showToast('❌ שגיאת רשת'); }
+}
+
 // ── Login / Auth ─────────────────────────────────────────
 const AUTH_URL  = 'https://tke-proxy.guyshtaiger.workers.dev/auth/login';
 const TOKEN_KEY = 'tke_auth_token';      // sessionStorage — active session
