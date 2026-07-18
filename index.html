@@ -4079,8 +4079,9 @@ async function sendChatMsg(){
     var systemPrompt='אתה יועץ טכני מומחה למעליות — מנוסה בתחזוקה, תיקון ותכנות בקרים. עונה בעברית, בשפה מקצועית אך ישירה. שמור על מונחים טכניים באנגלית.';
     var ctx=buildChatContext();
     if(ctx) systemPrompt+='\n\nנתוני שטח:'+ctx;
-    // Inject knowledge file list for the session's model
+    // Fetch and attach knowledge base files for the session's model
     var sessionModel = s.model || _chatModel || '';
+    var knowledgeBlocks = [];
     if(sessionModel){
       try{
         var kToken=sessionStorage.getItem('tke_auth_token');
@@ -4088,8 +4089,31 @@ async function sendChatMsg(){
           var kRes=await fetch('https://tke-proxy.guyshtaiger.workers.dev/knowledge/list?model='+encodeURIComponent(sessionModel),{headers:{'Authorization':'Bearer '+kToken}});
           if(kRes.ok){
             var kData=await kRes.json();
-            var kFiles=(kData.files||[]).map(function(f){return f.name||f.key||f;}).filter(Boolean);
-            if(kFiles.length) systemPrompt+='\n\nקבצי מאגר ידע זמינים לדגם '+sessionModel+':\n'+kFiles.join('\n');
+            var kFileList=(kData.files||[]).slice(0,5); // limit to 5 files
+            var totalBytes=0;
+            var MAX_BYTES=4*1024*1024; // 4MB cap
+            for(var ki=0;ki<kFileList.length;ki++){
+              var kf=kFileList[ki];
+              var kKey=kf.key||kf.name||kf;
+              try{
+                var fRes=await fetch('https://tke-proxy.guyshtaiger.workers.dev/knowledge/file?key='+encodeURIComponent(kKey),{headers:{'Authorization':'Bearer '+kToken}});
+                if(!fRes.ok) continue;
+                var fBuf=await fRes.arrayBuffer();
+                totalBytes+=fBuf.byteLength;
+                if(totalBytes>MAX_BYTES){ knowledgeBlocks.push({type:'text',text:'[⚠️ חלק מהקבצים לא צורפו — חריגת מגבלת גודל]'}); break; }
+                var fMime=fRes.headers.get('Content-Type')||'application/octet-stream';
+                var fB64=btoa(String.fromCharCode(...new Uint8Array(fBuf)));
+                var kName=kKey.split('/').pop();
+                if(fMime==='application/pdf'||kKey.endsWith('.pdf')){
+                  knowledgeBlocks.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:fB64},title:kName});
+                } else if(fMime.startsWith('image/')){
+                  knowledgeBlocks.push({type:'image',source:{type:'base64',media_type:fMime,data:fB64}});
+                } else {
+                  var fText=new TextDecoder().decode(fBuf);
+                  knowledgeBlocks.push({type:'text',text:'['+kName+']\n'+fText});
+                }
+              }catch(e){}
+            }
           }
         }
       }catch(e){}
@@ -4100,12 +4124,17 @@ async function sendChatMsg(){
     // Capture and clear file BEFORE building messages
     var fileToSend = chatAttachedFile;
     clearChatFile();
-    if(fileToSend && lastMsg && lastMsg.role==='user'){
+    // Build content array for the last user message (attach knowledge + user file)
+    if((knowledgeBlocks.length||fileToSend) && lastMsg && lastMsg.role==='user'){
       var arr=[];
-      if(fileToSend.type==='image'){
-        arr.push({type:'image',source:{type:'base64',media_type:fileToSend.mimeType,data:fileToSend.base64}});
-      } else {
-        arr.push({type:'text',text:'[PDF מצורף: '+fileToSend.name+' — נא לנתח לפי הטקסט שצוין]'});
+      // Prepend knowledge base content
+      knowledgeBlocks.forEach(function(b){ arr.push(b); });
+      if(fileToSend){
+        if(fileToSend.type==='image'){
+          arr.push({type:'image',source:{type:'base64',media_type:fileToSend.mimeType,data:fileToSend.base64}});
+        } else {
+          arr.push({type:'text',text:'[PDF מצורף: '+fileToSend.name+' — נא לנתח לפי הטקסט שצוין]'});
+        }
       }
       arr.push({type:'text',text:lastMsg.content});
       messages[messages.length-1]={role:'user',content:arr};
