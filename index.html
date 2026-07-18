@@ -364,6 +364,7 @@ if('serviceWorker' in navigator){
 </div>
 <div id="section-tools" style="display:none">
   <div style="padding:8px 0;color:var(--text2);font-size:13px;font-family:Heebo,sans-serif;margin-bottom:16px">כלי ניהול נתונים</div>
+  <button onclick="pmClearAll().then(function(){ alert('נמחק הכל'); pmRefresh(); })" style="background:red;color:white;padding:10px;border:none;border-radius:8px;font-family:Heebo,sans-serif;font-size:14px;cursor:pointer;margin-bottom:12px">מחק את כל הפרמטרים (זמני)</button>
 
   <!-- API KEY -->
   <div style="background:var(--bg2);border:1px solid rgba(139,62,255,0.35);border-radius:var(--radius);padding:14px;margin-bottom:16px">
@@ -3058,6 +3059,16 @@ function _pmIdbDelete(id){
       r.onsuccess=function(){ res(); };
       r.onerror=function(){ rej(r.error); };
     });
+  });
+}
+
+async function pmClearAll(){
+  var db = await openIDB();
+  return new Promise(function(res,rej){
+    var tx = db.transaction('params','readwrite');
+    tx.objectStore('params').clear();
+    tx.oncomplete = function(){ res(); };
+    tx.onerror = function(){ rej(tx.error); };
   });
 }
 
