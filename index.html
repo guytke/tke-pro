@@ -3136,8 +3136,7 @@ function pmSetActiveModel(m){ _pmActiveModel=m; pmUpdateModelTabs(); pmRenderLis
 
 async function pmRefresh(){
   _pmList = await _pmIdbGetAll();
-  alert('[pmRefresh] count: ' + _pmList.length + '\n' + _pmList.map(function(p,i){ return (i+1)+'. '+p.paramCode+' | models: '+(p.models||[]).join(','); }).join('\n'));
-  pmUpdateModelTabs();
+pmUpdateModelTabs();
   pmRenderList();
 }
 
