@@ -5836,13 +5836,22 @@ function deleteLearningItem(id){
 function _lrnSyncToD1(item){
   var token=sessionStorage.getItem('tke_auth_token');
   if(!token||!navigator.onLine) return;
-  fetch(LRN_D1_SAVE,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(item)}).catch(function(){});
+  var payload={
+    id: item.id,
+    model: JSON.stringify(item.models||[]),
+    category: item.category,
+    title: item.title,
+    description: item.desc||'',
+    content: item.text||'',
+    images: item.images||[]
+  };
+  fetch(LRN_D1_SAVE,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(payload)}).catch(function(){});
 }
 
 function _lrnDeleteFromD1(id){
   var token=sessionStorage.getItem('tke_auth_token');
   if(!token||!navigator.onLine) return;
-  fetch(LRN_D1_DELETE,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({id:id})}).catch(function(){});
+  fetch(LRN_D1_DELETE,{method:'DELETE',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({learning_id:id})}).catch(function(){});
 }
 
 async function syncLearningFromD1(){
@@ -5851,8 +5860,16 @@ async function syncLearningFromD1(){
   try{
     var res=await fetch(LRN_D1_LIST,{headers:{'Authorization':'Bearer '+token}});
     if(!res.ok) return;
-    var d1Items=await res.json();
-    if(!Array.isArray(d1Items)) return;
+    var d1Data=await res.json();
+    var d1Rows=d1Data.items||[];
+    if(!Array.isArray(d1Rows)) return;
+    var d1Items=d1Rows.map(function(r){
+      var models=[]; try{ models=JSON.parse(r.model||'[]'); }catch(e){ models=r.model?[r.model]:[]; }
+      return { id:r.id, models:models, category:r.category, title:r.title,
+        desc:r.description||'', text:r.content||'',
+        images:(function(){ try{ return JSON.parse(r.images||'[]'); }catch(e){ return []; } })(),
+        date:(r.created_at||'').split('T')[0] };
+    });
     var local=loadLearning();
     var localIds=new Set(local.map(function(x){ return String(x.id).trim(); }));
     var d1Ids=new Set(d1Items.map(function(x){ return String(x.id).trim(); }));
