@@ -4106,13 +4106,40 @@ async function sendChatMsg(){
           console.log('[knowledge] status:', kRes.status, 'model:', sessionModel);
           if(kRes.ok){
             var kData=await kRes.json();
-            var kFileList=(kData.files||[]).slice(0,5); // limit to 5 files
-            console.log('[knowledge] files found:', kFileList.length, kFileList);
+            var kAllFiles=kData.files||[];
+            console.log('[knowledge] files found:', kAllFiles.length, kAllFiles);
+            var kFileList=[];
+            if(kAllFiles.length){
+              try{
+                var pickNames=kAllFiles.map(function(f){ return f.filename||f.key||f.name||f; });
+                var pickPrompt='אתה מהנדס סופרוויזר מנוסה שבודק אילו מסמכים טכניים רלוונטיים לשאלה של טכנאי. קיבלת רשימת קבצים זמינים ושאלה. תחשוב כמו מומחה אמיתי — אילו קבצים הכי סביר שמכילים את התשובה, לפי שם הקובץ ולפי הקשר השאלה (למשל אם השאלה על UPS, קובץ עם UPS בשם רלוונטי מאוד). בחר עד 4 קבצים שהכי סביר שרלוונטיים. החזר JSON בלבד: {"files":["שם1","שם2"]}';
+                var pickResp=await fetch('https://tke-proxy.guyshtaiger.workers.dev',{
+                  method:'POST',
+                  headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01'},
+                  body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:300,system:pickPrompt,messages:[{role:'user',content:'קבצים זמינים:\n'+pickNames.join('\n')+'\n\nשאלת הטכנאי: '+msg}]})
+                });
+                var pickData=await pickResp.json();
+                var pickText=(pickData.content&&pickData.content[0])?pickData.content[0].text:'';
+                var pickMatch=pickText.match(/\{[\s\S]*\}/);
+                var pickedNames=pickMatch?(JSON.parse(pickMatch[0]).files||[]):[];
+                console.log('[knowledge] AI picked files:', pickedNames);
+                kFileList=kAllFiles.filter(function(f){
+                  var fname=f.filename||f.key||f.name||f;
+                  return pickedNames.some(function(pn){ return fname===pn || (f.key||'').endsWith(pn); });
+                });
+              }catch(ePick){ console.error('[knowledge] pick error:', ePick); kFileList=kAllFiles.slice(0,4); }
+            }
+            console.log('[knowledge] files selected for content fetch:', kFileList.length, kFileList);
             var totalBytes=0;
             var MAX_BYTES=4*1024*1024; // 4MB cap
+            var MAX_FILE_BYTES=20*1024*1024; // 20MB per-file cap
             for(var ki=0;ki<kFileList.length;ki++){
               var kf=kFileList[ki];
               var kKey=kf.key||kf.name||kf;
+              if(kf.size && kf.size>MAX_FILE_BYTES){
+                knowledgeBlocks.push({type:'text',text:'[קובץ '+(kf.filename||kKey)+' גדול מדי לצירוף ישיר — יש לפצל אותו לחלקים קטנים יותר]'});
+                continue;
+              }
               try{
                 var fRes=await fetch('https://tke-proxy.guyshtaiger.workers.dev/knowledge/file?key='+encodeURIComponent(kKey),{headers:{'Authorization':'Bearer '+kToken}});
                 if(!fRes.ok) continue;
