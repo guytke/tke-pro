@@ -3056,6 +3056,16 @@ function _pmIdbPut(p){
   });
 }
 
+function syncParamToD1(param){
+  var token = sessionStorage.getItem('tke_auth_token');
+  if(!token) return;
+  fetch('https://tke-proxy.guyshtaiger.workers.dev/params/save',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify(param)
+  }).catch(function(err){ console.error('[syncParamToD1] error:', err); });
+}
+
 function _pmIdbDelete(id){
   return openIDB().then(function(db){
     return new Promise(function(res,rej){
@@ -3123,9 +3133,46 @@ function pmUpdateModelTabs(){
 }
 function pmSetActiveModel(m){ _pmActiveModel=m; pmUpdateModelTabs(); pmRenderList(); }
 
+async function pmSyncFromD1(){
+  var token = sessionStorage.getItem('tke_auth_token');
+  if(!token || !navigator.onLine) return;
+  try{
+    var res = await fetch('https://tke-proxy.guyshtaiger.workers.dev/params/list',{headers:{'Authorization':'Bearer '+token}});
+    if(!res.ok) return;
+    var data = await res.json();
+    var cloudParams = data.params||[];
+    var local = await _pmIdbGetAll();
+    var localById = {};
+    local.forEach(function(p){ localById[p.id]=p; });
+    for(var i=0;i<cloudParams.length;i++){
+      var cp = cloudParams[i];
+      var mapped = {
+        id: cp.id,
+        paramCode: cp.paramCode||'',
+        paramName: cp.paramName||'',
+        description: cp.description||'',
+        models: cp.models ? (function(){ try{ return JSON.parse(cp.models); }catch(e){ return []; } })() : [],
+        range: cp.range||'',
+        defaultValue: cp.defaultValue||'',
+        notes: cp.notes||'',
+        images: [],
+        createdAt: cp.created_at ? new Date(cp.created_at).getTime() : Date.now()
+      };
+      var existing = localById[cp.id];
+      if(!existing){
+        await _pmIdbPut(mapped);
+      } else if((mapped.createdAt||0) > (existing.createdAt||0)){
+        mapped.images = existing.images||[];
+        await _pmIdbPut(mapped);
+      }
+    }
+  }catch(e){ console.error('[pmSyncFromD1] error:', e); }
+}
+
 async function pmRefresh(){
+  await pmSyncFromD1();
   _pmList = await _pmIdbGetAll();
-pmUpdateModelTabs();
+  pmUpdateModelTabs();
   pmRenderList();
 }
 
@@ -3345,12 +3392,14 @@ async function pmSave(){
         if(!okSingle) return;
         await _pmIdbDelete(dupSingle.id);
       }
-      await _pmIdbPut({
+      var _singleParam={
         id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),
         paramCode:sp.paramCode||'', paramName:sp.paramName||'', description:sp.description||'',
         models:sp.models||[], range:sp.range||'', defaultValue:sp.defaultValue||'', notes:sp.notes||'',
         images:sp.images||[], createdAt:Date.now()
-      });
+      };
+      await _pmIdbPut(_singleParam);
+      syncParamToD1(_singleParam);
       _pmScanParsed=[];
       pmClose();
       pmScanClose();
@@ -3376,11 +3425,11 @@ async function pmSave(){
     _showConflictDialog(code, dupM,
       function(){ // הוסף כחדש
         var np=_buildP(Date.now().toString(36)+Math.random().toString(36).slice(2,5));
-        _pmIdbPut(np).then(function(){ pmClose(); pmRefresh(); showToast('✅ נוסף כחדש!'); }).catch(function(e){ showToast('❌ '+e.message); });
+        _pmIdbPut(np).then(function(){ syncParamToD1(np); pmClose(); pmRefresh(); showToast('✅ נוסף כחדש!'); }).catch(function(e){ showToast('❌ '+e.message); });
       },
       function(){ // החלף קיים
         var rp=_buildP(dup.id);
-        _pmIdbPut(rp).then(function(){ pmClose(); pmRefresh(); showToast('✅ עודכן!'); }).catch(function(e){ showToast('❌ '+e.message); });
+        _pmIdbPut(rp).then(function(){ syncParamToD1(rp); pmClose(); pmRefresh(); showToast('✅ עודכן!'); }).catch(function(e){ showToast('❌ '+e.message); });
       },
       function(){} // ביטול
     );
@@ -3391,7 +3440,7 @@ async function pmSave(){
     createdAt:Date.now()
   },pData);
   try{
-    await _pmIdbPut(p); pmClose(); await pmRefresh(); showToast('✅ נשמר!');
+    await _pmIdbPut(p); syncParamToD1(p); pmClose(); await pmRefresh(); showToast('✅ נשמר!');
     setTimeout(function(){ flashSavedParam(code); }, 280);
   }catch(e){ showToast('❌ שגיאה: '+e.message); }
 }
