@@ -3321,6 +3321,7 @@ async function pmSave(){
   var code=(document.getElementById('pm-code').value||'').trim();
   if(!code){ showToast('⚠️ נא למלא קוד פרמטר'); return; }
   var models=_pmSelected.slice();
+  if(!models.length){ showToast('⚠️ נא לבחור לפחות דגם מעלית אחד'); return; }
   var pData={
     paramCode: code,
     paramName: (document.getElementById('pm-name').value||'').trim(),
