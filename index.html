@@ -4103,9 +4103,11 @@ async function sendChatMsg(){
         var kToken=sessionStorage.getItem('tke_auth_token');
         if(kToken){
           var kRes=await fetch('https://tke-proxy.guyshtaiger.workers.dev/knowledge/list?model='+encodeURIComponent(sessionModel),{headers:{'Authorization':'Bearer '+kToken}});
+          console.log('[knowledge] status:', kRes.status, 'model:', sessionModel);
           if(kRes.ok){
             var kData=await kRes.json();
             var kFileList=(kData.files||[]).slice(0,5); // limit to 5 files
+            console.log('[knowledge] files found:', kFileList.length, kFileList);
             var totalBytes=0;
             var MAX_BYTES=4*1024*1024; // 4MB cap
             for(var ki=0;ki<kFileList.length;ki++){
@@ -4128,11 +4130,12 @@ async function sendChatMsg(){
                   var fText=new TextDecoder().decode(fBuf);
                   knowledgeBlocks.push({type:'text',text:'['+kName+']\n'+fText});
                 }
-              }catch(e){}
+              }catch(e){ console.error('[knowledge] error:', e); }
             }
+            console.log('[knowledge] blocks attached:', knowledgeBlocks.length);
           }
         }
-      }catch(e){}
+      }catch(e){ console.error('[knowledge] error:', e); }
     }
 
     var messages=s.messages.slice(-14);
