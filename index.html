@@ -4120,7 +4120,13 @@ async function sendChatMsg(){
                 totalBytes+=fBuf.byteLength;
                 if(totalBytes>MAX_BYTES){ knowledgeBlocks.push({type:'text',text:'[⚠️ חלק מהקבצים לא צורפו — חריגת מגבלת גודל]'}); break; }
                 var fMime=fRes.headers.get('Content-Type')||'application/octet-stream';
-                var fB64=btoa(String.fromCharCode(...new Uint8Array(fBuf)));
+                var fBytes=new Uint8Array(fBuf);
+                var fBinary='';
+                var CHUNK=8192;
+                for(var bi=0;bi<fBytes.length;bi+=CHUNK){
+                  fBinary+=String.fromCharCode.apply(null, fBytes.subarray(bi, bi+CHUNK));
+                }
+                var fB64=btoa(fBinary);
                 var kName=kKey.split('/').pop();
                 if(fMime==='application/pdf'||kKey.endsWith('.pdf')){
                   knowledgeBlocks.push({type:'document',source:{type:'base64',media_type:'application/pdf',data:fB64},title:kName});
