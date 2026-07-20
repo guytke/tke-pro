@@ -4512,11 +4512,78 @@ function dataURLtoBlob(dataURL){
   return new Blob([arr],{type:mime});
 }
 
+// ── Catalog cloud sync ─────────────────────────────────
+function syncCatalogToD1(part){
+  var token = sessionStorage.getItem('tke_auth_token');
+  if(!token) return;
+  (async function(){
+    try{
+      var payload = Object.assign({}, part);
+      delete payload.imageBlob;
+      if(part.imageBlob){
+        try{
+          payload.image = await new Promise(function(resolve,reject){
+            var fr=new FileReader();
+            fr.onload=function(ev){ resolve(ev.target.result); };
+            fr.onerror=reject;
+            fr.readAsDataURL(part.imageBlob);
+          });
+        }catch(e){}
+      }
+      await fetch('https://tke-proxy.guyshtaiger.workers.dev/catalog/save',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body:JSON.stringify(payload)
+      });
+    }catch(err){ console.error('[syncCatalogToD1] error:', err); }
+  })();
+}
+
+async function catalogSyncFromD1(){
+  var token = sessionStorage.getItem('tke_auth_token');
+  if(!token || !navigator.onLine) return;
+  try{
+    var res = await fetch('https://tke-proxy.guyshtaiger.workers.dev/catalog/list',{headers:{'Authorization':'Bearer '+token}});
+    if(!res.ok) return;
+    var data = await res.json();
+    var cloudParts = data.catalog||[];
+    var local = await idbGetAll();
+    var localById = {};
+    local.forEach(function(p){ localById[p.id]=p; });
+    for(var i=0;i<cloudParts.length;i++){
+      var cp = cloudParts[i];
+      var createdAtMs = cp.created_at ? new Date(cp.created_at).getTime() : Date.now();
+      var existing = localById[cp.id];
+      if(existing && (existing.createdAt||0) >= createdAtMs) continue;
+      var mapped = {
+        id: cp.id,
+        name: cp.name||'',
+        partNumber: cp.partNumber||'',
+        quantity: cp.quantity||0,
+        models: cp.models ? (function(){ try{ return JSON.parse(cp.models); }catch(e){ return []; } })() : [],
+        category: cp.category||'',
+        notes: cp.notes||'',
+        fingerprint: cp.fingerprint ? (function(){ try{ return JSON.parse(cp.fingerprint); }catch(e){ return null; } })() : null,
+        imageBlob: existing?existing.imageBlob:null,
+        createdAt: createdAtMs
+      };
+      if(cp.image_key && !existing){
+        try{
+          var imgRes = await fetch('https://tke-proxy.guyshtaiger.workers.dev/knowledge/file?key='+encodeURIComponent(cp.image_key),{headers:{'Authorization':'Bearer '+token}});
+          if(imgRes.ok) mapped.imageBlob = await imgRes.blob();
+        }catch(e){}
+      }
+      await idbPut(mapped);
+    }
+  }catch(e){ console.error('[catalogSyncFromD1] error:', e); }
+}
+
 // ── In-memory cache + object URLs ─────────────────────
 var _catalogParts = [];
 var _catalogObjURLs = {};
 
 async function refreshCatalogCache(){
+  await catalogSyncFromD1();
   var parts=await idbGetAll();
   // revoke URLs for deleted parts
   Object.keys(_catalogObjURLs).forEach(function(id){
@@ -4982,6 +5049,7 @@ async function saveCatalogPart(){
   if(_catalogImgBlob&&existing) part.fingerprint=null; // re-analyze new image
   try{
     await idbPut(part);
+    syncCatalogToD1(part);
     closeModal('catalog-add-modal');
     await refreshCatalogCache();
     renderCatalogChips(); renderCatalog();
