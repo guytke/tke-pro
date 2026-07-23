@@ -6016,7 +6016,10 @@ async function syncFaultsFromD1() {
   try {
     var res = await fetch(D1_LIST_URL, { headers: { 'Authorization': 'Bearer ' + token } });
     if (!res.ok) return;
-    var d1Faults = await res.json();
+    var d1Response = await res.json();
+    console.log('[syncFaultsFromD1] response:', d1Response);
+    var d1Faults = Array.isArray(d1Response) ? d1Response : d1Response.faults;
+    console.log('[syncFaultsFromD1] d1Faults:', d1Faults, 'isArray:', Array.isArray(d1Faults));
     if (!Array.isArray(d1Faults)) return;
 
     var local = load();
