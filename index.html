@@ -6021,6 +6021,13 @@ async function syncFaultsFromD1() {
     var d1Faults = Array.isArray(d1Response) ? d1Response : d1Response.faults;
     console.log('[syncFaultsFromD1] d1Faults:', d1Faults, 'isArray:', Array.isArray(d1Faults));
     if (!Array.isArray(d1Faults)) return;
+    // פתח fault_data אם הנתונים מגיעים עטופים (מבנה D1)
+    d1Faults = d1Faults.map(function(row){
+      if(row.fault_data && typeof row.fault_data === 'string'){
+        try{ return Object.assign({}, JSON.parse(row.fault_data), {id: row.id}); }catch(e){ return null; }
+      }
+      return row;
+    }).filter(Boolean);
 
     var local = load();
     // normalise ids to strings for safe comparison
