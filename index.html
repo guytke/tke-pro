@@ -6034,7 +6034,15 @@ async function syncFaultsFromD1() {
 
     if (toAdd.length) {
       faults = local.concat(toAdd);
-      save(faults);
+      try {
+        save(faults);
+      } catch(qe) {
+        if(qe.name === 'QuotaExceededError') {
+          console.warn('[syncFaultsFromD1] QuotaExceeded — saving without images');
+          var stripped = faults.map(function(f){ return Object.assign({},f,{images:[]}); });
+          try { save(stripped); faults = stripped; } catch(e2) { console.error('[syncFaultsFromD1] still quota error after stripping images:', e2); }
+        } else { throw qe; }
+      }
       refresh();
       console.log('[syncFaultsFromD1] added', toAdd.length, 'faults from D1');
     }
