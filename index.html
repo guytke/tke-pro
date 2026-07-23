@@ -3151,6 +3151,8 @@ async function pmSyncFromD1(){
     local.forEach(function(p){ localById[p.id]=p; });
     for(var i=0;i<cloudParams.length;i++){
       var cp = cloudParams[i];
+      var existing = localById[cp.id];
+      if(existing) continue; // אם כבר קיים מקומית, אל תדרוס אותו
       var mapped = {
         id: cp.id,
         paramCode: cp.paramCode||'',
@@ -3163,13 +3165,7 @@ async function pmSyncFromD1(){
         images: [],
         createdAt: cp.created_at ? new Date(cp.created_at).getTime() : Date.now()
       };
-      var existing = localById[cp.id];
-      if(!existing){
-        await _pmIdbPut(mapped);
-      } else if((mapped.createdAt||0) > (existing.createdAt||0)){
-        mapped.images = existing.images||[];
-        await _pmIdbPut(mapped);
-      }
+      await _pmIdbPut(mapped);
     }
   }catch(e){ console.error('[pmSyncFromD1] error:', e); }
 }
@@ -4555,9 +4551,9 @@ async function catalogSyncFromD1(){
     local.forEach(function(p){ localById[p.id]=p; });
     for(var i=0;i<cloudParts.length;i++){
       var cp = cloudParts[i];
-      var createdAtMs = cp.created_at ? new Date(cp.created_at).getTime() : Date.now();
       var existing = localById[cp.id];
-      if(existing && (existing.createdAt||0) >= createdAtMs) continue;
+      if(existing) continue; // אם כבר קיים מקומית, אל תדרוס אותו
+      var createdAtMs = cp.created_at ? new Date(cp.created_at).getTime() : Date.now();
       var mapped = {
         id: cp.id,
         name: cp.name||'',
