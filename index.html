@@ -3057,12 +3057,16 @@ function _pmIdbPut(p){
 }
 
 function syncParamToD1(param){
+  if(!navigator.onLine){ console.log('[syncParamToD1] offline — skipping'); return; }
   var token = sessionStorage.getItem('tke_auth_token');
-  if(!token) return;
+  if(!token){ console.warn('[syncParamToD1] no token — skipping'); return; }
+  console.log('[syncParamToD1] sending param:', param.paramCode, param.id);
   fetch('https://tke-proxy.guyshtaiger.workers.dev/params/save',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
     body:JSON.stringify(param)
+  }).then(function(r){
+    console.log('[syncParamToD1] response:', r.status, param.paramCode);
   }).catch(function(err){ console.error('[syncParamToD1] error:', err); });
 }
 
