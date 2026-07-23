@@ -364,6 +364,9 @@ if('serviceWorker' in navigator){
 </div>
 <div id="section-tools" style="display:none">
   <div style="padding:8px 0;color:var(--text2);font-size:13px;font-family:Heebo,sans-serif;margin-bottom:16px">כלי ניהול נתונים</div>
+  <button onclick="pmBackfillAllToD1().then(()=>alert('הועלה!'))" style="background:purple;color:white;padding:10px;border:none;border-radius:8px;font-family:Heebo,sans-serif;font-size:14px;cursor:pointer;margin-bottom:8px;width:100%">העלה את כל הפרמטרים לענן (חד פעמי)</button>
+  <button onclick="catalogBackfillAllToD1().then(()=>alert('הועלה!'))" style="background:purple;color:white;padding:10px;border:none;border-radius:8px;font-family:Heebo,sans-serif;font-size:14px;cursor:pointer;margin-bottom:8px;width:100%">העלה את כל מאגר החלקים לענן (חד פעמי)</button>
+  <button onclick="learningBackfillAllToD1().then(()=>alert('הועלה!'))" style="background:purple;color:white;padding:10px;border:none;border-radius:8px;font-family:Heebo,sans-serif;font-size:14px;cursor:pointer;margin-bottom:16px;width:100%">העלה את כל תצורה ולימוד לענן (חד פעמי)</button>
 
   <!-- API KEY -->
   <div style="background:var(--bg2);border:1px solid rgba(139,62,255,0.35);border-radius:var(--radius);padding:14px;margin-bottom:16px">
@@ -3056,6 +3059,14 @@ function _pmIdbPut(p){
   });
 }
 
+async function pmBackfillAllToD1(){
+  var all = await _pmIdbGetAll();
+  for(var i=0;i<all.length;i++){
+    console.log('[pmBackfillAllToD1] מעלה '+(i+1)+'/'+all.length);
+    syncParamToD1(all[i]);
+  }
+}
+
 function syncParamToD1(param){
   if(!navigator.onLine){ console.log('[syncParamToD1] offline — skipping'); return; }
   var token = sessionStorage.getItem('tke_auth_token');
@@ -4517,6 +4528,14 @@ function dataURLtoBlob(dataURL){
 }
 
 // ── Catalog cloud sync ─────────────────────────────────
+async function catalogBackfillAllToD1(){
+  var all = await idbGetAll();
+  for(var i=0;i<all.length;i++){
+    console.log('[catalogBackfillAllToD1] מעלה '+(i+1)+'/'+all.length);
+    syncCatalogToD1(all[i]);
+  }
+}
+
 function syncCatalogToD1(part){
   var token = sessionStorage.getItem('tke_auth_token');
   if(!token) return;
@@ -5837,6 +5856,14 @@ function deleteLearningItem(id){
 }
 
 // ── D1 Sync ──────────────────────────────────────────────
+async function learningBackfillAllToD1(){
+  var all = loadLearning();
+  for(var i=0;i<all.length;i++){
+    console.log('[learningBackfillAllToD1] מעלה '+(i+1)+'/'+all.length);
+    _lrnSyncToD1(all[i]);
+  }
+}
+
 function _lrnSyncToD1(item){
   var token=sessionStorage.getItem('tke_auth_token');
   if(!token||!navigator.onLine) return;
