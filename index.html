@@ -3063,22 +3063,23 @@ async function pmBackfillAllToD1(){
   var all = await _pmIdbGetAll();
   for(var i=0;i<all.length;i++){
     console.log('[pmBackfillAllToD1] מעלה '+(i+1)+'/'+all.length);
-    syncParamToD1(all[i]);
+    await syncParamToD1(all[i]);
   }
 }
 
-function syncParamToD1(param){
+async function syncParamToD1(param){
   if(!navigator.onLine){ console.log('[syncParamToD1] offline — skipping'); return; }
   var token = sessionStorage.getItem('tke_auth_token');
   if(!token){ console.warn('[syncParamToD1] no token — skipping'); return; }
   console.log('[syncParamToD1] sending param:', param.paramCode, param.id);
-  fetch('https://tke-proxy.guyshtaiger.workers.dev/params/save',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-    body:JSON.stringify(param)
-  }).then(function(r){
+  try{
+    var r = await fetch('https://tke-proxy.guyshtaiger.workers.dev/params/save',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify(param)
+    });
     console.log('[syncParamToD1] response:', r.status, param.paramCode);
-  }).catch(function(err){ console.error('[syncParamToD1] error:', err); });
+  }catch(err){ console.error('[syncParamToD1] error:', err); }
 }
 
 function _pmIdbDelete(id){
@@ -4532,34 +4533,32 @@ async function catalogBackfillAllToD1(){
   var all = await idbGetAll();
   for(var i=0;i<all.length;i++){
     console.log('[catalogBackfillAllToD1] מעלה '+(i+1)+'/'+all.length);
-    syncCatalogToD1(all[i]);
+    await syncCatalogToD1(all[i]);
   }
 }
 
-function syncCatalogToD1(part){
+async function syncCatalogToD1(part){
   var token = sessionStorage.getItem('tke_auth_token');
   if(!token) return;
-  (async function(){
-    try{
-      var payload = Object.assign({}, part);
-      delete payload.imageBlob;
-      if(part.imageBlob){
-        try{
-          payload.image = await new Promise(function(resolve,reject){
-            var fr=new FileReader();
-            fr.onload=function(ev){ resolve(ev.target.result); };
-            fr.onerror=reject;
-            fr.readAsDataURL(part.imageBlob);
-          });
-        }catch(e){}
-      }
-      await fetch('https://tke-proxy.guyshtaiger.workers.dev/catalog/save',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-        body:JSON.stringify(payload)
-      });
-    }catch(err){ console.error('[syncCatalogToD1] error:', err); }
-  })();
+  try{
+    var payload = Object.assign({}, part);
+    delete payload.imageBlob;
+    if(part.imageBlob){
+      try{
+        payload.image = await new Promise(function(resolve,reject){
+          var fr=new FileReader();
+          fr.onload=function(ev){ resolve(ev.target.result); };
+          fr.onerror=reject;
+          fr.readAsDataURL(part.imageBlob);
+        });
+      }catch(e){}
+    }
+    await fetch('https://tke-proxy.guyshtaiger.workers.dev/catalog/save',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify(payload)
+    });
+  }catch(err){ console.error('[syncCatalogToD1] error:', err); }
 }
 
 async function catalogSyncFromD1(){
@@ -5860,11 +5859,11 @@ async function learningBackfillAllToD1(){
   var all = loadLearning();
   for(var i=0;i<all.length;i++){
     console.log('[learningBackfillAllToD1] מעלה '+(i+1)+'/'+all.length);
-    _lrnSyncToD1(all[i]);
+    await _lrnSyncToD1(all[i]);
   }
 }
 
-function _lrnSyncToD1(item){
+async function _lrnSyncToD1(item){
   var token=sessionStorage.getItem('tke_auth_token');
   if(!token||!navigator.onLine) return;
   var payload={
@@ -5876,7 +5875,9 @@ function _lrnSyncToD1(item){
     content: item.text||'',
     images: item.images||[]
   };
-  fetch(LRN_D1_SAVE,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(payload)}).catch(function(){});
+  try{
+    await fetch(LRN_D1_SAVE,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(payload)});
+  }catch(e){ console.error('[_lrnSyncToD1] error:', e); }
 }
 
 function _lrnDeleteFromD1(id){
