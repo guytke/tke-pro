@@ -6157,14 +6157,25 @@ async function syncFaultsFromD1() {
     // normalise ids to strings for safe comparison
     var localIds = new Set(local.map(function(f){ return String(f.id).trim(); }));
     var d1Ids   = new Set(d1Faults.map(function(f){ return String(f.id).trim(); }));
+    // ids שממתינים ב-sync queue (עדיין לא הועלו) — אסור למחוק אותם מקומית
+    var queueIds = new Set(_getSyncQueue().map(function(f){ return String(f.id).trim(); }));
 
-    // תקלות ב-D1 שאין להן id תואם מקומית — תמיד הוסף
+    // תקלות ב-D1 שאין להן id תואם מקומית — הוסף
     var toAdd = d1Faults.filter(function(f){ return !localIds.has(String(f.id).trim()); });
-    // תקלות מקומיות שלא ב-D1 — שלח ל-D1
-    local.forEach(function(f){ if (!d1Ids.has(String(f.id).trim())) _sendFaultToD1(f, token); });
+    // תקלות מקומיות שלא ב-D1 ולא בתור — שלח ל-D1 (עדיין לא סונכרנו)
+    local.forEach(function(f){
+      var fid = String(f.id).trim();
+      if (!d1Ids.has(fid) && !queueIds.has(fid)) _sendFaultToD1(f, token);
+    });
+    // תקלות מקומיות שנמחקו מהענן (לא ב-D1 ולא בתור) — הסר מקומית
+    var toRemoveIds = new Set(local.filter(function(f){
+      var fid = String(f.id).trim();
+      return !d1Ids.has(fid) && !queueIds.has(fid);
+    }).map(function(f){ return String(f.id).trim(); }));
 
-    if (toAdd.length) {
-      faults = local.concat(toAdd);
+    var changed = toAdd.length > 0 || toRemoveIds.size > 0;
+    if (changed) {
+      faults = local.filter(function(f){ return !toRemoveIds.has(String(f.id).trim()); }).concat(toAdd);
       try {
         save(faults);
       } catch(qe) {
