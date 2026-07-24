@@ -1557,7 +1557,9 @@ function deleteFault(id){
     cleanup();
     var token = sessionStorage.getItem('tke_auth_token');
     if(token && navigator.onLine){
-      fetch('https://tke-proxy.guyshtaiger.workers.dev/faults/delete',{
+      var deleteUrl = 'https://tke-proxy.guyshtaiger.workers.dev/faults/delete';
+      console.log('[deleteFault] id:', id, 'url:', deleteUrl);
+      fetch(deleteUrl,{
         method:'DELETE',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
         body:JSON.stringify({fault_id: id})
