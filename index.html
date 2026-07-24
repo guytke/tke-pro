@@ -5858,9 +5858,41 @@ function _lrnBuild(id,models,category,title){
 
 function deleteLearningItem(id){
   var item=learningItems.find(function(x){ return x.id===id; }); if(!item) return;
-  if(!confirm('למחוק "'+item.title+'"?')) return;
-  learningItems=learningItems.filter(function(x){ return x.id!==id; });
-  saveLearning(learningItems); refreshLearning(); _lrnDeleteFromD1(id);
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center';
+  var box=document.createElement('div');
+  box.style.cssText='background:var(--bg);border-radius:16px;padding:24px 20px;max-width:320px;width:90%;text-align:center;font-family:Heebo,sans-serif;direction:rtl;box-shadow:0 8px 32px rgba(0,0,0,.3)';
+  box.innerHTML=
+    '<div style="font-size:18px;font-weight:700;margin-bottom:8px;color:var(--text)">מחיקת פריט לימוד</div>'+
+    '<div style="color:var(--text2);font-size:14px;margin-bottom:20px">בחר כיצד למחוק את <b>'+esc(item.title)+'</b>:</div>'+
+    '<div style="display:flex;flex-direction:column;gap:10px">'+
+      '<button id="_ldel_full" style="background:#e53e3e;color:#fff;border:none;border-radius:10px;padding:12px;font-size:15px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:600">🗑 מחק לצמיתות (גם מהענן)</button>'+
+      '<button id="_ldel_local" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:15px;cursor:pointer;font-family:Heebo,sans-serif;color:var(--text)">📱 מחק רק מהמכשיר הזה</button>'+
+      '<button id="_ldel_cancel" style="background:transparent;border:none;color:var(--text2);padding:8px;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif">ביטול</button>'+
+    '</div>';
+  ov.appendChild(box);
+  document.body.appendChild(ov);
+  function cleanup(){ if(ov.parentNode) ov.parentNode.removeChild(ov); }
+  function doLocalDelete(){
+    learningItems=learningItems.filter(function(x){ return x.id!==id; });
+    saveLearning(learningItems); refreshLearning();
+  }
+  document.getElementById('_ldel_full').onclick=function(){
+    cleanup();
+    var token=sessionStorage.getItem('tke_auth_token');
+    if(token&&navigator.onLine){
+      fetch('https://tke-proxy.guyshtaiger.workers.dev/learning/delete',{
+        method:'DELETE',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body:JSON.stringify({learning_id: id})
+      }).then(function(r){ console.log('[deleteLearningItem] cloud delete status:', r.status); })
+        .catch(function(e){ console.error('[deleteLearningItem] cloud delete error:', e); });
+    }
+    doLocalDelete();
+  };
+  document.getElementById('_ldel_local').onclick=function(){ cleanup(); doLocalDelete(); };
+  document.getElementById('_ldel_cancel').onclick=function(){ cleanup(); };
+  ov.onclick=function(e){ if(e.target===ov) cleanup(); };
 }
 
 // ── D1 Sync ──────────────────────────────────────────────
