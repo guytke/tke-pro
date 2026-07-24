@@ -1272,6 +1272,9 @@ function save(d){
   }
 }
 const SYNC_QUEUE_KEY = 'tke_sync_queue';
+const DELETED_IDS_KEY = 'tke_deleted_fault_ids';
+function _getDeletedIds(){ try{ return new Set(JSON.parse(localStorage.getItem(DELETED_IDS_KEY))||[]); }catch(e){ return new Set(); } }
+function _addDeletedId(id){ var s=_getDeletedIds(); s.add(String(id).trim()); localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(Array.from(s))); }
 function _getSyncQueue(){ try{ return JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY))||[]; }catch(e){ return []; } }
 function _saveSyncQueue(q){ localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(q)); }
 
@@ -1550,6 +1553,7 @@ function deleteFault(id){
   document.body.appendChild(ov);
   function cleanup(){ if(ov.parentNode) ov.parentNode.removeChild(ov); }
   function doLocalDelete(){
+    _addDeletedId(id);
     faults = faults.filter(function(f){ return f.id !== id; });
     save(faults); closeModal('view-modal'); refresh(); showToast('🗑 נמחק');
   }
@@ -6159,18 +6163,23 @@ async function syncFaultsFromD1() {
     var d1Ids   = new Set(d1Faults.map(function(f){ return String(f.id).trim(); }));
     // ids שממתינים ב-sync queue (עדיין לא הועלו) — אסור למחוק אותם מקומית
     var queueIds = new Set(_getSyncQueue().map(function(f){ return String(f.id).trim(); }));
+    // ids שנמחקו במפורש על ידי המשתמש (tombstone) — אסור להעלות אותם חזרה
+    var deletedIds = _getDeletedIds();
 
-    // תקלות ב-D1 שאין להן id תואם מקומית — הוסף
-    var toAdd = d1Faults.filter(function(f){ return !localIds.has(String(f.id).trim()); });
-    // תקלות מקומיות שלא ב-D1 ולא בתור — שלח ל-D1 (עדיין לא סונכרנו)
+    // תקלות ב-D1 שאין להן id תואם מקומית ולא נמחקו — הוסף
+    var toAdd = d1Faults.filter(function(f){
+      var fid = String(f.id).trim();
+      return !localIds.has(fid) && !deletedIds.has(fid);
+    });
+    // תקלות מקומיות שלא ב-D1, לא בתור, ולא ב-tombstone — שלח ל-D1
     local.forEach(function(f){
       var fid = String(f.id).trim();
-      if (!d1Ids.has(fid) && !queueIds.has(fid)) _sendFaultToD1(f, token);
+      if (!d1Ids.has(fid) && !queueIds.has(fid) && !deletedIds.has(fid)) _sendFaultToD1(f, token);
     });
-    // תקלות מקומיות שנמחקו מהענן (לא ב-D1 ולא בתור) — הסר מקומית
+    // תקלות מקומיות שנמחקו מהענן ולא ב-tombstone (נמחקו ממכשיר אחר) — הסר גם מקומית
     var toRemoveIds = new Set(local.filter(function(f){
       var fid = String(f.id).trim();
-      return !d1Ids.has(fid) && !queueIds.has(fid);
+      return !d1Ids.has(fid) && !queueIds.has(fid) && !deletedIds.has(fid);
     }).map(function(f){ return String(f.id).trim(); }));
 
     var changed = toAdd.length > 0 || toRemoveIds.size > 0;
