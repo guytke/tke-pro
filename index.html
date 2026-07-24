@@ -1278,6 +1278,9 @@ function _addDeletedId(id){ var s=_getDeletedIds(); s.add(String(id).trim()); lo
 const DELETED_PARAM_IDS_KEY = 'tke_deleted_param_ids';
 function _getDeletedParamIds(){ try{ return new Set(JSON.parse(localStorage.getItem(DELETED_PARAM_IDS_KEY))||[]); }catch(e){ return new Set(); } }
 function _addDeletedParamId(id){ var s=_getDeletedParamIds(); s.add(String(id).trim()); localStorage.setItem(DELETED_PARAM_IDS_KEY, JSON.stringify(Array.from(s))); }
+const DELETED_CATALOG_IDS_KEY = 'tke_deleted_catalog_ids';
+function _getDeletedCatalogIds(){ try{ return new Set(JSON.parse(localStorage.getItem(DELETED_CATALOG_IDS_KEY))||[]); }catch(e){ return new Set(); } }
+function _addDeletedCatalogId(id){ var s=_getDeletedCatalogIds(); s.add(String(id).trim()); localStorage.setItem(DELETED_CATALOG_IDS_KEY, JSON.stringify(Array.from(s))); }
 function _getSyncQueue(){ try{ return JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY))||[]; }catch(e){ return []; } }
 function _saveSyncQueue(q){ localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(q)); }
 
@@ -4618,8 +4621,10 @@ async function catalogSyncFromD1(){
     var local = await idbGetAll();
     var localById = {};
     local.forEach(function(p){ localById[p.id]=p; });
+    var deletedCatalogIds = _getDeletedCatalogIds();
     for(var i=0;i<cloudParts.length;i++){
       var cp = cloudParts[i];
+      if(deletedCatalogIds.has(String(cp.id).trim())) continue; // נמחק במפורש — אל תחזיר
       var existing = localById[cp.id];
       if(existing) continue; // אם כבר קיים מקומית, אל תדרוס אותו
       var createdAtMs = cp.created_at ? new Date(cp.created_at).getTime() : Date.now();
@@ -5239,6 +5244,7 @@ async function deleteCatalogPart(id){
     ov.appendChild(box); document.body.appendChild(ov);
     function cleanup(){ if(ov.parentNode) ov.parentNode.removeChild(ov); }
     async function doDelete(){
+      _addDeletedCatalogId(id);
       await idbDelete(id);
       if(_catalogObjURLs[id]){ URL.revokeObjectURL(_catalogObjURLs[id]); delete _catalogObjURLs[id]; }
       closeModal('catalog-detail-modal');
