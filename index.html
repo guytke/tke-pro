@@ -1561,7 +1561,7 @@ function deleteFault(id){
         method:'DELETE',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
         body:JSON.stringify({fault_id: id})
-      }).then(function(r){ console.log('[deleteFault] cloud delete status:', r.status); })
+      }).then(function(r){ console.log('[deleteFault] cloud delete status:', r.status); alert('delete status: ' + r.status); })
         .catch(function(e){ console.error('[deleteFault] cloud delete error:', e); });
     }
     doLocalDelete();
