@@ -3114,10 +3114,36 @@ function _pmIdbDelete(id){
 }
 
 async function pmDelete(id){
-  if(!confirm('למחוק פרמטר זה לצמיתות?')) return;
-  await _pmIdbDelete(id);
-  await pmRefresh();
-  showToast('🗑️ נמחק');
+  await new Promise(function(resolve){
+    var ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center';
+    var box=document.createElement('div');
+    box.style.cssText='background:var(--bg);border-radius:16px;padding:24px 20px;max-width:320px;width:90%;text-align:center;font-family:Heebo,sans-serif;direction:rtl;box-shadow:0 8px 32px rgba(0,0,0,.3)';
+    box.innerHTML=
+      '<div style="font-size:18px;font-weight:700;margin-bottom:8px;color:var(--text)">מחיקת פרמטר</div>'+
+      '<div style="color:var(--text2);font-size:14px;margin-bottom:20px">בחר כיצד למחוק את הפרמטר:</div>'+
+      '<div style="display:flex;flex-direction:column;gap:10px">'+
+        '<button id="_pdel_full" style="background:#e53e3e;color:#fff;border:none;border-radius:10px;padding:12px;font-size:15px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:600">🗑 מחק לצמיתות (גם מהענן)</button>'+
+        '<button id="_pdel_local" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:15px;cursor:pointer;font-family:Heebo,sans-serif;color:var(--text)">📱 מחק רק מהמכשיר הזה</button>'+
+        '<button id="_pdel_cancel" style="background:transparent;border:none;color:var(--text2);padding:8px;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif">ביטול</button>'+
+      '</div>';
+    ov.appendChild(box); document.body.appendChild(ov);
+    function cleanup(){ if(ov.parentNode) ov.parentNode.removeChild(ov); }
+    document.getElementById('_pdel_full').onclick=async function(){
+      cleanup();
+      var token=sessionStorage.getItem('tke_auth_token');
+      if(token&&navigator.onLine){
+        fetch('https://tke-proxy.guyshtaiger.workers.dev/params/delete?id='+encodeURIComponent(id),{
+          method:'DELETE', headers:{'Authorization':'Bearer '+token}
+        }).then(function(r){ console.log('[pmDelete] cloud delete status:', r.status); })
+          .catch(function(e){ console.error('[pmDelete] cloud delete error:', e); });
+      }
+      await _pmIdbDelete(id); await pmRefresh(); showToast('🗑️ נמחק'); resolve();
+    };
+    document.getElementById('_pdel_local').onclick=async function(){ cleanup(); await _pmIdbDelete(id); await pmRefresh(); showToast('🗑️ נמחק'); resolve(); };
+    document.getElementById('_pdel_cancel').onclick=function(){ cleanup(); resolve(); };
+    ov.onclick=function(e){ if(e.target===ov){ cleanup(); resolve(); } };
+  });
 }
 
 async function pmDirectScan(event){
@@ -5186,11 +5212,43 @@ async function editCatalogPart(id){
 }
 
 async function deleteCatalogPart(id){
-  if(!confirm('למחוק חלק זה מהמאגר?')) return;
-  await idbDelete(id);
-  if(_catalogObjURLs[id]){ URL.revokeObjectURL(_catalogObjURLs[id]); delete _catalogObjURLs[id]; }
-  closeModal('catalog-detail-modal');
-  await refreshCatalogCache(); renderCatalogChips(); renderCatalog(); showToast('🗑️ חלק נמחק');
+  await new Promise(function(resolve){
+    var ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center';
+    var box=document.createElement('div');
+    box.style.cssText='background:var(--bg);border-radius:16px;padding:24px 20px;max-width:320px;width:90%;text-align:center;font-family:Heebo,sans-serif;direction:rtl;box-shadow:0 8px 32px rgba(0,0,0,.3)';
+    box.innerHTML=
+      '<div style="font-size:18px;font-weight:700;margin-bottom:8px;color:var(--text)">מחיקת חלק</div>'+
+      '<div style="color:var(--text2);font-size:14px;margin-bottom:20px">בחר כיצד למחוק את החלק מהמאגר:</div>'+
+      '<div style="display:flex;flex-direction:column;gap:10px">'+
+        '<button id="_cdel_full" style="background:#e53e3e;color:#fff;border:none;border-radius:10px;padding:12px;font-size:15px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:600">🗑 מחק לצמיתות (גם מהענן)</button>'+
+        '<button id="_cdel_local" style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:15px;cursor:pointer;font-family:Heebo,sans-serif;color:var(--text)">📱 מחק רק מהמכשיר הזה</button>'+
+        '<button id="_cdel_cancel" style="background:transparent;border:none;color:var(--text2);padding:8px;font-size:14px;cursor:pointer;font-family:Heebo,sans-serif">ביטול</button>'+
+      '</div>';
+    ov.appendChild(box); document.body.appendChild(ov);
+    function cleanup(){ if(ov.parentNode) ov.parentNode.removeChild(ov); }
+    async function doDelete(){
+      await idbDelete(id);
+      if(_catalogObjURLs[id]){ URL.revokeObjectURL(_catalogObjURLs[id]); delete _catalogObjURLs[id]; }
+      closeModal('catalog-detail-modal');
+      await refreshCatalogCache(); renderCatalogChips(); renderCatalog(); showToast('🗑️ חלק נמחק');
+      resolve();
+    }
+    document.getElementById('_cdel_full').onclick=function(){
+      cleanup();
+      var token=sessionStorage.getItem('tke_auth_token');
+      if(token&&navigator.onLine){
+        fetch('https://tke-proxy.guyshtaiger.workers.dev/catalog/delete?id='+encodeURIComponent(id),{
+          method:'DELETE', headers:{'Authorization':'Bearer '+token}
+        }).then(function(r){ console.log('[deleteCatalogPart] cloud delete status:', r.status); })
+          .catch(function(e){ console.error('[deleteCatalogPart] cloud delete error:', e); });
+      }
+      doDelete();
+    };
+    document.getElementById('_cdel_local').onclick=function(){ cleanup(); doDelete(); };
+    document.getElementById('_cdel_cancel').onclick=function(){ cleanup(); resolve(); };
+    ov.onclick=function(e){ if(e.target===ov){ cleanup(); resolve(); } };
+  });
 }
 
 function orderFromCatalog(id){
