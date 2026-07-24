@@ -6171,11 +6171,6 @@ async function syncFaultsFromD1() {
       var fid = String(f.id).trim();
       return !localIds.has(fid) && !deletedIds.has(fid);
     });
-    // תקלות מקומיות שלא ב-D1, לא בתור, ולא ב-tombstone — שלח ל-D1
-    local.forEach(function(f){
-      var fid = String(f.id).trim();
-      if (!d1Ids.has(fid) && !queueIds.has(fid) && !deletedIds.has(fid)) _sendFaultToD1(f, token);
-    });
     // תקלות מקומיות שנמחקו מהענן ולא ב-tombstone (נמחקו ממכשיר אחר) — הסר גם מקומית
     var toRemoveIds = new Set(local.filter(function(f){
       var fid = String(f.id).trim();
