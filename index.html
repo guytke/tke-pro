@@ -1275,6 +1275,9 @@ const SYNC_QUEUE_KEY = 'tke_sync_queue';
 const DELETED_IDS_KEY = 'tke_deleted_fault_ids';
 function _getDeletedIds(){ try{ return new Set(JSON.parse(localStorage.getItem(DELETED_IDS_KEY))||[]); }catch(e){ return new Set(); } }
 function _addDeletedId(id){ var s=_getDeletedIds(); s.add(String(id).trim()); localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(Array.from(s))); }
+const DELETED_PARAM_IDS_KEY = 'tke_deleted_param_ids';
+function _getDeletedParamIds(){ try{ return new Set(JSON.parse(localStorage.getItem(DELETED_PARAM_IDS_KEY))||[]); }catch(e){ return new Set(); } }
+function _addDeletedParamId(id){ var s=_getDeletedParamIds(); s.add(String(id).trim()); localStorage.setItem(DELETED_PARAM_IDS_KEY, JSON.stringify(Array.from(s))); }
 function _getSyncQueue(){ try{ return JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY))||[]; }catch(e){ return []; } }
 function _saveSyncQueue(q){ localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(q)); }
 
@@ -3144,9 +3147,9 @@ async function pmDelete(id){
         }).then(function(r){ console.log('[pmDelete] cloud delete status:', r.status); })
           .catch(function(e){ console.error('[pmDelete] cloud delete error:', e); });
       }
-      await _pmIdbDelete(id); await pmRefresh(); showToast('🗑️ נמחק'); resolve();
+      _addDeletedParamId(id); await _pmIdbDelete(id); await pmRefresh(); showToast('🗑️ נמחק'); resolve();
     };
-    document.getElementById('_pdel_local').onclick=async function(){ cleanup(); await _pmIdbDelete(id); await pmRefresh(); showToast('🗑️ נמחק'); resolve(); };
+    document.getElementById('_pdel_local').onclick=async function(){ cleanup(); _addDeletedParamId(id); await _pmIdbDelete(id); await pmRefresh(); showToast('🗑️ נמחק'); resolve(); };
     document.getElementById('_pdel_cancel').onclick=function(){ cleanup(); resolve(); };
     ov.onclick=function(e){ if(e.target===ov){ cleanup(); resolve(); } };
   });
@@ -3213,8 +3216,10 @@ async function pmSyncFromD1(){
     var local = await _pmIdbGetAll();
     var localById = {};
     local.forEach(function(p){ localById[p.id]=p; });
+    var deletedParamIds = _getDeletedParamIds();
     for(var i=0;i<cloudParams.length;i++){
       var cp = cloudParams[i];
+      if(deletedParamIds.has(String(cp.id).trim())) continue; // נמחק במפורש — אל תחזיר
       var existing = localById[cp.id];
       if(existing) continue; // אם כבר קיים מקומית, אל תדרוס אותו
       var mapped = {
