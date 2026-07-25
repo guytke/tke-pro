@@ -3238,9 +3238,15 @@ async function pmSyncFromD1(){
     var data = await res.json();
     var cloudParams = data.params||[];
     var local = await _pmIdbGetAll();
+    var cloudIds = new Set(cloudParams.map(function(p){ return String(p.id).trim(); }));
+    var deletedParamIds = _getDeletedParamIds();
+    // הסר מקומית פרמטרים שנמחקו מהענן (לא ב-D1 ולא ב-tombstone)
+    for(var j=0;j<local.length;j++){
+      var lid=String(local[j].id).trim();
+      if(!cloudIds.has(lid) && !deletedParamIds.has(lid)) await _pmIdbDelete(local[j].id);
+    }
     var localById = {};
     local.forEach(function(p){ localById[p.id]=p; });
-    var deletedParamIds = _getDeletedParamIds();
     for(var i=0;i<cloudParams.length;i++){
       var cp = cloudParams[i];
       if(deletedParamIds.has(String(cp.id).trim())) continue; // נמחק במפורש — אל תחזיר
@@ -4640,9 +4646,18 @@ async function catalogSyncFromD1(){
     var data = await res.json();
     var cloudParts = data.catalog||[];
     var local = await idbGetAll();
+    var cloudIds = new Set(cloudParts.map(function(p){ return String(p.id).trim(); }));
+    var deletedCatalogIds = _getDeletedCatalogIds();
+    // הסר מקומית חלקים שנמחקו מהענן (לא ב-D1 ולא ב-tombstone)
+    for(var j=0;j<local.length;j++){
+      var lid=String(local[j].id).trim();
+      if(!cloudIds.has(lid) && !deletedCatalogIds.has(lid)){
+        await idbDelete(local[j].id);
+        if(_catalogObjURLs[local[j].id]){ URL.revokeObjectURL(_catalogObjURLs[local[j].id]); delete _catalogObjURLs[local[j].id]; }
+      }
+    }
     var localById = {};
     local.forEach(function(p){ localById[p.id]=p; });
-    var deletedCatalogIds = _getDeletedCatalogIds();
     for(var i=0;i<cloudParts.length;i++){
       var cp = cloudParts[i];
       if(deletedCatalogIds.has(String(cp.id).trim())) continue; // נמחק במפורש — אל תחזיר
