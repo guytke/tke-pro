@@ -1287,6 +1287,9 @@ function _addDeletedParamId(id){ var s=_getDeletedParamIds(); s.add(String(id).t
 const DELETED_CATALOG_IDS_KEY = 'tke_deleted_catalog_ids';
 function _getDeletedCatalogIds(){ try{ return new Set(JSON.parse(localStorage.getItem(DELETED_CATALOG_IDS_KEY))||[]); }catch(e){ return new Set(); } }
 function _addDeletedCatalogId(id){ var s=_getDeletedCatalogIds(); s.add(String(id).trim()); localStorage.setItem(DELETED_CATALOG_IDS_KEY, JSON.stringify(Array.from(s))); }
+const DELETED_LEARNING_IDS_KEY = 'tke_deleted_learning_ids';
+function _getDeletedLearningIds(){ try{ return new Set(JSON.parse(localStorage.getItem(DELETED_LEARNING_IDS_KEY))||[]); }catch(e){ return new Set(); } }
+function _addDeletedLearningId(id){ var s=_getDeletedLearningIds(); s.add(String(id).trim()); localStorage.setItem(DELETED_LEARNING_IDS_KEY, JSON.stringify(Array.from(s))); }
 function _getSyncQueue(){ try{ return JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY))||[]; }catch(e){ return []; } }
 function _saveSyncQueue(q){ localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(q)); }
 
@@ -5967,6 +5970,7 @@ function deleteLearningItem(id){
   document.body.appendChild(ov);
   function cleanup(){ if(ov.parentNode) ov.parentNode.removeChild(ov); }
   function doLocalDelete(){
+    _addDeletedLearningId(id);
     learningItems=learningItems.filter(function(x){ return x.id!==id; });
     saveLearning(learningItems); refreshLearning();
   }
@@ -6031,10 +6035,16 @@ async function syncLearningFromD1(){
     var local=loadLearning();
     var localIds=new Set(local.map(function(x){ return String(x.id).trim(); }));
     var d1Ids=new Set(d1Items.map(function(x){ return String(x.id).trim(); }));
-    var toAdd=d1Items.filter(function(x){ return !localIds.has(String(x.id).trim()); });
-    local.forEach(function(x){ if(!d1Ids.has(String(x.id).trim())) _lrnSyncToD1(x); });
-    if(toAdd.length){
-      learningItems=local.concat(toAdd);
+    var deletedLearningIds=_getDeletedLearningIds();
+    var toAdd=d1Items.filter(function(x){ return !localIds.has(String(x.id).trim()) && !deletedLearningIds.has(String(x.id).trim()); });
+    // הסר מקומית פריטים שנמחקו מהענן (לא ב-D1 ולא ב-tombstone)
+    var toRemoveIds=new Set(local.filter(function(x){
+      var xid=String(x.id).trim();
+      return !d1Ids.has(xid) && !deletedLearningIds.has(xid);
+    }).map(function(x){ return String(x.id).trim(); }));
+    var changed=toAdd.length>0||toRemoveIds.size>0;
+    if(changed){
+      learningItems=local.filter(function(x){ return !toRemoveIds.has(String(x.id).trim()); }).concat(toAdd);
       saveLearning(learningItems);
       refreshLearning();
     }
