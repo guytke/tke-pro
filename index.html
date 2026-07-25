@@ -3118,18 +3118,17 @@ async function pmBackfillAllToD1(){
 }
 
 async function syncParamToD1(param){
-  if(!navigator.onLine){ console.log('[syncParamToD1] offline — skipping'); return; }
+  if(!navigator.onLine) throw new Error('offline');
   var token = sessionStorage.getItem('tke_auth_token');
-  if(!token){ console.warn('[syncParamToD1] no token — skipping'); return; }
-  console.log('[syncParamToD1] sending param:', param.paramCode, param.id);
-  try{
-    var r = await fetch('https://tke-proxy.guyshtaiger.workers.dev/params/save',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-      body:JSON.stringify(param)
-    });
-    console.log('[syncParamToD1] response:', r.status, param.paramCode);
-  }catch(err){ console.error('[syncParamToD1] error:', err); }
+  if(!token) throw new Error('no token');
+  var r = await fetch('https://tke-proxy.guyshtaiger.workers.dev/params/save',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify(param)
+  });
+  console.log('[syncParamToD1] response:', r.status, param.paramCode);
+  if(!r.ok){ var body=await r.text(); throw new Error('status '+r.status+': '+body); }
+  return r.status;
 }
 
 function _pmIdbDelete(id){
