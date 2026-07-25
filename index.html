@@ -423,7 +423,7 @@ if('serviceWorker' in navigator){
       </div>
       <div>
         <label>קוד תקלה *</label>
-        <input type="text" id="f-code" placeholder="Err36, E05, A0...">
+        <textarea rows="2" id="f-code" placeholder="Err36, E05, A0..." style="resize:vertical"></textarea>
       </div>
     </div>
     <div class="form-row">
@@ -1602,7 +1602,7 @@ function viewFault(id){
     '<div class="modal-handle"></div>'+
     '<div class="view-header">'+
       '<div>'+
-        '<div class="view-code">'+esc(f.code)+'</div>'+
+        '<div class="view-code" style="white-space:pre-wrap">'+esc(f.code)+'</div>'+
         '<div class="view-name" style="white-space:pre-wrap">'+esc(f.model)+(f.name?' — '+esc(f.name):'')+'</div>'+
       '</div>'+
       '<button class="view-close" onclick="closeModal(\'view-modal\')">×</button>'+
