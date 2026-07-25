@@ -3111,10 +3111,12 @@ async function pmBackfillAllToD1(){
   if(!all.length){ showToast('אין פרמטרים להעלות'); return; }
   showToast('⬆️ מעלה '+all.length+' פרמטרים...');
   var ok=0, fail=0;
+  var lastErr='';
   for(var i=0;i<all.length;i++){
-    try{ await syncParamToD1(all[i]); ok++; }catch(e){ fail++; }
+    try{ await syncParamToD1(all[i]); ok++; }catch(e){ fail++; lastErr=e.message; }
   }
-  showToast('✅ הועלו '+ok+' פרמטרים'+(fail?' ('+fail+' נכשלו)':''));
+  var msg='הועלו '+ok+' פרמטרים'+(fail?' ('+fail+' נכשלו: '+lastErr+')':'');
+  showToast('✅ '+msg); alert(msg);
 }
 
 async function syncParamToD1(param){
