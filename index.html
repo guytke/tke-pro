@@ -429,11 +429,11 @@ if('serviceWorker' in navigator){
     <div class="form-row">
       <div>
         <label>שם / תיאור קצר</label>
-        <input type="text" id="f-name" placeholder="שם התקלה...">
+        <textarea rows="2" id="f-name" placeholder="שם התקלה..." style="resize:vertical"></textarea>
       </div>
       <div>
         <label>כתובת פרויקט</label>
-        <input type="text" id="f-level" placeholder="שם בניין, כתובת...">
+        <textarea rows="2" id="f-level" placeholder="שם בניין, כתובת..." style="resize:vertical"></textarea>
       </div>
     </div>
     <div class="form-col">
@@ -527,7 +527,7 @@ if('serviceWorker' in navigator){
       </div>
       <div>
         <label>שם / כינוי</label>
-        <input type="text" id="pm-name" placeholder="שם קצר...">
+        <textarea rows="2" id="pm-name" placeholder="שם קצר..." style="resize:vertical"></textarea>
       </div>
     </div>
     <div class="form-col">
@@ -1603,12 +1603,12 @@ function viewFault(id){
     '<div class="view-header">'+
       '<div>'+
         '<div class="view-code">'+esc(f.code)+'</div>'+
-        '<div class="view-name">'+esc(f.model)+(f.name?' — '+esc(f.name):'')+'</div>'+
+        '<div class="view-name" style="white-space:pre-wrap">'+esc(f.model)+(f.name?' — '+esc(f.name):'')+'</div>'+
       '</div>'+
       '<button class="view-close" onclick="closeModal(\'view-modal\')">×</button>'+
     '</div>'+
     '<div class="view-meta">'+
-      (f.level?'<span class="meta-chip">📊 רמה: '+esc(f.level)+'</span>':'')+
+      (f.level?'<span class="meta-chip" style="white-space:pre-wrap">📊 רמה: '+esc(f.level)+'</span>':'')+
       (f.date?'<span class="meta-chip">📅 '+f.date+'</span>':'')+
     '</div>'+
     '<div class="section-label book">📖 ספר תקלות — תיאור רשמי</div>'+
@@ -3318,7 +3318,7 @@ function pmOpenDetail(id){
       '<button onclick="pmCloseDetail()" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;width:34px;height:34px;font-size:18px;color:var(--text2);cursor:pointer;line-height:1">×</button>'+
     '</div>'+
     '<div id="_pm_detail_body" style="padding:16px;display:flex;flex-direction:column;gap:12px">'+
-      (p.paramName?'<div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">שם טכני</div><div style="font-size:15px;font-weight:600;color:var(--text)">'+esc(p.paramName)+'</div></div>':'')+
+      (p.paramName?'<div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">שם טכני</div><div style="font-size:15px;font-weight:600;color:var(--text);white-space:pre-wrap">'+esc(p.paramName)+'</div></div>':'')+
       (p.description?'<div><div style="font-size:10px;color:var(--text3);margin-bottom:3px">תיאור</div><div style="font-size:13px;color:var(--text2);line-height:1.6;white-space:pre-wrap">'+esc(p.description)+'</div></div>':'')+
       (models.length?'<div><div style="font-size:10px;color:var(--text3);margin-bottom:6px">דגמים תואמים</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+models.map(function(m){ return '<span style="background:rgba(59,130,246,0.12);color:#60a5fa;border:1px solid rgba(59,130,246,0.3);border-radius:10px;padding:3px 10px;font-size:12px">'+esc(m)+'</span>'; }).join('')+'</div></div>':'')+
       (p.defaultValue?'<div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg2);border-radius:8px;padding:10px 14px"><span style="font-size:12px;color:var(--text3)">ערך יצרן</span><span style="font-size:14px;font-weight:700;color:var(--text);font-family:monospace">'+esc(p.defaultValue)+'</span></div>':'')+
