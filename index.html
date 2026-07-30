@@ -1293,6 +1293,69 @@ function _addDeletedLearningId(id){ var s=_getDeletedLearningIds(); s.add(String
 function _getSyncQueue(){ try{ return JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY))||[]; }catch(e){ return []; } }
 function _saveSyncQueue(q){ localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(q)); }
 
+const PARAM_SYNC_QUEUE_KEY = 'tke_param_sync_queue';
+function _getParamSyncQueue(){ try{ return JSON.parse(localStorage.getItem(PARAM_SYNC_QUEUE_KEY))||[]; }catch(e){ return []; } }
+function _saveParamSyncQueue(q){ localStorage.setItem(PARAM_SYNC_QUEUE_KEY, JSON.stringify(q)); }
+function _enqueueParam(param){
+  var q = _getParamSyncQueue();
+  var idx = q.findIndex(function(p){ return p.id === param.id; });
+  if(idx >= 0) q[idx] = param; else q.push(param);
+  _saveParamSyncQueue(q);
+}
+function flushParamSyncQueue(){
+  var token = sessionStorage.getItem('tke_auth_token');
+  if(!token || !navigator.onLine) return;
+  var q = _getParamSyncQueue();
+  if(!q.length) return;
+  console.log('[flushParamSyncQueue] flushing',q.length,'queued param(s)');
+  _saveParamSyncQueue([]);
+  q.forEach(function(param){
+    syncParamToD1(param).catch(function(){ _enqueueParam(param); });
+  });
+}
+
+const CATALOG_SYNC_QUEUE_KEY = 'tke_catalog_sync_queue';
+function _getCatalogSyncQueue(){ try{ return JSON.parse(localStorage.getItem(CATALOG_SYNC_QUEUE_KEY))||[]; }catch(e){ return []; } }
+function _saveCatalogSyncQueue(q){ localStorage.setItem(CATALOG_SYNC_QUEUE_KEY, JSON.stringify(q)); }
+function _enqueueCatalogItem(part){
+  var q = _getCatalogSyncQueue();
+  var idx = q.findIndex(function(p){ return p.id === part.id; });
+  if(idx >= 0) q[idx] = part; else q.push(part);
+  _saveCatalogSyncQueue(q);
+}
+function flushCatalogSyncQueue(){
+  var token = sessionStorage.getItem('tke_auth_token');
+  if(!token || !navigator.onLine) return;
+  var q = _getCatalogSyncQueue();
+  if(!q.length) return;
+  console.log('[flushCatalogSyncQueue] flushing',q.length,'queued catalog item(s)');
+  _saveCatalogSyncQueue([]);
+  q.forEach(function(part){
+    syncCatalogToD1(part).catch(function(){ _enqueueCatalogItem(part); });
+  });
+}
+
+const LEARNING_SYNC_QUEUE_KEY = 'tke_learning_sync_queue';
+function _getLearningSyncQueue(){ try{ return JSON.parse(localStorage.getItem(LEARNING_SYNC_QUEUE_KEY))||[]; }catch(e){ return []; } }
+function _saveLearningSyncQueue(q){ localStorage.setItem(LEARNING_SYNC_QUEUE_KEY, JSON.stringify(q)); }
+function _enqueueLearningItem(item){
+  var q = _getLearningSyncQueue();
+  var idx = q.findIndex(function(x){ return x.id === item.id; });
+  if(idx >= 0) q[idx] = item; else q.push(item);
+  _saveLearningSyncQueue(q);
+}
+function flushLearningSyncQueue(){
+  var token = sessionStorage.getItem('tke_auth_token');
+  if(!token || !navigator.onLine) return;
+  var q = _getLearningSyncQueue();
+  if(!q.length) return;
+  console.log('[flushLearningSyncQueue] flushing',q.length,'queued learning item(s)');
+  _saveLearningSyncQueue([]);
+  q.forEach(function(item){
+    _lrnSyncToD1(item).catch(function(){ _enqueueLearningItem(item); });
+  });
+}
+
 function _sendFaultToD1(fault, token){
   return fetch(D1_URL,{
     method:'POST',
@@ -3123,9 +3186,9 @@ async function pmBackfillAllToD1(){
 }
 
 async function syncParamToD1(param){
-  if(!navigator.onLine) throw new Error('offline');
+  if(!navigator.onLine){ _enqueueParam(param); throw new Error('offline'); }
   var token = sessionStorage.getItem('tke_auth_token');
-  if(!token) throw new Error('no token');
+  if(!token){ _enqueueParam(param); throw new Error('no token'); }
   var r = await fetch('https://tke-proxy.guyshtaiger.workers.dev/params/save',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
@@ -4614,27 +4677,29 @@ function dataURLtoBlob(dataURL){
 
 // ── Catalog cloud sync ─────────────────────────────────
 async function syncCatalogToD1(part){
+  if(!navigator.onLine){ _enqueueCatalogItem(part); throw new Error('offline'); }
   var token = sessionStorage.getItem('tke_auth_token');
-  if(!token) return;
-  try{
-    var payload = Object.assign({}, part);
-    delete payload.imageBlob;
-    if(part.imageBlob){
-      try{
-        payload.image = await new Promise(function(resolve,reject){
-          var fr=new FileReader();
-          fr.onload=function(ev){ resolve(ev.target.result); };
-          fr.onerror=reject;
-          fr.readAsDataURL(part.imageBlob);
-        });
-      }catch(e){}
-    }
-    await fetch('https://tke-proxy.guyshtaiger.workers.dev/catalog/save',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-      body:JSON.stringify(payload)
-    });
-  }catch(err){ console.error('[syncCatalogToD1] error:', err); }
+  if(!token){ _enqueueCatalogItem(part); throw new Error('no token'); }
+  var payload = Object.assign({}, part);
+  delete payload.imageBlob;
+  if(part.imageBlob){
+    try{
+      payload.image = await new Promise(function(resolve,reject){
+        var fr=new FileReader();
+        fr.onload=function(ev){ resolve(ev.target.result); };
+        fr.onerror=reject;
+        fr.readAsDataURL(part.imageBlob);
+      });
+    }catch(e){}
+  }
+  var r = await fetch('https://tke-proxy.guyshtaiger.workers.dev/catalog/save',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+    body:JSON.stringify(payload)
+  });
+  console.log('[syncCatalogToD1] response:', r.status, part.id);
+  if(!r.ok){ var body=await r.text(); console.error('[syncCatalogToD1] error:', r.status, body); throw new Error('status '+r.status+': '+body); }
+  return r.status;
 }
 
 async function catalogSyncFromD1(){
@@ -6009,8 +6074,9 @@ function deleteLearningItem(id){
 
 // ── D1 Sync ──────────────────────────────────────────────
 async function _lrnSyncToD1(item){
+  if(!navigator.onLine){ _enqueueLearningItem(item); throw new Error('offline'); }
   var token=sessionStorage.getItem('tke_auth_token');
-  if(!token||!navigator.onLine) return;
+  if(!token){ _enqueueLearningItem(item); throw new Error('no token'); }
   var payload={
     id: item.id,
     model: JSON.stringify(item.models||[]),
@@ -6020,9 +6086,10 @@ async function _lrnSyncToD1(item){
     content: item.text||'',
     images: item.images||[]
   };
-  try{
-    await fetch(LRN_D1_SAVE,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(payload)});
-  }catch(e){ console.error('[_lrnSyncToD1] error:', e); }
+  var r = await fetch(LRN_D1_SAVE,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(payload)});
+  console.log('[_lrnSyncToD1] response:', r.status, item.id);
+  if(!r.ok){ var body=await r.text(); console.error('[_lrnSyncToD1] error:', r.status, body); throw new Error('status '+r.status+': '+body); }
+  return r.status;
 }
 
 function _lrnDeleteFromD1(id){
