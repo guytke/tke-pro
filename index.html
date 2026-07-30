@@ -5976,7 +5976,7 @@ async function lrnRephrase(){
 }
 
 var _savingLrn = false;
-function saveLearningItem(){
+async function saveLearningItem(){
   if(_savingLrn) return;
   _savingLrn = true;
   var _saveBtn = document.getElementById('lrn-save-btn');
@@ -5997,16 +5997,18 @@ function saveLearningItem(){
     });
     if(dup){
       _showConflictDialog(title, models.join(', ')+' / '+category,
-        function(){
+        async function(){
           var item=_lrnBuild(id,models,category,title);
-          learningItems.unshift(item); try{saveLearning(learningItems);}catch(e){} _lrnSyncToD1(item);
+          learningItems.unshift(item); try{saveLearning(learningItems);}catch(e){}
+          await _lrnSyncToD1(item).catch(function(){ _enqueueLearningItem(item); });
           closeModal('learning-form-modal'); refreshLearning(); showToast('✅ נוסף!'); _lrnDirty=false; _lrnSaveDone();
           setTimeout(function(){ flashSavedLrn(title); }, 280);
         },
-        function(){
+        async function(){
           var item=_lrnBuild(dup.id,models,category,title);
           var idx=learningItems.findIndex(function(x){ return x.id===dup.id; });
-          if(idx>=0) learningItems[idx]=item; try{saveLearning(learningItems);}catch(e){} _lrnSyncToD1(item);
+          if(idx>=0) learningItems[idx]=item; try{saveLearning(learningItems);}catch(e){}
+          await _lrnSyncToD1(item).catch(function(){ _enqueueLearningItem(item); });
           closeModal('learning-form-modal'); refreshLearning(); showToast('✅ עודכן!'); _lrnDirty=false; _lrnSaveDone();
           setTimeout(function(){ flashSavedLrn(title); }, 280);
         },
@@ -6019,7 +6021,7 @@ function saveLearningItem(){
   var idx=learningItems.findIndex(function(x){ return x.id===id; });
   if(idx>=0) learningItems[idx]=item; else learningItems.unshift(item);
   try { saveLearning(learningItems); } catch(e) { showToast('⚠️ אחסון מקומי מלא — הנתונים נשמרו בענן בלבד'); }
-  _lrnSyncToD1(item);
+  await _lrnSyncToD1(item).catch(function(){ _enqueueLearningItem(item); });
   closeModal('learning-form-modal'); refreshLearning(); showToast('✅ נשמר!'); _lrnDirty=false; _lrnSaveDone();
   setTimeout(function(){ flashSavedLrn(title); }, 280);
 }
