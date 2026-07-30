@@ -5223,7 +5223,7 @@ async function saveCatalogPart(){
   if(_catalogImgBlob&&existing) part.fingerprint=null; // re-analyze new image
   try{
     await idbPut(part);
-    syncCatalogToD1(part);
+    await syncCatalogToD1(part).catch(function(){ _enqueueCatalogItem(part); });
     closeModal('catalog-add-modal');
     await refreshCatalogCache();
     renderCatalogChips(); renderCatalog();
