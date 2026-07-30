@@ -1421,6 +1421,15 @@ function flushSyncQueue(){
     });
   });
 }
+
+function flushAllSyncQueues(){
+  flushSyncQueue();
+  flushParamSyncQueue();
+  flushCatalogSyncQueue();
+  flushLearningSyncQueue();
+}
+window.addEventListener('online', flushAllSyncQueues);
+
 let faults = load();
 let activeModel = '';
 
@@ -6333,7 +6342,7 @@ function showApp() {
     return f;
   });
   if(cleaned) try { localStorage.setItem(KEY, JSON.stringify(faults)); } catch(e){}
-  flushSyncQueue();
+  flushAllSyncQueues();
   syncFaultsFromD1();
   syncLearningFromD1();
 }
