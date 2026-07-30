@@ -3562,7 +3562,7 @@ async function pmSave(){
         images:sp.images||[], createdAt:Date.now()
       };
       await _pmIdbPut(_singleParam);
-      syncParamToD1(_singleParam);
+      await syncParamToD1(_singleParam).catch(function(){ _enqueueParam(_singleParam); });
       _pmScanParsed=[];
       pmClose();
       pmScanClose();
@@ -3588,11 +3588,11 @@ async function pmSave(){
     _showConflictDialog(code, dupM,
       function(){ // הוסף כחדש
         var np=_buildP(Date.now().toString(36)+Math.random().toString(36).slice(2,5));
-        _pmIdbPut(np).then(function(){ syncParamToD1(np); pmClose(); pmRefresh(); showToast('✅ נוסף כחדש!'); }).catch(function(e){ showToast('❌ '+e.message); });
+        _pmIdbPut(np).then(function(){ return syncParamToD1(np).catch(function(){ _enqueueParam(np); }); }).then(function(){ pmClose(); pmRefresh(); showToast('✅ נוסף כחדש!'); }).catch(function(e){ showToast('❌ '+e.message); });
       },
       function(){ // החלף קיים
         var rp=_buildP(dup.id);
-        _pmIdbPut(rp).then(function(){ syncParamToD1(rp); pmClose(); pmRefresh(); showToast('✅ עודכן!'); }).catch(function(e){ showToast('❌ '+e.message); });
+        _pmIdbPut(rp).then(function(){ return syncParamToD1(rp).catch(function(){ _enqueueParam(rp); }); }).then(function(){ pmClose(); pmRefresh(); showToast('✅ עודכן!'); }).catch(function(e){ showToast('❌ '+e.message); });
       },
       function(){} // ביטול
     );
@@ -3603,7 +3603,7 @@ async function pmSave(){
     createdAt:Date.now()
   },pData);
   try{
-    await _pmIdbPut(p); syncParamToD1(p); pmClose(); await pmRefresh(); showToast('✅ נשמר!');
+    await _pmIdbPut(p); await syncParamToD1(p).catch(function(){ _enqueueParam(p); }); pmClose(); await pmRefresh(); showToast('✅ נשמר!');
     setTimeout(function(){ flashSavedParam(code); }, 280);
   }catch(e){ showToast('❌ שגיאה: '+e.message); }
 }
