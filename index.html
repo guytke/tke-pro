@@ -342,6 +342,7 @@ if('serviceWorker' in navigator){
     <div class="logo" id="main-logo">🛗 <span id="logo-icon"></span><span id="logo-text" style="color:var(--orange)">ספר תקלות</span></div>
     <div class="header-btns">
       <input type="file" id="restore-input" accept=".json" style="display:none" onchange="importBackup(event)">
+      <span id="sync-pending-badge" onclick="flushAllSyncQueues()" style="display:none;align-items:center;gap:4px;background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.35);color:#eab308;border-radius:14px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif"></span>
       <button class="btn btn-ghost btn-sm" onclick="refreshApp()">🔄 רענון</button>
       <button class="btn btn-ghost btn-sm" onclick="switchMainTab('faults')">🏠 בית</button>
       <button class="btn btn-ghost btn-sm" onclick="switchMainTab('tools')">🛠️ כלים</button>
@@ -1293,6 +1294,14 @@ function _addDeletedLearningId(id){ var s=_getDeletedLearningIds(); s.add(String
 function _getSyncQueue(){ try{ return JSON.parse(localStorage.getItem(SYNC_QUEUE_KEY))||[]; }catch(e){ return []; } }
 function _saveSyncQueue(q){ localStorage.setItem(SYNC_QUEUE_KEY, JSON.stringify(q)); }
 
+function updateSyncPendingBadge(){
+  var total = _getSyncQueue().length + _getParamSyncQueue().length + _getCatalogSyncQueue().length + _getLearningSyncQueue().length;
+  var badge = document.getElementById('sync-pending-badge');
+  if(!badge) return;
+  if(total>0){ badge.textContent='⏳ '+total+' ממתינים לסנכרון'; badge.style.display='inline-flex'; }
+  else{ badge.style.display='none'; }
+}
+
 const PARAM_SYNC_QUEUE_KEY = 'tke_param_sync_queue';
 function _getParamSyncQueue(){ try{ return JSON.parse(localStorage.getItem(PARAM_SYNC_QUEUE_KEY))||[]; }catch(e){ return []; } }
 function _saveParamSyncQueue(q){ localStorage.setItem(PARAM_SYNC_QUEUE_KEY, JSON.stringify(q)); }
@@ -1301,6 +1310,7 @@ function _enqueueParam(param){
   var idx = q.findIndex(function(p){ return p.id === param.id; });
   if(idx >= 0) q[idx] = param; else q.push(param);
   _saveParamSyncQueue(q);
+  updateSyncPendingBadge();
 }
 function flushParamSyncQueue(){
   var token = sessionStorage.getItem('tke_auth_token');
@@ -1309,6 +1319,7 @@ function flushParamSyncQueue(){
   if(!q.length) return;
   console.log('[flushParamSyncQueue] flushing',q.length,'queued param(s)');
   _saveParamSyncQueue([]);
+  updateSyncPendingBadge();
   q.forEach(function(param){
     syncParamToD1(param).catch(function(){ _enqueueParam(param); });
   });
@@ -1322,6 +1333,7 @@ function _enqueueCatalogItem(part){
   var idx = q.findIndex(function(p){ return p.id === part.id; });
   if(idx >= 0) q[idx] = part; else q.push(part);
   _saveCatalogSyncQueue(q);
+  updateSyncPendingBadge();
 }
 function flushCatalogSyncQueue(){
   var token = sessionStorage.getItem('tke_auth_token');
@@ -1330,6 +1342,7 @@ function flushCatalogSyncQueue(){
   if(!q.length) return;
   console.log('[flushCatalogSyncQueue] flushing',q.length,'queued catalog item(s)');
   _saveCatalogSyncQueue([]);
+  updateSyncPendingBadge();
   q.forEach(function(part){
     syncCatalogToD1(part).catch(function(){ _enqueueCatalogItem(part); });
   });
@@ -1343,6 +1356,7 @@ function _enqueueLearningItem(item){
   var idx = q.findIndex(function(x){ return x.id === item.id; });
   if(idx >= 0) q[idx] = item; else q.push(item);
   _saveLearningSyncQueue(q);
+  updateSyncPendingBadge();
 }
 function flushLearningSyncQueue(){
   var token = sessionStorage.getItem('tke_auth_token');
@@ -1351,6 +1365,7 @@ function flushLearningSyncQueue(){
   if(!q.length) return;
   console.log('[flushLearningSyncQueue] flushing',q.length,'queued learning item(s)');
   _saveLearningSyncQueue([]);
+  updateSyncPendingBadge();
   q.forEach(function(item){
     _lrnSyncToD1(item).catch(function(){ _enqueueLearningItem(item); });
   });
@@ -1406,6 +1421,7 @@ function _enqueueFault(fault){
   var idx = q.findIndex(function(f){ return f.id === fault.id; });
   if(idx >= 0) q[idx] = fault; else q.push(fault);
   _saveSyncQueue(q);
+  updateSyncPendingBadge();
 }
 
 function flushSyncQueue(){
@@ -1415,6 +1431,7 @@ function flushSyncQueue(){
   if(!q.length) return;
   console.log('[syncFaultToD1] flushing',q.length,'queued fault(s)');
   _saveSyncQueue([]);
+  updateSyncPendingBadge();
   q.forEach(function(fault){
     _sendFaultToD1(fault, token).then(function(ok){
       if(!ok){ _enqueueFault(fault); }
@@ -6342,6 +6359,7 @@ function showApp() {
     return f;
   });
   if(cleaned) try { localStorage.setItem(KEY, JSON.stringify(faults)); } catch(e){}
+  updateSyncPendingBadge();
   flushAllSyncQueues();
   syncFaultsFromD1();
   syncLearningFromD1();
