@@ -182,10 +182,16 @@ textarea.field-area:focus{border-color:var(--green-border)}
 .cl-badge-model{background:#F0EBF4;border:1px solid #E8E2EC;border-radius:4px;padding:2px 5px;font-size:10px;color:#8A7F94}
 .cl-badge-shared{position:absolute;top:7px;right:7px;background:rgba(91,42,140,0.12);color:#5B2A8C;border:1px solid rgba(91,42,140,0.35);border-radius:10px;font-size:10px;padding:2px 7px}
 .cl-btn-primary{background:#5B2A8C;color:#fff;border:none;border-radius:10px;padding:11px;font-family:Heebo,sans-serif;font-size:14px;font-weight:700;cursor:pointer;width:100%}
+.cl-btn-primary:active{background:#4a2270;transform:scale(0.97)}
 .cl-btn-ghost{background:#fff;color:#8A7F94;border:1px solid #E8E2EC;border-radius:8px;padding:8px;font-family:Heebo,sans-serif;font-size:13px;cursor:pointer;width:100%}
-.cl-btn-orange{background:#FF6B1A;color:#fff;border:none;border-radius:8px;padding:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:600;cursor:pointer;flex:1}
+.cl-btn-ghost:active{background:#F0EBF4}
+.cl-btn-orange{background:var(--orange);color:#fff;border:none;border-radius:8px;padding:10px;font-family:Heebo,sans-serif;font-size:13px;font-weight:600;cursor:pointer;flex:1}
+.cl-btn-orange:active{background:#c44f00;transform:scale(0.97)}
 .cl-btn-delete{background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:10px;font-family:Heebo,sans-serif;font-size:13px;cursor:pointer;flex:1}
+.cl-btn-delete:active{background:rgba(239,68,68,0.2)}
 .cl-btn-edit{background:#fff;color:#8A7F94;border:1px solid #E8E2EC;border-radius:8px;padding:10px;font-family:Heebo,sans-serif;font-size:13px;cursor:pointer;flex:1}
+.cl-btn-edit:active{background:#F0EBF4}
+.cl-card:active{background:#F7F5F2;border-color:#5B2A8C}
 .cl-img-label{display:flex;align-items:center;justify-content:center;gap:6px;background:#fff;border:1px dashed #E8E2EC;border-radius:10px;padding:10px;cursor:pointer;font-size:13px;color:#8A7F94;font-family:Heebo,sans-serif;flex:1}
 .cl-model-chip{display:inline-flex;align-items:center;gap:4px;background:#F0EBF4;border:1px solid rgba(91,42,140,0.3);border-radius:12px;padding:3px 10px;font-size:12px;color:#5B2A8C;font-family:Heebo,sans-serif}
 .cl-model-chip button{background:none;border:none;color:#B8B0C0;cursor:pointer;font-size:14px;padding:0 0 0 2px}
@@ -410,7 +416,7 @@ if('serviceWorker' in navigator){
 </div>
 </div><!-- close section-faults inner -->
 
-<div class="overlay" id="form-modal" onclick="if(event.target.id==='form-modal')closeModal('form-modal')">
+<div class="overlay" id="form-modal" onclick="if(event.target.id==='form-modal')closeModalWithGuard('form-modal',['f-model','f-code','f-name','f-level','f-book','f-field','f-note'])">
   <div class="modal">
     <div style="position:relative"><button onclick="closeAllModals();switchMainTab('faults')" style="position:absolute;top:14px;left:14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px;color:var(--text2);cursor:pointer;font-family:Heebo,sans-serif">🏠</button></div>
     <div class="modal-handle"></div>
@@ -465,7 +471,7 @@ if('serviceWorker' in navigator){
     </div>
     <div class="form-actions">
       <button class="btn btn-primary" onclick="saveFault()">💾 שמור</button>
-      <button class="btn btn-cancel" onclick="closeModal('form-modal')">ביטול</button>
+      <button class="btn btn-cancel" onclick="closeModalWithGuard('form-modal',['f-model','f-code','f-name','f-level','f-book','f-field','f-note'])">ביטול</button>
     </div>
   </div>
 </div>
@@ -574,7 +580,7 @@ if('serviceWorker' in navigator){
 
 
 <!-- PARAMS ADD/EDIT MODAL -->
-<div class="overlay" id="param-form-modal" onclick="if(event.target.id==='param-form-modal')closeModal('param-form-modal')">
+<div class="overlay" id="param-form-modal" onclick="if(event.target.id==='param-form-modal')closeModalWithGuard('param-form-modal',['p-model','p-name','p-location','p-desc','p-value','p-default','p-notes','p-personal'])">
   <div class="modal">
     <div style="position:relative"><button onclick="closeAllModals();switchMainTab('faults')" style="position:absolute;top:14px;left:14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px;color:var(--text2);cursor:pointer;font-family:Heebo,sans-serif">🏠</button></div>
     <div class="modal-handle"></div>
@@ -619,7 +625,7 @@ if('serviceWorker' in navigator){
     </div>
     <div class="form-actions">
       <button class="btn btn-primary" onclick="saveParam()">💾 שמור</button>
-      <button class="btn btn-cancel" onclick="closeModal('param-form-modal')">ביטול</button>
+      <button class="btn btn-cancel" onclick="closeModalWithGuard('param-form-modal',['p-model','p-name','p-location','p-desc','p-value','p-default','p-notes','p-personal'])">ביטול</button>
     </div>
   </div>
 </div>
@@ -946,7 +952,7 @@ if('serviceWorker' in navigator){
         <img id="catalog-img-preview" onerror="document.getElementById('catalog-img-preview-wrap').style.display='none'" style="width:100%;max-height:180px;object-fit:contain;border-radius:10px;background:#F0EBF4">
         <div style="display:flex;gap:8px;margin-top:8px">
           <button id="catalog-ai-identify-btn" onclick="catalogAIIdentify()" style="flex:1;background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-family:Heebo,sans-serif;cursor:pointer">🔍 נתח פרטי חלק</button>
-          <button id="catalog-img-clear-btn" onclick="clearCatalogImage()" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:8px;padding:10px 14px;font-size:13px;font-family:Heebo,sans-serif;cursor:pointer">🗑️ מחק תמונה</button>
+          <button id="catalog-img-clear-btn" onclick="clearCatalogImage()" style="display:none;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:8px;padding:10px 14px;font-size:13px;font-family:Heebo,sans-serif;cursor:pointer">🗑 מחק תמונה</button>
         </div>
         <div id="catalog-ai-identify-result" style="display:none"></div>
       </div>
@@ -1219,7 +1225,7 @@ if('serviceWorker' in navigator){
 </div>
 
 <!-- PARTS ADD/EDIT MODAL -->
-<div class="overlay" id="part-form-modal" onclick="if(event.target.id==='part-form-modal')closeModal('part-form-modal')">
+<div class="overlay" id="part-form-modal" onclick="if(event.target.id==='part-form-modal')closeModalWithGuard('part-form-modal',['pt-name','pt-cat','pt-qty','pt-loc','pt-model','pt-notes'])">
   <div class="modal">
     <div style="position:relative"><button onclick="closeAllModals();switchMainTab('faults')" style="position:absolute;top:14px;left:14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:12px;color:var(--text2);cursor:pointer;font-family:Heebo,sans-serif">🏠</button></div>
     <div class="modal-handle"></div>
@@ -1255,7 +1261,7 @@ if('serviceWorker' in navigator){
     </div>
     <div class="form-actions">
       <button class="btn btn-primary" onclick="savePart()">💾 שמור</button>
-      <button class="btn btn-cancel" onclick="closeModal('part-form-modal')">ביטול</button>
+      <button class="btn btn-cancel" onclick="closeModalWithGuard('part-form-modal',['pt-name','pt-cat','pt-qty','pt-loc','pt-model','pt-notes'])">ביטול</button>
     </div>
   </div>
 </div>
@@ -1671,7 +1677,7 @@ function deleteFault(id){
         method:'DELETE',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
         body:JSON.stringify({fault_id: id})
-      }).then(function(r){ console.log('[deleteFault] cloud delete status:', r.status); alert('delete status: ' + r.status); })
+      }).then(function(r){ console.log('[deleteFault] cloud delete status:', r.status); })
         .catch(function(e){ console.error('[deleteFault] cloud delete error:', e); });
     }
     doLocalDelete();
@@ -1798,6 +1804,14 @@ function closeModal(id){
     modal.classList.add('closing');
     setTimeout(function(){ overlay.classList.remove('open'); modal.classList.remove('closing'); },200);
   } else { overlay.classList.remove('open'); }
+}
+function closeModalWithGuard(modalId, fieldIds){
+  var hasData = fieldIds.some(function(id){
+    var el = document.getElementById(id);
+    return el && (el.value||'').trim();
+  });
+  if(hasData && !confirm('יש נתונים שלא נשמרו. לסגור בכל זאת?')) return;
+  closeModal(modalId);
 }
 let _tt;
 function showToast(msg){
@@ -3208,7 +3222,7 @@ async function pmBackfillAllToD1(){
     try{ await syncParamToD1(all[i]); ok++; }catch(e){ fail++; lastErr=e.message; }
   }
   var msg='הועלו '+ok+' פרמטרים'+(fail?' ('+fail+' נכשלו: '+lastErr+')':'');
-  showToast('✅ '+msg); alert(msg);
+  showToast('✅ '+msg);
 }
 
 async function syncParamToD1(param){
@@ -3260,9 +3274,9 @@ async function pmDelete(id){
         }).then(function(r){ console.log('[pmDelete] cloud delete status:', r.status); })
           .catch(function(e){ console.error('[pmDelete] cloud delete error:', e); });
       }
-      _addDeletedParamId(id); await _pmIdbDelete(id); await pmRefresh(); showToast('🗑️ נמחק'); resolve();
+      _addDeletedParamId(id); await _pmIdbDelete(id); await pmRefresh(); showToast('🗑 נמחק'); resolve();
     };
-    document.getElementById('_pdel_local').onclick=async function(){ cleanup(); _addDeletedParamId(id); await _pmIdbDelete(id); await pmRefresh(); showToast('🗑️ נמחק'); resolve(); };
+    document.getElementById('_pdel_local').onclick=async function(){ cleanup(); _addDeletedParamId(id); await _pmIdbDelete(id); await pmRefresh(); showToast('🗑 נמחק'); resolve(); };
     document.getElementById('_pdel_cancel').onclick=function(){ cleanup(); resolve(); };
     ov.onclick=function(e){ if(e.target===ov){ cleanup(); resolve(); } };
   });
@@ -3379,7 +3393,7 @@ function pmCardHTML(p,extraTag){
   if(p.images&&p.images.length){ try{ firstImg='<img src="'+URL.createObjectURL(p.images[0])+'" style="width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--border);flex-shrink:0;cursor:zoom-in" onclick="event.stopPropagation();showFullImg(this.src)">'; }catch(e){} }
   return '<div class="card" onclick="pmOpenDetail(\''+p.id+'\')" style="position:relative;cursor:pointer">'+
     '<button onclick="event.stopPropagation();pmOpenEditIdb(\''+p.id+'\')" style="position:absolute;top:8px;left:8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--text2);cursor:pointer">✏️</button>'+
-    '<button onclick="event.stopPropagation();pmDelete(\''+p.id+'\')" style="position:absolute;top:8px;left:48px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:3px 8px;font-size:11px;color:#f87171;cursor:pointer">🗑️</button>'+
+    '<button onclick="event.stopPropagation();pmDelete(\''+p.id+'\')" style="position:absolute;top:8px;left:48px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:3px 8px;font-size:11px;color:#f87171;cursor:pointer">🗑</button>'+
     '<div style="padding-left:88px;display:flex;gap:10px;align-items:flex-start">'+firstImg+'<div style="flex:1">'+
       '<div style="font-family:monospace;font-size:15px;font-weight:700;color:var(--orange)">'+esc(p.paramCode)+'</div>'+
       (p.paramName?'<div style="font-size:13px;font-weight:600;color:var(--text);margin-top:2px">'+esc(p.paramName)+'</div>':'')+
@@ -5217,7 +5231,9 @@ function renderSelectedModels(){
   }).join('');
 }
 
+var _savingCatalogPart = false;
 async function saveCatalogPart(){
+  if(_savingCatalogPart) return;
   var name=document.getElementById('catalog-add-name').value.trim();
   var sku=document.getElementById('catalog-add-sku').value.trim();
   var notes=document.getElementById('catalog-add-notes').value.trim();
@@ -5247,6 +5263,9 @@ async function saveCatalogPart(){
     createdAt:existing?existing.createdAt:Date.now()
   };
   if(_catalogImgBlob&&existing) part.fingerprint=null; // re-analyze new image
+  var _saveBtn=document.querySelector('button[onclick="saveCatalogPart()"]');
+  _savingCatalogPart=true;
+  if(_saveBtn){ _saveBtn.disabled=true; _saveBtn.textContent='⏳ שומר...'; }
   try{
     await idbPut(part);
     await syncCatalogToD1(part).catch(function(){ _enqueueCatalogItem(part); });
@@ -5256,6 +5275,10 @@ async function saveCatalogPart(){
     showToast('✅ חלק נשמר במאגר');
     if(part.imageBlob&&!part.fingerprint) generateFingerprint(id,part.imageBlob);
   }catch(e){ showToast('❌ שגיאה בשמירה: '+e.message); }
+  finally{
+    _savingCatalogPart=false;
+    if(_saveBtn){ _saveBtn.disabled=false; _saveBtn.textContent='💾 שמור במאגר'; }
+  }
 }
 
 // ── Fingerprint ────────────────────────────────────────
@@ -5323,7 +5346,7 @@ function openCatalogDetail(id){
     '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px">'+badges+'</div>'+
     '<div style="display:flex;gap:8px">'+
       '<button onclick="editCatalogPart(\''+id+'\')" class="cl-btn-edit">✏️ ערוך</button>'+
-      '<button onclick="deleteCatalogPart(\''+id+'\')" class="cl-btn-delete">🗑️ מחק</button>'+
+      '<button onclick="deleteCatalogPart(\''+id+'\')" class="cl-btn-delete">🗑 מחק</button>'+
       '<button onclick="orderFromCatalog(\''+id+'\')" class="cl-btn-orange">📋 הזמן</button>'+
     '</div>';
   openModal('catalog-detail-modal');
@@ -5375,7 +5398,7 @@ async function deleteCatalogPart(id){
       await idbDelete(id);
       if(_catalogObjURLs[id]){ URL.revokeObjectURL(_catalogObjURLs[id]); delete _catalogObjURLs[id]; }
       closeModal('catalog-detail-modal');
-      await refreshCatalogCache(); renderCatalogChips(); renderCatalog(); showToast('🗑️ חלק נמחק');
+      await refreshCatalogCache(); renderCatalogChips(); renderCatalog(); showToast('🗑 חלק נמחק');
       resolve();
     }
     document.getElementById('_cdel_full').onclick=function(){
@@ -5524,7 +5547,7 @@ function _csShowResult(r){
 
 function _catalogScrollToCard(id){
   var card=document.querySelector('[data-catalog-id="'+id+'"]');
-  if(!card){ showToast('גולל לרשימה...'); return; }
+  if(!card){ showToast('הפריט לא נמצא ברשימה'); return; }
   card.scrollIntoView({behavior:'smooth',block:'center'});
   card.style.transition='box-shadow 0.3s';
   card.style.boxShadow='0 0 0 3px #5B2A8C';
@@ -6247,8 +6270,8 @@ async function knowledgeUploadFile(file, model, token){
     });
     if(res.ok) showToast('✅ '+file.name+' הועלה!');
     else {
-      var errText = await res.text();
-      alert('שגיאה '+res.status+'\n'+errText+'\nToken: '+token.slice(0,20)+'...');
+      console.error('[knowledge upload] status:', res.status, 'body:', await res.text());
+      showToast('❌ שגיאה בהעלאה ('+res.status+')');
     }
   }catch(e){ showToast('❌ שגיאת רשת'); }
 }
