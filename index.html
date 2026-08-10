@@ -348,7 +348,7 @@ if('serviceWorker' in navigator){
     <div class="logo" id="main-logo">🛗 <span id="logo-icon"></span><span id="logo-text" style="color:var(--orange)">ספר תקלות</span></div>
     <div class="header-btns">
       <input type="file" id="restore-input" accept=".json" style="display:none" onchange="importBackup(event)">
-      <span id="sync-pending-badge" onclick="flushAllSyncQueues()" style="display:none;align-items:center;gap:4px;background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.35);color:#eab308;border-radius:14px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif"></span>
+      <span id="sync-pending-badge" onclick="onSyncBadgeClick()" style="display:none;align-items:center;gap:4px;background:rgba(234,179,8,0.12);border:1px solid rgba(234,179,8,0.35);color:#eab308;border-radius:14px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif"></span>
       <button class="btn btn-ghost btn-sm" onclick="refreshApp()">🔄 רענון</button>
       <button class="btn btn-ghost btn-sm" onclick="switchMainTab('faults')">🏠 בית</button>
       <button class="btn btn-ghost btn-sm" onclick="switchMainTab('tools')">🛠️ כלים</button>
@@ -1300,23 +1300,42 @@ function updateSyncPendingBadge(){
   var total = _getSyncQueue().length + _getParamSyncQueue().length + _getCatalogSyncQueue().length + _getLearningSyncQueue().length;
   var badge = document.getElementById('sync-pending-badge');
   if(!badge) return;
-  if(total>0){ badge.textContent='⏳ '+total+' ממתינים לסנכרון'; badge.style.display='inline-flex'; }
-  else{ badge.style.display='none'; }
+  if(_authExpiredHandled && total>0){
+    badge.textContent='🔒 נדרשת התחברות מחדש';
+    badge.style.background='rgba(239,68,68,0.12)'; badge.style.borderColor='rgba(239,68,68,0.4)'; badge.style.color='#f87171';
+    badge.style.display='inline-flex';
+  } else if(total>0){
+    badge.textContent='⏳ '+total+' ממתינים לסנכרון';
+    badge.style.background='rgba(234,179,8,0.12)'; badge.style.borderColor='rgba(234,179,8,0.35)'; badge.style.color='#eab308';
+    badge.style.display='inline-flex';
+  } else {
+    badge.style.display='none';
+  }
+}
+
+// Tapping the badge either retries the sync queue (normal case) or — once a stale
+// token has been detected — opens the login screen, since retrying is pointless until
+// the user re-authenticates. Never navigates on its own; only in response to a tap.
+function onSyncBadgeClick(){
+  if(_authExpiredHandled) showLogin();
+  else flushAllSyncQueues();
 }
 
 // Called whenever a D1 sync request comes back 401/403 (expired/invalid session token).
 // Without this, a stale token makes every sync silently fail forever — items just keep
 // getting re-queued with no feedback, which is exactly what happened here: the token
 // expired 6 days ago and nothing ever told the user. Surfaces it once (not once per
-// queued item) and forces re-login; setToken() resets the flag so this can fire again
-// if a fresh session later expires too.
+// queued item), and only *offers* re-login via the badge — does NOT auto-navigate to
+// the login screen, since it has no way back and would otherwise yank the user out of
+// whatever they were doing mid-task. setToken() resets the flag on a fresh login, so
+// this can fire again if a later session also expires.
 var _authExpiredHandled = false;
 function _handleAuthExpired(){
   if(_authExpiredHandled) return;
   _authExpiredHandled = true;
   sessionStorage.removeItem(TOKEN_KEY);
-  showToast('⚠️ ההתחברות פגה — נא להתחבר מחדש כדי לסנכרן');
-  setTimeout(function(){ showLogin(); }, 1200);
+  showToast('⚠️ ההתחברות פגה — הקש על "נדרשת התחברות מחדש" למעלה כשתהיה מוכן');
+  updateSyncPendingBadge();
 }
 
 const PARAM_SYNC_QUEUE_KEY = 'tke_param_sync_queue';
