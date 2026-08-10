@@ -1329,11 +1329,18 @@ function onSyncBadgeClick(){
 // the login screen, since it has no way back and would otherwise yank the user out of
 // whatever they were doing mid-task. setToken() resets the flag on a fresh login, so
 // this can fire again if a later session also expires.
+//
+// Deliberately does NOT clear the sessionStorage token. The unconditional
+// controllerchange -> reload elsewhere in this file means the app can reload itself
+// on its own (whenever a new deploy takes over) with zero relation to auth state. If
+// that reload found no token here, initAuth() would land on the login screen even
+// though nothing asked for that — exactly what happened before this comment was added.
+// Keeping the (stale) token means such a reload still lands back in the app; the red
+// badge is what actually tells the user to re-login, on their own schedule.
 var _authExpiredHandled = false;
 function _handleAuthExpired(){
   if(_authExpiredHandled) return;
   _authExpiredHandled = true;
-  sessionStorage.removeItem(TOKEN_KEY);
   showToast('⚠️ ההתחברות פגה — הקש על "נדרשת התחברות מחדש" למעלה כשתהיה מוכן');
   updateSyncPendingBadge();
 }
