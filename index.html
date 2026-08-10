@@ -422,26 +422,22 @@ if('serviceWorker' in navigator){
     <div class="modal-handle"></div>
     <div class="modal-title" id="form-title">➕ תקלה חדשה</div>
     <input type="hidden" id="edit-id">
-    <div class="form-row">
-      <div>
-        <label>דגם מעלית * (ניתן לבחור כמה)</label>
-        <div id="f-model-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px"></div>
-        <input type="hidden" id="f-model">
-      </div>
-      <div>
-        <label>קוד תקלה *</label>
-        <textarea rows="2" id="f-code" placeholder="Err36, E05, A0..." style="resize:vertical"></textarea>
-      </div>
+    <div class="form-col">
+      <label>דגם מעלית * (ניתן לבחור כמה)</label>
+      <div id="f-model-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px"></div>
+      <input type="hidden" id="f-model">
     </div>
-    <div class="form-row">
-      <div>
-        <label>שם / תיאור קצר</label>
-        <textarea rows="2" id="f-name" placeholder="שם התקלה..." style="resize:vertical"></textarea>
-      </div>
-      <div>
-        <label>כתובת פרויקט</label>
-        <textarea rows="2" id="f-level" placeholder="שם בניין, כתובת..." style="resize:vertical"></textarea>
-      </div>
+    <div class="form-col">
+      <label>שם / תיאור קצר</label>
+      <textarea rows="2" id="f-name" placeholder="שם התקלה..." style="resize:vertical"></textarea>
+    </div>
+    <div class="form-col">
+      <label>קוד תקלה *</label>
+      <textarea rows="2" id="f-code" placeholder="Err36, E05, A0..." style="resize:vertical"></textarea>
+    </div>
+    <div class="form-col">
+      <label>כתובת פרויקט</label>
+      <textarea rows="2" id="f-level" placeholder="שם בניין, כתובת..." style="resize:vertical"></textarea>
     </div>
     <div class="form-col">
       <label class="label-book">📖 ספר תקלות — תיאור רשמי</label>
