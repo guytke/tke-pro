@@ -1332,13 +1332,15 @@ function onSyncBadgeClick(){
 // whatever they were doing mid-task. setToken() resets the flag on a fresh login, so
 // this can fire again if a later session also expires.
 //
-// Deliberately does NOT clear the sessionStorage token. The unconditional
-// controllerchange -> reload elsewhere in this file means the app can reload itself
-// on its own (whenever a new deploy takes over) with zero relation to auth state. If
-// that reload found no token here, initAuth() would land on the login screen even
-// though nothing asked for that — exactly what happened before this comment was added.
-// Keeping the (stale) token means such a reload still lands back in the app; the red
-// badge is what actually tells the user to re-login, on their own schedule.
+// Deliberately does NOT clear the stored token. It now lives in localStorage (see
+// TOKEN_KEY below) specifically so it survives a full app close/reopen, not just a
+// same-tab reload — clearing it here would defeat that. It also matters for the
+// controllerchange -> reload elsewhere in this file: the app can reload itself on its
+// own (whenever a new deploy takes over) with zero relation to auth state, and if that
+// reload found no token, initAuth() would land on the login screen even though nothing
+// asked for that. Keeping the (stale) token means any such reload still lands back in
+// the app; the red badge is what actually tells the user to re-login, on their own
+// schedule.
 var _authExpiredHandled = false;
 function _handleAuthExpired(){
   if(_authExpiredHandled) return;
@@ -1358,7 +1360,7 @@ function _enqueueParam(param){
   updateSyncPendingBadge();
 }
 function flushParamSyncQueue(){
-  var token = sessionStorage.getItem('tke_auth_token');
+  var token = localStorage.getItem('tke_auth_token');
   if(!token || !navigator.onLine) return;
   var q = _getParamSyncQueue();
   if(!q.length) return;
@@ -1381,7 +1383,7 @@ function _enqueueCatalogItem(part){
   updateSyncPendingBadge();
 }
 function flushCatalogSyncQueue(){
-  var token = sessionStorage.getItem('tke_auth_token');
+  var token = localStorage.getItem('tke_auth_token');
   if(!token || !navigator.onLine) return;
   var q = _getCatalogSyncQueue();
   if(!q.length) return;
@@ -1404,7 +1406,7 @@ function _enqueueLearningItem(item){
   updateSyncPendingBadge();
 }
 function flushLearningSyncQueue(){
-  var token = sessionStorage.getItem('tke_auth_token');
+  var token = localStorage.getItem('tke_auth_token');
   if(!token || !navigator.onLine) return;
   var q = _getLearningSyncQueue();
   if(!q.length) return;
@@ -1455,7 +1457,7 @@ function _showConflictDialog(code, model, onAdd, onReplace, onCancel){
 
 function syncFaultToD1(fault){
   if(!navigator.onLine){ console.log('[syncFaultToD1] offline — queuing'); _enqueueFault(fault); return; }
-  var token = sessionStorage.getItem('tke_auth_token');
+  var token = localStorage.getItem('tke_auth_token');
   if(!token){ console.warn('[syncFaultToD1] no token — queuing for after login'); _enqueueFault(fault); return; }
   _sendFaultToD1(fault, token).then(function(ok){
     if(!ok){ _enqueueFault(fault); }
@@ -1471,7 +1473,7 @@ function _enqueueFault(fault){
 }
 
 function flushSyncQueue(){
-  var token = sessionStorage.getItem('tke_auth_token');
+  var token = localStorage.getItem('tke_auth_token');
   if(!token || !navigator.onLine) return;
   var q = _getSyncQueue();
   if(!q.length) return;
@@ -1841,7 +1843,7 @@ function deleteFault(id){
   }
   document.getElementById('_del_full').onclick = function(){
     cleanup();
-    var token = sessionStorage.getItem('tke_auth_token');
+    var token = localStorage.getItem('tke_auth_token');
     if(token && navigator.onLine){
       var deleteUrl = 'https://tke-proxy.guyshtaiger.workers.dev/faults/delete';
       console.log('[deleteFault] id:', id, 'url:', deleteUrl);
@@ -3399,7 +3401,7 @@ async function pmBackfillAllToD1(){
 
 async function syncParamToD1(param){
   if(!navigator.onLine){ _enqueueParam(param); throw new Error('offline'); }
-  var token = sessionStorage.getItem('tke_auth_token');
+  var token = localStorage.getItem('tke_auth_token');
   if(!token){ _enqueueParam(param); throw new Error('no token'); }
   var r = await fetch('https://tke-proxy.guyshtaiger.workers.dev/params/save',{
     method:'POST',
@@ -3439,7 +3441,7 @@ async function pmDelete(id){
     function cleanup(){ if(ov.parentNode) ov.parentNode.removeChild(ov); }
     document.getElementById('_pdel_full').onclick=async function(){
       cleanup();
-      var token=sessionStorage.getItem('tke_auth_token');
+      var token=localStorage.getItem('tke_auth_token');
       if(token&&navigator.onLine){
         fetch('https://tke-proxy.guyshtaiger.workers.dev/params/delete?id='+encodeURIComponent(id),{
           method:'DELETE', headers:{'Authorization':'Bearer '+token}
@@ -3505,7 +3507,7 @@ function pmUpdateModelTabs(){
 function pmSetActiveModel(m){ _pmActiveModel=m; pmUpdateModelTabs(); pmRenderList(); }
 
 async function pmSyncFromD1(){
-  var token = sessionStorage.getItem('tke_auth_token');
+  var token = localStorage.getItem('tke_auth_token');
   if(!token || !navigator.onLine) return;
   try{
     var res = await fetch('https://tke-proxy.guyshtaiger.workers.dev/params/list',{headers:{'Authorization':'Bearer '+token}});
@@ -4531,7 +4533,7 @@ async function sendChatMsg(){
     var knowledgeBlocks = [];
     if(sessionModel){
       try{
-        var kToken=sessionStorage.getItem('tke_auth_token');
+        var kToken=localStorage.getItem('tke_auth_token');
         if(kToken){
           var kRes=await fetch('https://tke-proxy.guyshtaiger.workers.dev/knowledge/list?model='+encodeURIComponent(sessionModel),{headers:{'Authorization':'Bearer '+kToken}});
           console.log('[knowledge] status:', kRes.status, 'model:', sessionModel);
@@ -4896,7 +4898,7 @@ function dataURLtoBlob(dataURL){
 // ── Catalog cloud sync ─────────────────────────────────
 async function syncCatalogToD1(part){
   if(!navigator.onLine){ _enqueueCatalogItem(part); throw new Error('offline'); }
-  var token = sessionStorage.getItem('tke_auth_token');
+  var token = localStorage.getItem('tke_auth_token');
   if(!token){ _enqueueCatalogItem(part); throw new Error('no token'); }
   var payload = Object.assign({}, part);
   delete payload.imageBlob;
@@ -4921,7 +4923,7 @@ async function syncCatalogToD1(part){
 }
 
 async function catalogSyncFromD1(){
-  var token = sessionStorage.getItem('tke_auth_token');
+  var token = localStorage.getItem('tke_auth_token');
   if(!token || !navigator.onLine) return;
   try{
     var res = await fetch('https://tke-proxy.guyshtaiger.workers.dev/catalog/list',{headers:{'Authorization':'Bearer '+token}});
@@ -5581,7 +5583,7 @@ async function deleteCatalogPart(id){
     }
     document.getElementById('_cdel_full').onclick=function(){
       cleanup();
-      var token=sessionStorage.getItem('tke_auth_token');
+      var token=localStorage.getItem('tke_auth_token');
       if(token&&navigator.onLine){
         fetch('https://tke-proxy.guyshtaiger.workers.dev/catalog/delete?id='+encodeURIComponent(id),{
           method:'DELETE', headers:{'Authorization':'Bearer '+token}
@@ -6291,7 +6293,7 @@ function deleteLearningItem(id){
   }
   document.getElementById('_ldel_full').onclick=function(){
     cleanup();
-    var token=sessionStorage.getItem('tke_auth_token');
+    var token=localStorage.getItem('tke_auth_token');
     if(token&&navigator.onLine){
       fetch('https://tke-proxy.guyshtaiger.workers.dev/learning/delete',{
         method:'DELETE',
@@ -6310,7 +6312,7 @@ function deleteLearningItem(id){
 // ── D1 Sync ──────────────────────────────────────────────
 async function _lrnSyncToD1(item){
   if(!navigator.onLine){ _enqueueLearningItem(item); throw new Error('offline'); }
-  var token=sessionStorage.getItem('tke_auth_token');
+  var token=localStorage.getItem('tke_auth_token');
   if(!token){ _enqueueLearningItem(item); throw new Error('no token'); }
   var payload={
     id: item.id,
@@ -6328,13 +6330,13 @@ async function _lrnSyncToD1(item){
 }
 
 function _lrnDeleteFromD1(id){
-  var token=sessionStorage.getItem('tke_auth_token');
+  var token=localStorage.getItem('tke_auth_token');
   if(!token||!navigator.onLine) return;
   fetch(LRN_D1_DELETE,{method:'DELETE',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({learning_id:id})}).catch(function(){});
 }
 
 async function syncLearningFromD1(){
-  var token=sessionStorage.getItem('tke_auth_token');
+  var token=localStorage.getItem('tke_auth_token');
   if(!token||!navigator.onLine) return;
   try{
     var res=await fetch(LRN_D1_LIST,{headers:{'Authorization':'Bearer '+token}});
@@ -6406,7 +6408,7 @@ async function knowledgeListFiles(model){
   var list = document.getElementById('knowledge-list');
   if(!list) return;
   list.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:12px 0">טוען...</div>';
-  var token = sessionStorage.getItem('tke_auth_token');
+  var token = localStorage.getItem('tke_auth_token');
   if(!token){ list.innerHTML='<div class="empty"><div class="empty-icon">🔒</div><p>נא להתחבר תחילה</p></div>'; return; }
   try{
     var res = await fetch(KNOWLEDGE_WORKER+'/knowledge/list?model='+encodeURIComponent(model), {
@@ -6435,7 +6437,7 @@ async function knowledgeHandleUpload(e){
   e.target.value='';
   if(!files.length) return;
   if(!_knowledgeModel){ showToast('⚠️ נא לבחור דגם מעלית תחילה'); return; }
-  var token = sessionStorage.getItem('tke_auth_token');
+  var token = localStorage.getItem('tke_auth_token');
   if(!token){ showToast('⚠️ נא להתחבר תחילה'); return; }
   for(var f of files){
     showToast('⬆️ מעלה '+f.name+'...');
@@ -6462,7 +6464,7 @@ async function knowledgeUploadFile(file, model, token){
 
 async function knowledgeDeleteFile(key){
   if(!confirm('למחוק את הקובץ?')) return;
-  var token = sessionStorage.getItem('tke_auth_token');
+  var token = localStorage.getItem('tke_auth_token');
   if(!token){ showToast('⚠️ נא להתחבר תחילה'); return; }
   try{
     var res = await fetch(KNOWLEDGE_WORKER+'/knowledge/delete?key='+encodeURIComponent(key),{
@@ -6476,7 +6478,7 @@ async function knowledgeDeleteFile(key){
 
 // ── Login / Auth ─────────────────────────────────────────
 const AUTH_URL  = 'https://tke-proxy.guyshtaiger.workers.dev/auth/login';
-const TOKEN_KEY = 'tke_auth_token';      // sessionStorage — active session
+const TOKEN_KEY = 'tke_auth_token';      // localStorage — persists across app restarts (was sessionStorage)
 const BIO_CRED  = 'tke_bio_cred_id';    // localStorage  — WebAuthn credential id (base64url)
 const BIO_TOKEN = 'tke_bio_token';      // localStorage  — token unlocked by biometric
 
@@ -6490,8 +6492,8 @@ function b64uDecode(s) {
   return Uint8Array.from(atob(s), c => c.charCodeAt(0));
 }
 
-function getToken()   { return sessionStorage.getItem(TOKEN_KEY); }
-function setToken(t)  { sessionStorage.setItem(TOKEN_KEY, t); _authExpiredHandled=false; }
+function getToken()   { return localStorage.getItem(TOKEN_KEY); }
+function setToken(t)  { localStorage.setItem(TOKEN_KEY, t); _authExpiredHandled=false; }
 function hasBioCred() { return !!localStorage.getItem(BIO_CRED); }
 
 async function syncFaultsFromD1() {
