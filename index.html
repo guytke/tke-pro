@@ -1304,6 +1304,21 @@ function updateSyncPendingBadge(){
   else{ badge.style.display='none'; }
 }
 
+// Called whenever a D1 sync request comes back 401/403 (expired/invalid session token).
+// Without this, a stale token makes every sync silently fail forever — items just keep
+// getting re-queued with no feedback, which is exactly what happened here: the token
+// expired 6 days ago and nothing ever told the user. Surfaces it once (not once per
+// queued item) and forces re-login; setToken() resets the flag so this can fire again
+// if a fresh session later expires too.
+var _authExpiredHandled = false;
+function _handleAuthExpired(){
+  if(_authExpiredHandled) return;
+  _authExpiredHandled = true;
+  sessionStorage.removeItem(TOKEN_KEY);
+  showToast('⚠️ ההתחברות פגה — נא להתחבר מחדש כדי לסנכרן');
+  setTimeout(function(){ showLogin(); }, 1200);
+}
+
 const PARAM_SYNC_QUEUE_KEY = 'tke_param_sync_queue';
 function _getParamSyncQueue(){ try{ return JSON.parse(localStorage.getItem(PARAM_SYNC_QUEUE_KEY))||[]; }catch(e){ return []; } }
 function _saveParamSyncQueue(q){ localStorage.setItem(PARAM_SYNC_QUEUE_KEY, JSON.stringify(q)); }
@@ -1382,6 +1397,7 @@ function _sendFaultToD1(fault, token){
     .then(function(r){ return r.text().then(function(b){ return {status:r.status,body:b}; }); })
     .then(function(res){
       console.log('[syncFaultToD1] status:',res.status,'body:',res.body);
+      if(res.status===401||res.status===403) _handleAuthExpired();
       return res.status >= 200 && res.status < 300;
     })
     .catch(function(err){ console.error('[syncFaultToD1] fetch error:',err); return false; });
@@ -3363,7 +3379,7 @@ async function syncParamToD1(param){
     body:JSON.stringify(param)
   });
   console.log('[syncParamToD1] response:', r.status, param.paramCode);
-  if(!r.ok){ var body=await r.text(); throw new Error('status '+r.status+': '+body); }
+  if(!r.ok){ var body=await r.text(); if(r.status===401||r.status===403) _handleAuthExpired(); throw new Error('status '+r.status+': '+body); }
   return r.status;
 }
 
@@ -4872,7 +4888,7 @@ async function syncCatalogToD1(part){
     body:JSON.stringify(payload)
   });
   console.log('[syncCatalogToD1] response:', r.status, part.id);
-  if(!r.ok){ var body=await r.text(); console.error('[syncCatalogToD1] error:', r.status, body); throw new Error('status '+r.status+': '+body); }
+  if(!r.ok){ var body=await r.text(); console.error('[syncCatalogToD1] error:', r.status, body); if(r.status===401||r.status===403) _handleAuthExpired(); throw new Error('status '+r.status+': '+body); }
   return r.status;
 }
 
@@ -6279,7 +6295,7 @@ async function _lrnSyncToD1(item){
   };
   var r = await fetch(LRN_D1_SAVE,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify(payload)});
   console.log('[_lrnSyncToD1] response:', r.status, item.id);
-  if(!r.ok){ var body=await r.text(); console.error('[_lrnSyncToD1] error:', r.status, body); throw new Error('status '+r.status+': '+body); }
+  if(!r.ok){ var body=await r.text(); console.error('[_lrnSyncToD1] error:', r.status, body); if(r.status===401||r.status===403) _handleAuthExpired(); throw new Error('status '+r.status+': '+body); }
   return r.status;
 }
 
@@ -6447,7 +6463,7 @@ function b64uDecode(s) {
 }
 
 function getToken()   { return sessionStorage.getItem(TOKEN_KEY); }
-function setToken(t)  { sessionStorage.setItem(TOKEN_KEY, t); }
+function setToken(t)  { sessionStorage.setItem(TOKEN_KEY, t); _authExpiredHandled=false; }
 function hasBioCred() { return !!localStorage.getItem(BIO_CRED); }
 
 async function syncFaultsFromD1() {
