@@ -1456,6 +1456,13 @@ window.addEventListener('online', flushAllSyncQueues);
 let faults = load();
 let activeModel = '';
 
+// Back-compat model accessor: new faults will eventually be saved with models:[]
+// (multi-select), old faults on disk still have a single model:string. Same pattern
+// as _lrnModels. Wired into all read sites (search/sort/filter/display/share/AI
+// context) — the "תקלה חדשה" form itself still writes a single model:string only,
+// so this always safely resolves to a 1-item array until the form is migrated too.
+function _faultModels(f){ return f.models||(f.model?[f.model]:[]); }
+
 // ─── RENDER ───────────────────────────────────────────
 function render(){
   const q = document.getElementById('search-input').value.toLowerCase().trim();
@@ -1467,13 +1474,14 @@ function render(){
 
   const _words = q ? q.split(/\s+/).filter(Boolean) : [];
   let filtered = faults.filter(f=>{
-    const txt = [f.model,f.code,f.name,f.book,f.field,f.level,f.note,f.date].filter(Boolean).join(' ').toLowerCase();
+    const txt = [_faultModels(f).join(' '),f.code,f.name,f.book,f.field,f.level,f.note,f.date].filter(Boolean).join(' ').toLowerCase();
     const matchesText = !_words.length || _words.every(w => txt.includes(w));
-    const matchesModel = !activeModel || q || f.model === activeModel;
+    const matchesModel = !activeModel || q || _faultModels(f).includes(activeModel);
     return matchesText && matchesModel;
   }).sort(function(a,b){
     // Sort by model first, then by fault code numerically
-    if(a.model !== b.model) return a.model.localeCompare(b.model);
+    const am = _faultModels(a).join(', '), bm = _faultModels(b).join(', ');
+    if(am !== bm) return am.localeCompare(bm);
     // Extract numbers from code for numeric sort
     var numA = parseInt((a.code||'').replace(/[^0-9]/g,''))||0;
     var numB = parseInt((b.code||'').replace(/[^0-9]/g,''))||0;
@@ -1496,7 +1504,7 @@ function render(){
       '<div class="card-top">'+
         '<div class="card-code">'+esc(f.code)+'</div>'+
         '<div class="card-name">'+esc(f.name||f.code)+'</div>'+
-        '<div class="card-model">'+esc(f.model)+'</div>'+
+        '<div class="card-model">'+esc(_faultModels(f).join(', '))+'</div>'+
       '</div>'+
       (preview?'<div class="card-preview">'+esc(preview)+'</div>':'')+
       '<div class="card-badges">'+
@@ -1509,7 +1517,7 @@ function render(){
 }
 
 function updateModelTabs(){
-  const models = [...new Set(faults.map(f=>f.model).filter(Boolean))].sort();
+  const models = [...new Set(faults.flatMap(f=>_faultModels(f)))].sort();
   const tabs = document.getElementById('model-tabs');
   tabs.innerHTML = '<button class="model-tab'+(activeModel===''?' active':'')+'" onclick="setModel(\'\')">כולם</button>'+
     models.map(m=>'<button class="model-tab'+(activeModel===m?' active':'')+'" onclick="setModel(\''+esc(m)+'\')">'+esc(m)+'</button>').join('');
@@ -1541,9 +1549,10 @@ function globalQuickSearch(q){
   const results = [];
 
   faults.forEach(function(f){
-    const txt = [f.model,f.code,f.name,f.book,f.field,f.level,f.note,f.date].filter(Boolean).join(' ').toLowerCase();
+    const fModels = _faultModels(f);
+    const txt = [fModels.join(' '),f.code,f.name,f.book,f.field,f.level,f.note,f.date].filter(Boolean).join(' ').toLowerCase();
     if(words.every(function(w){ return txt.includes(w); })){
-      results.push({type:'fault', id:f.id, title:f.code, subtitle:(f.name||f.model||''), model:f.model||''});
+      results.push({type:'fault', id:f.id, title:f.code, subtitle:(f.name||fModels.join(', ')||''), model:fModels.join(', ')});
     }
   });
 
@@ -1617,7 +1626,7 @@ function openEdit(id){
   closeModal('view-modal');
   document.getElementById('form-title').textContent = '✏️ עריכת תקלה';
   document.getElementById('edit-id').value = id;
-  document.getElementById('f-model').value = f.model||'';
+  document.getElementById('f-model').value = _faultModels(f)[0]||'';
   document.getElementById('f-code').value = f.code||'';
   document.getElementById('f-name').value = f.name||'';
   document.getElementById('f-level').value = f.level||'';
@@ -1644,7 +1653,7 @@ function saveFault(){
 
   // הגנה מפני כפילות — רק בתקלה חדשה
   if(!editId){
-    const duplicate = faults.find(f=>f.model===model && f.code===code);
+    const duplicate = faults.find(f=>_faultModels(f).includes(model) && f.code===code);
     if(duplicate){
       var _readFormFault = function(useId){
         return {id:useId,model,code,
@@ -1775,7 +1784,7 @@ function viewFault(id){
     '<div class="view-header">'+
       '<div>'+
         '<div class="view-code" style="white-space:pre-wrap">'+esc(f.code)+'</div>'+
-        '<div class="view-name" style="white-space:pre-wrap">'+esc(f.model)+(f.name?' — '+esc(f.name):'')+'</div>'+
+        '<div class="view-name" style="white-space:pre-wrap">'+esc(_faultModels(f).join(', '))+(f.name?' — '+esc(f.name):'')+'</div>'+
       '</div>'+
       '<button class="view-close" onclick="closeModal(\'view-modal\')">×</button>'+
     '</div>'+
@@ -1803,7 +1812,7 @@ function shareFault(id){
   if(!f) return;
   const lines = [
     '🛗 *תקלת מעלית*','',
-    '📋 *דגם:* '+f.model,
+    '📋 *דגם:* '+_faultModels(f).join(', '),
     '⚠️ *קוד:* '+f.code,
     (f.name?'📌 *שם:* '+f.name:''),
     (f.level?'📊 *רמה:* '+f.level:''),
@@ -4118,7 +4127,7 @@ function renderToolsStats(){
   var m = loadMfr();
 
   // unique models in faults
-  var faultModels = [...new Set(f.map(x=>x.model).filter(Boolean))];
+  var faultModels = [...new Set(f.flatMap(x=>_faultModels(x)))];
   var paramModels = [...new Set(p.map(x=>x.model).filter(Boolean))];
   var mfrModels = [...new Set(m.map(x=>x.model).filter(Boolean))];
 
@@ -4242,7 +4251,7 @@ function chatAddModel(){
 function chatRenderModelTabs(){
   var container = document.getElementById('chat-model-tabs');
   if(!container) return;
-  var fromFaults = faults.map(function(f){ return f.model; }).filter(Boolean);
+  var fromFaults = faults.flatMap(function(f){ return _faultModels(f); });
   var models = [...new Set([...getElevatorModels(), ...fromFaults])].sort();
   container.innerHTML =
     '<button onclick="chatSelectModel(null)" style="flex-shrink:0;padding:5px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;cursor:pointer;white-space:nowrap;border:'
@@ -4358,7 +4367,7 @@ function buildChatContext(){
   if(f.length){
     ctx += '\n\n--- תקלות שטח ('+f.length+') ---\n';
     f.slice(0,40).forEach(function(x){
-      ctx += '['+x.model+'] '+x.code+(x.name?' — '+x.name:'')+'\n';
+      ctx += '['+_faultModels(x).join(', ')+'] '+x.code+(x.name?' — '+x.name:'')+'\n';
       if(x.book) ctx += '  ספר: '+x.book.slice(0,100)+'\n';
       if(x.field) ctx += '  שטח: '+x.field.slice(0,100)+'\n';
     });
@@ -6288,7 +6297,7 @@ function knowledgeAddModel(){
 }
 
 function knowledgeInit(){
-  var fromFaults = faults.map(function(f){ return f.model; }).filter(Boolean);
+  var fromFaults = faults.flatMap(function(f){ return _faultModels(f); });
   var models = [...new Set([...getElevatorModels(), ...fromFaults])].sort();
   var tabs = document.getElementById('knowledge-model-tabs');
   if(!tabs) return;
