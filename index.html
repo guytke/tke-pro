@@ -1459,6 +1459,12 @@ let activeModel = '';
 // ─── RENDER ───────────────────────────────────────────
 function render(){
   const q = document.getElementById('search-input').value.toLowerCase().trim();
+
+  if(q){
+    renderGlobalSearchResults(globalQuickSearch(q), 'list', 'results-count', '🔧');
+    return;
+  }
+
   const _words = q ? q.split(/\s+/).filter(Boolean) : [];
   let filtered = faults.filter(f=>{
     const txt = [f.model,f.code,f.name,f.book,f.field,f.level,f.note,f.date].filter(Boolean).join(' ').toLowerCase();
@@ -1522,6 +1528,77 @@ function updateModelTabs(){
 
 function setModel(m){ activeModel=m; updateModelTabs(); render(); }
 function refresh(){ updateModelTabs(); render(); }
+
+// ─── GLOBAL QUICK SEARCH (across faults + params + learning) ──────
+const GLOBAL_SEARCH_TAGS = {
+  fault:    {label:'תקלה',  color:'var(--orange)', bg:'var(--orange-dim)',        border:'var(--orange-border)'},
+  param:    {label:'פרמטר', color:'#60a5fa',        bg:'rgba(59,130,246,0.12)',   border:'rgba(59,130,246,0.4)'},
+  learning: {label:'לימוד', color:'#7F77DD',        bg:'rgba(127,119,221,0.12)',  border:'rgba(127,119,221,0.4)'}
+};
+
+function globalQuickSearch(q){
+  const words = q.split(/\s+/).filter(Boolean);
+  const results = [];
+
+  faults.forEach(function(f){
+    const txt = [f.model,f.code,f.name,f.book,f.field,f.level,f.note,f.date].filter(Boolean).join(' ').toLowerCase();
+    if(words.every(function(w){ return txt.includes(w); })){
+      results.push({type:'fault', id:f.id, title:f.code, subtitle:(f.name||f.model||''), model:f.model||''});
+    }
+  });
+
+  (_pmList||[]).forEach(function(p){
+    const txt = [p.paramCode,p.paramName,p.description,p.notes,(p.models||[]).join(' '),p.range,p.defaultValue].filter(Boolean).join(' ').toLowerCase();
+    if(words.every(function(w){ return txt.includes(w); })){
+      results.push({type:'param', id:p.id, title:p.paramCode||'', subtitle:(p.paramName||(p.models||[]).join(', ')), model:(p.models||[])[0]||''});
+    }
+  });
+
+  (typeof learningItems!=='undefined'?learningItems:[]).forEach(function(item){
+    const ms = _lrnModels(item);
+    const txt = [ms.join(' '),item.category,item.title,item.desc,item.text].filter(Boolean).join(' ').toLowerCase();
+    if(words.every(function(w){ return txt.includes(w); })){
+      results.push({type:'learning', id:item.id, title:item.title||'', subtitle:(item.desc||item.category||''), model:ms[0]||''});
+    }
+  });
+
+  return results;
+}
+
+function renderGlobalSearchResults(results, listElId, countElId, emptyIcon){
+  const list = document.getElementById(listElId);
+  const countEl = countElId ? document.getElementById(countElId) : null;
+  if(countEl) countEl.textContent = results.length + ' תוצאות בכל הטאבים';
+  if(!list) return;
+  if(!results.length){
+    list.innerHTML = '<div class="empty"><div class="empty-icon">'+(emptyIcon||'🔍')+'</div><p>לא נמצאו תוצאות</p></div>';
+    return;
+  }
+  list.innerHTML = results.map(function(r){
+    const tag = GLOBAL_SEARCH_TAGS[r.type];
+    return '<div class="card" onclick="openGlobalSearchResult(\''+r.type+'\',\''+esc(r.id)+'\')" style="cursor:pointer">'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">'+
+        '<span style="font-size:10px;font-weight:700;color:'+tag.color+';background:'+tag.bg+';border:1px solid '+tag.border+';border-radius:8px;padding:2px 8px;flex-shrink:0">'+tag.label+'</span>'+
+        (r.model?'<span style="font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(r.model)+'</span>':'')+
+      '</div>'+
+      '<div style="font-weight:700;color:var(--text);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(r.title)+'</div>'+
+      (r.subtitle?'<div style="font-size:12px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(r.subtitle)+'</div>':'')+
+    '</div>';
+  }).join('');
+}
+
+function openGlobalSearchResult(type,id){
+  if(type==='fault'){
+    switchMainTab('faults');
+    viewFault(id);
+  } else if(type==='param'){
+    switchMainTab('params');
+    pmOpenDetail(id);
+  } else if(type==='learning'){
+    switchMainTab('mfr');
+    viewLearningItem(id);
+  }
+}
 
 // ─── ADD/EDIT ──────────────────────────────────────────
 function openAdd(){
@@ -3450,6 +3527,12 @@ function pmCloseDetail(){
 function pmRenderList(){
   var el=document.getElementById('pm-list'); if(!el) return;
   var pmQ = ((document.getElementById('pm-search')||{}).value||'').toLowerCase().trim();
+
+  if(pmQ){
+    renderGlobalSearchResults(globalQuickSearch(pmQ), 'pm-list', null, '⚙️');
+    return;
+  }
+
   var pmWords = pmQ ? pmQ.split(/\s+/).filter(Boolean) : [];
   var list = _pmList;
   if(_pmActiveModel) list = list.filter(function(p){ return (p.models||[]).includes(_pmActiveModel); });
@@ -5829,6 +5912,12 @@ function flashSavedLrn(title){
 // ── Render ───────────────────────────────────────────────
 function renderLearning(){
   var q     = (document.getElementById('lrn-search').value||'').toLowerCase().trim();
+
+  if(q){
+    renderGlobalSearchResults(globalQuickSearch(q), 'lrn-list', 'lrn-count', '🎓');
+    return;
+  }
+
   var words = q ? q.split(/\s+/).filter(Boolean) : [];
   var filtered = learningItems.filter(function(item){
     var ms=_lrnModels(item);
@@ -6386,6 +6475,7 @@ function showApp() {
   flushAllSyncQueues();
   syncFaultsFromD1();
   syncLearningFromD1();
+  pmRefresh(); // eager-load params into _pmList so global quick-search can find them from any tab
 }
 
 function showLogin() {
