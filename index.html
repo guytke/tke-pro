@@ -424,9 +424,9 @@ if('serviceWorker' in navigator){
     <input type="hidden" id="edit-id">
     <div class="form-row">
       <div>
-        <label>דגם מעלית *</label>
-        <input type="text" id="f-model" placeholder="NICE3000, Evolution..." list="models-list">
-        <datalist id="models-list"></datalist>
+        <label>דגם מעלית * (ניתן לבחור כמה)</label>
+        <div id="f-model-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px"></div>
+        <input type="hidden" id="f-model">
       </div>
       <div>
         <label>קוד תקלה *</label>
@@ -1456,12 +1456,54 @@ window.addEventListener('online', flushAllSyncQueues);
 let faults = load();
 let activeModel = '';
 
-// Back-compat model accessor: new faults will eventually be saved with models:[]
-// (multi-select), old faults on disk still have a single model:string. Same pattern
-// as _lrnModels. Wired into all read sites (search/sort/filter/display/share/AI
-// context) — the "תקלה חדשה" form itself still writes a single model:string only,
-// so this always safely resolves to a 1-item array until the form is migrated too.
+// Back-compat model accessor: reads models:[] (new multi-select faults) when present,
+// otherwise wraps the legacy single model:string. Same pattern as _lrnModels. Wired
+// into every read site (search/sort/filter/display/share/AI context).
 function _faultModels(f){ return f.models||(f.model?[f.model]:[]); }
+
+// ─── FAULT MODEL CHIPS (multi-select, same mechanism as pmRenderChips/renderLrnModelChips) ──
+var _faultSelectedModels = [];
+
+function renderFaultModelChips(){
+  var el=document.getElementById('f-model-chips'); if(!el) return;
+  var models=getElevatorModels();
+  el.innerHTML=models.map(function(m){
+    var on=_faultSelectedModels.includes(m);
+    var ms=m.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return '<span style="display:inline-flex;align-items:center;gap:0;margin:2px">'+
+      '<button type="button" onclick="faultToggleModelChip(\''+ms+'\')" style="padding:5px 9px;border-radius:14px 0 0 14px;border:1px solid '+(on?'var(--orange-border)':'var(--border)')+';border-left:none;background:'+(on?'var(--orange-dim)':'var(--bg3)')+';color:'+(on?'var(--orange)':'var(--text2)')+';font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:'+(on?'700':'400')+'">'+esc(m)+'</button>'+
+      '<button type="button" onclick="faultDeleteModelChip(\''+ms+'\')" title="מחק דגם" style="padding:3px 6px;border-radius:0 14px 14px 0;border:1px solid '+(on?'var(--orange-border)':'var(--border)')+';background:'+(on?'var(--orange-dim)':'var(--bg3)')+';color:#f87171;font-size:10px;cursor:pointer;line-height:1">×</button>'+
+    '</span>';
+  }).join('')+
+  '<button type="button" onclick="faultAddModelPrompt()" style="padding:5px 10px;border-radius:14px;border:1px dashed var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;font-family:Heebo,sans-serif;margin:2px">+ דגם</button>';
+  _faultSyncModelGuardField();
+}
+function faultToggleModelChip(m){
+  if(_faultSelectedModels.includes(m)) _faultSelectedModels=_faultSelectedModels.filter(function(x){return x!==m;});
+  else _faultSelectedModels.push(m);
+  renderFaultModelChips();
+}
+function faultDeleteModelChip(m){
+  if(!confirm('למחוק את הדגם "'+m+'" מהרשימה?\nהתקלות הקיימות לא יימחקו.')) return;
+  deleteElevatorModel(m);
+  _faultSelectedModels=_faultSelectedModels.filter(function(x){ return x!==m; });
+  renderFaultModelChips();
+  showToast('✅ דגם הוסר');
+}
+function faultAddModelPrompt(){
+  var name=(prompt('שם הדגם החדש:','')||'').trim();
+  if(!name) return;
+  if(!addElevatorModel(name)){ showToast('⚠️ הדגם כבר קיים'); return; }
+  renderFaultModelChips();
+  showToast('✅ דגם נוסף');
+}
+// Keeps the hidden #f-model input in sync with the chip selection, purely so the
+// existing closeModalWithGuard(['f-model',...]) unsaved-changes check keeps working
+// unchanged — nothing reads #f-model's value as the source of truth anymore.
+function _faultSyncModelGuardField(){
+  var el=document.getElementById('f-model');
+  if(el) el.value = _faultSelectedModels.join(', ');
+}
 
 // ─── RENDER ───────────────────────────────────────────
 function render(){
@@ -1521,10 +1563,6 @@ function updateModelTabs(){
   const tabs = document.getElementById('model-tabs');
   tabs.innerHTML = '<button class="model-tab'+(activeModel===''?' active':'')+'" onclick="setModel(\'\')">כולם</button>'+
     models.map(m=>'<button class="model-tab'+(activeModel===m?' active':'')+'" onclick="setModel(\''+esc(m)+'\')">'+esc(m)+'</button>').join('');
-
-  // update datalist
-  const dl = document.getElementById('models-list');
-  if(dl) dl.innerHTML = models.map(m=>'<option value="'+esc(m)+'">').join('');
 
   // stats
   const total = faults.length;
@@ -1613,7 +1651,9 @@ function openGlobalSearchResult(type,id){
 function openAdd(){
   document.getElementById('form-title').textContent = '➕ תקלה חדשה';
   document.getElementById('edit-id').value = '';
-  ['f-model','f-code','f-name','f-level','f-book','f-field'].forEach(id=>document.getElementById(id).value='');
+  ['f-code','f-name','f-level','f-book','f-field'].forEach(id=>document.getElementById(id).value='');
+  _faultSelectedModels=[];
+  renderFaultModelChips();
   formImages=[];
   renderFormImgPreviews();
   var fn=document.getElementById('f-note');if(fn){fn.value='';fn.style.display='none';}
@@ -1626,7 +1666,8 @@ function openEdit(id){
   closeModal('view-modal');
   document.getElementById('form-title').textContent = '✏️ עריכת תקלה';
   document.getElementById('edit-id').value = id;
-  document.getElementById('f-model').value = _faultModels(f)[0]||'';
+  _faultSelectedModels = _faultModels(f).slice();
+  renderFaultModelChips();
   document.getElementById('f-code').value = f.code||'';
   document.getElementById('f-name').value = f.name||'';
   document.getElementById('f-level').value = f.level||'';
@@ -1644,19 +1685,22 @@ function saveFault(){
   _savingFault = true;
   setTimeout(function(){ _savingFault=false; }, 1000);
 
-  const model = document.getElementById('f-model').value.trim();
+  const models = _faultSelectedModels.slice();
   const code = document.getElementById('f-code').value.trim().toUpperCase();
-  if(!model||!code){showToast('⚠️ נא למלא דגם וקוד'); _savingFault=false; return;}
+  if(!models.length||!code){showToast('⚠️ נא לבחור דגם ולמלא קוד'); _savingFault=false; return;}
 
   const editId = document.getElementById('edit-id').value;
   const id = editId || Date.now().toString();
 
-  // הגנה מפני כפילות — רק בתקלה חדשה
+  // הגנה מפני כפילות — רק בתקלה חדשה. כפילות = אותו קוד + חפיפה של לפחות דגם אחד
+  // (אותה סמנטיקה כמו זיהוי כפילויות בטאב לימוד, ר' _lrnModels(x).some(...)).
   if(!editId){
-    const duplicate = faults.find(f=>_faultModels(f).includes(model) && f.code===code);
+    const duplicate = faults.find(f=>_faultModels(f).some(m=>models.includes(m)) && f.code===code);
     if(duplicate){
       var _readFormFault = function(useId){
-        return {id:useId,model,code,
+        // כותבים גם model (הדגם הראשון) וגם models (המערך המלא) בתקופת המעבר —
+        // כך שמכשירים/אפליקציות שעדיין לא עודכנו לקרוא models ימשיכו לעבוד תקין.
+        return {id:useId, model:models[0], models, code,
           name:document.getElementById('f-name').value.trim(),
           level:document.getElementById('f-level').value.trim(),
           book:document.getElementById('f-book').value.trim(),
@@ -1666,7 +1710,7 @@ function saveFault(){
           date:new Date().toISOString().split('T')[0]
         };
       };
-      _showConflictDialog(code, model,
+      _showConflictDialog(code, models.join(', '),
         function(){ // הוסף כחדש
           const fault=_readFormFault(id);
           faults.unshift(fault);
@@ -1691,7 +1735,9 @@ function saveFault(){
     }
   }
 
-  const fault = {id, model, code,
+  // כותבים גם model (הדגם הראשון) וגם models (המערך המלא) בתקופת המעבר —
+  // ר' הערה מקבילה ב-_readFormFault למעלה.
+  const fault = {id, model:models[0], models, code,
     name: document.getElementById('f-name').value.trim(),
     level: document.getElementById('f-level').value.trim(),
     book: document.getElementById('f-book').value.trim(),
