@@ -385,6 +385,12 @@ function _showSwUpdateBanner(){
     <div id="tools-api-status" style="font-size:11px;margin-top:7px;color:var(--text3)"></div>
   </div>
 
+  <!-- SESSION INFO -->
+  <div style="background:var(--bg2);border:1px solid rgba(16,185,129,0.35);border-radius:var(--radius);padding:14px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:700;color:#10b981;margin-bottom:4px">🔐 סשן התחברות</div>
+    <div id="tools-session-info" style="font-size:12px;color:var(--text2)"></div>
+  </div>
+
   <div style="background:var(--bg2);border:1px solid rgba(255,165,0,0.35);border-radius:var(--radius);padding:14px;margin-bottom:16px">
     <div style="font-size:13px;font-weight:700;color:var(--orange);margin-bottom:4px">⬆️ Backfill פרמטרים לענן (זמני)</div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:10px">שלח את כל הפרמטרים המקומיים לענן — לשימוש חד-פעמי בלבד.</div>
@@ -4207,7 +4213,35 @@ function renderParams(){
   pmRefresh();
 }
 
+// Shows how long the current session token is valid for. TOKEN_EXP_KEY is only set
+// by an actual password login (see doLogin) — a biometric-only login re-presents the
+// same underlying token without a server round trip, so it doesn't refresh this value,
+// which is correct: the expiry really hasn't changed either.
+function renderSessionInfo(){
+  var el = document.getElementById('tools-session-info');
+  if(!el) return;
+  var exp = localStorage.getItem(TOKEN_EXP_KEY);
+  if(!exp){ el.textContent = 'אין מידע על תוקף הסשן — התחבר עם סיסמה כדי לרענן'; return; }
+  var expDate = new Date(exp);
+  if(isNaN(expDate.getTime())){ el.textContent = 'אין מידע תקין על תוקף הסשן'; return; }
+  var msLeft = expDate.getTime() - Date.now();
+  var dateStr = expDate.toLocaleDateString('he-IL');
+  var timeStr = expDate.toLocaleTimeString('he-IL', {hour:'2-digit',minute:'2-digit'});
+  if(msLeft <= 0){
+    el.innerHTML = '<span style="color:#f87171">⚠️ הסשן פג תוקף — התחבר מחדש עם סיסמה</span>';
+    return;
+  }
+  var daysLeft = Math.floor(msLeft / (24*60*60*1000));
+  var hoursLeft = Math.floor(msLeft / (60*60*1000));
+  var minsLeft = Math.floor(msLeft / (60*1000));
+  var remaining = daysLeft >= 1 ? ('עוד '+daysLeft+(daysLeft===1?' יום':' ימים'))
+    : hoursLeft >= 1 ? ('עוד '+hoursLeft+(hoursLeft===1?' שעה':' שעות'))
+    : ('עוד '+minsLeft+(minsLeft===1?' דקה':' דקות'));
+  el.textContent = 'תקף עד '+dateStr+' בשעה '+timeStr+' ('+remaining+')';
+}
+
 function renderToolsStats(){
+  renderSessionInfo();
   var statsDiv = document.getElementById('tools-stats');
   if(!statsDiv) return;
   var f = load();
@@ -6478,7 +6512,8 @@ async function knowledgeDeleteFile(key){
 
 // ── Login / Auth ─────────────────────────────────────────
 const AUTH_URL  = 'https://tke-proxy.guyshtaiger.workers.dev/auth/login';
-const TOKEN_KEY = 'tke_auth_token';      // localStorage — persists across app restarts (was sessionStorage)
+const TOKEN_KEY   = 'tke_auth_token';    // localStorage — persists across app restarts (was sessionStorage)
+const TOKEN_EXP_KEY = 'tke_auth_expires'; // localStorage — ISO expiry of the current token, for display only
 const BIO_CRED  = 'tke_bio_cred_id';    // localStorage  — WebAuthn credential id (base64url)
 const BIO_TOKEN = 'tke_bio_token';      // localStorage  — token unlocked by biometric
 
@@ -6607,6 +6642,7 @@ async function doLogin() {
     const data = await res.json();
     if (!res.ok) { setLoginErr(data.error || 'שגיאת כניסה'); return; }
     setToken(data.token);
+    if (data.expires_at) localStorage.setItem(TOKEN_EXP_KEY, data.expires_at);
     // Offer biometric registration if supported and not yet registered
     if (window.PublicKeyCredential && !hasBioCred()) {
       _pendingBioToken    = data.token;
