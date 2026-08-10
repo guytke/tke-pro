@@ -6575,7 +6575,11 @@ function showLogin() {
   document.getElementById('login-screen').style.display = 'flex';
   const showBio = hasBioCred() && window.PublicKeyCredential;
   document.getElementById('login-bio-section').style.display = showBio ? '' : 'none';
-  if (!showBio) setTimeout(() => document.getElementById('login-username').focus(), 100);
+  // Registered device: prompt the fingerprint dialog immediately instead of waiting
+  // for a tap on the "כניסה עם טביעת אצבע" button — the button stays visible/usable
+  // as a manual retry if the user cancels the OS prompt or it fails.
+  if (showBio) setTimeout(loginWithBiometric, 100);
+  else setTimeout(() => document.getElementById('login-username').focus(), 100);
 }
 
 function togglePasswordVisibility() {
