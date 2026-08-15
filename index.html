@@ -1610,7 +1610,7 @@ function updateModelTabs(){
   const models = [...new Set(faults.flatMap(f=>_faultModels(f)))].sort();
   const tabs = document.getElementById('model-tabs');
   tabs.innerHTML = '<button class="model-tab'+(activeModel===''?' active':'')+'" onclick="setModel(\'\')">כולם</button>'+
-    models.map(m=>'<button class="model-tab'+(activeModel===m?' active':'')+'" onclick="setModel(\''+esc(m)+'\')">'+esc(m)+'</button>').join('');
+    models.map(m=>'<button class="model-tab'+(activeModel===m?' active':'')+'" onclick="setModel(\''+escAttr(m)+'\')">'+esc(m)+'</button>').join('');
 
   // stats
   const total = faults.length;
@@ -1973,6 +1973,11 @@ async function exportBackup(){
 
 // ─── UTILS ────────────────────────────────────────────
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// Escapes a value for safe use as a single-quoted JS string literal inside an
+// inline onclick="..." attribute (e.g. onclick="foo('+escAttr(x)+'")). Distinct
+// from esc(): that one HTML-escapes text content, this one JS-escapes an
+// attribute argument — same two-step pattern already used by the model chips.
+function escAttr(s){return(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
 function _resizeTextareas(root){(root||document).querySelectorAll('textarea').forEach(function(t){t.style.height='auto';t.style.height=t.scrollHeight+'px';});}
 document.addEventListener('input',function(e){if(e.target.tagName==='TEXTAREA'){e.target.style.height='auto';e.target.style.height=e.target.scrollHeight+'px';}});
 function openModal(id){document.getElementById(id).classList.add('open');history.pushState({tke:true},'');setTimeout(function(){_resizeTextareas(document.getElementById(id));},50);}
@@ -4381,7 +4386,7 @@ function chatRenderModelTabs(){
     +'">הכל</button>'
     + models.map(function(m){
       var active = m===_chatModel;
-      return '<button onclick="chatSelectModel(\''+esc(m)+'\')" style="flex-shrink:0;padding:5px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;cursor:pointer;white-space:nowrap;border:'
+      return '<button onclick="chatSelectModel(\''+escAttr(m)+'\')" style="flex-shrink:0;padding:5px 10px;border-radius:8px;font-family:Heebo,sans-serif;font-size:12px;cursor:pointer;white-space:nowrap;border:'
         +(active?'1px solid rgba(251,146,60,0.6);background:rgba(251,146,60,0.15);color:var(--orange);font-weight:600':'1px solid var(--border);background:var(--bg2);color:var(--text2)')
         +'">'+esc(m)+'</button>';
     }).join('');
@@ -6102,14 +6107,14 @@ function updateLearningFilters(){
   mt.innerHTML =
     '<button class="model-tab'+(_lrnActiveModel===''?' active':'')+'" onclick="setLrnModel(\'\')">כולם</button>'+
     models.map(function(m){
-      return '<button class="model-tab'+(_lrnActiveModel===m?' active':'')+'" style="'+(LRN_MODEL_COLORS[m]?'color:'+LRN_MODEL_COLORS[m]+(_lrnActiveModel===m?';border-color:'+LRN_MODEL_COLORS[m]:''):'')+'" onclick="setLrnModel(\''+esc(m)+'\')">'+esc(m)+'</button>';
+      return '<button class="model-tab'+(_lrnActiveModel===m?' active':'')+'" style="'+(LRN_MODEL_COLORS[m]?'color:'+LRN_MODEL_COLORS[m]+(_lrnActiveModel===m?';border-color:'+LRN_MODEL_COLORS[m]:''):'')+'" onclick="setLrnModel(\''+escAttr(m)+'\')">'+esc(m)+'</button>';
     }).join('');
   var ct = document.getElementById('lrn-cat-tabs');
   if(!ct) return;
   ct.innerHTML =
     '<button class="model-tab'+(_lrnActiveCat===''?' active':'')+'" onclick="setLrnCat(\'\')">כל הקטגוריות</button>'+
     cats.map(function(c){
-      return '<button class="model-tab'+(_lrnActiveCat===c?' active':'')+'" onclick="setLrnCat(\''+esc(c)+'\')">'+_lrnIcon(c)+' '+esc(c)+'</button>';
+      return '<button class="model-tab'+(_lrnActiveCat===c?' active':'')+'" onclick="setLrnCat(\''+escAttr(c)+'\')">'+_lrnIcon(c)+' '+esc(c)+'</button>';
     }).join('');
 }
 
@@ -6424,7 +6429,7 @@ function knowledgeInit(){
   var tabs = document.getElementById('knowledge-model-tabs');
   if(!tabs) return;
   tabs.innerHTML = models.map(function(m){
-    return '<button class="model-tab'+(m===_knowledgeModel?' active':'')+'" onclick="knowledgeSelectModel(\''+esc(m)+'\')">'+ esc(m)+'</button>';
+    return '<button class="model-tab'+(m===_knowledgeModel?' active':'')+'" onclick="knowledgeSelectModel(\''+escAttr(m)+'\')">'+ esc(m)+'</button>';
   }).join('');
   if(_knowledgeModel) knowledgeListFiles(_knowledgeModel);
 }
@@ -6458,7 +6463,7 @@ async function knowledgeListFiles(model){
       var name = (f.key||f).split('/').pop();
       return '<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 13px;gap:10px">'+
         '<span style="font-size:13px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📄 '+esc(name)+'</span>'+
-        '<button onclick="knowledgeDeleteFile(\''+esc(f.key||f)+'\')" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:4px 10px;font-size:12px;color:#ef4444;cursor:pointer;font-family:Heebo,sans-serif;flex-shrink:0">🗑 מחק</button>'+
+        '<button onclick="knowledgeDeleteFile(\''+escAttr(f.key||f)+'\')" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:6px;padding:4px 10px;font-size:12px;color:#ef4444;cursor:pointer;font-family:Heebo,sans-serif;flex-shrink:0">🗑 מחק</button>'+
       '</div>';
     }).join('');
   }catch(e){
