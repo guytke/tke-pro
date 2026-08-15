@@ -3506,7 +3506,7 @@ function pmUpdateModelTabs(){
   var tabs = document.getElementById('pm-model-tabs'); if(!tabs) return;
   var models = [...new Set(_pmList.flatMap(function(p){ return p.models||[]; }))].sort();
   tabs.innerHTML = '<button class="model-tab'+(_pmActiveModel===''?' active':'')+'" onclick="pmSetActiveModel(\'\')">כולם</button>'+
-    models.map(function(m){ return '<button class="model-tab'+(_pmActiveModel===m?' active':'')+'" onclick="pmSetActiveModel(\''+m.replace(/'/g,"\\'")+'\')">' +esc(m)+'</button>'; }).join('');
+    models.map(function(m){ return '<button class="model-tab'+(_pmActiveModel===m?' active':'')+'" onclick="pmSetActiveModel(\''+escAttr(m)+'\')">' +esc(m)+'</button>'; }).join('');
 
   var statsBar = document.getElementById('pm-stats-bar');
   if(statsBar){
@@ -5084,7 +5084,7 @@ function switchPartsSubTab(tab){
 function chipBtn(label,val,active,type){
   var isActive=(val===active);
   var bg=isActive?'#5B2A8C':'#fff', col=isActive?'#fff':'#8A7F94', bc=isActive?'#5B2A8C':'#E8E2EC';
-  var valStr=val===null?'null':'\''+val.replace(/'/g,"\\'")+'\'';
+  var valStr=val===null?'null':'\''+escAttr(val)+'\'';
   return '<button onclick="setCatalogFilter(\''+type+'\','+valStr+')" style="background:'+bg+';color:'+col+';border:1px solid '+bc+';border-radius:20px;padding:5px 12px;font-size:12px;font-family:Heebo,sans-serif;cursor:pointer;white-space:nowrap;flex-shrink:0">'+esc(label)+'</button>';
 }
 function renderCatalogChips(){
@@ -5395,7 +5395,7 @@ function renderCatalogCatChipsAdd(){
   el.innerHTML=cats.map(function(c){
     var active=_catalogSelectedCat===c;
     var bg=active?'#5B2A8C':'#fff', col=active?'#fff':'#8A7F94', bc=active?'#5B2A8C':'#E8E2EC';
-    var cs=c.replace(/'/g,"\\'");
+    var cs=escAttr(c);
     return '<button onmousedown="startCatLongPress(event,\''+cs+'\')" onmouseup="cancelCatLongPress()" onmouseleave="cancelCatLongPress()" ontouchstart="startCatLongPress(event,\''+cs+'\')" ontouchend="cancelCatLongPress()" onclick="if(_catLpFired){_catLpFired=false;return;}selectCatalogCat(\''+cs+'\')" style="background:'+bg+';color:'+col+';border:1px solid '+bc+';border-radius:20px;padding:5px 12px;font-size:12px;font-family:Heebo,sans-serif;cursor:pointer">'+esc(c)+'</button>';
   }).join('');
   var q=document.getElementById('cat-chips-search'); if(q&&q.value) filterCatalogCatChips(q.value);
@@ -5421,7 +5421,7 @@ function buildModelPicker(q){
   var rows=models.map(function(m){
     var chk=_catalogSelectedModels.includes(m)?'checked':'';
     return '<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;font-size:13px;color:#2A1F33;font-family:Heebo,sans-serif;border-bottom:1px solid #F0EBF4">'+
-      '<input type="checkbox" '+chk+' onchange="toggleModelSelect(\''+m.replace(/'/g,"\\'")+'\''+')" style="width:16px;height:16px;accent-color:#5B2A8C">'+esc(m)+'</label>';
+      '<input type="checkbox" '+chk+' onchange="toggleModelSelect(\''+escAttr(m)+'\''+')" style="width:16px;height:16px;accent-color:#5B2A8C">'+esc(m)+'</label>';
   }).join('');
   if(!el._hasSearch){
     el._hasSearch=true;
@@ -5446,7 +5446,7 @@ function renderSelectedModels(){
   var el=document.getElementById('catalog-selected-models'); if(!el) return;
   if(!_catalogSelectedModels.length){ el.innerHTML='<span style="font-size:12px;color:#B8B0C0">לא נבחרו דגמים</span>'; return; }
   el.innerHTML=_catalogSelectedModels.map(function(m){
-    return '<span class="cl-model-chip">'+esc(m)+'<button onclick="toggleModelSelect(\''+m.replace(/'/g,"\\'")+'\');buildModelPicker();">×</button></span>';
+    return '<span class="cl-model-chip">'+esc(m)+'<button onclick="toggleModelSelect(\''+escAttr(m)+'\');buildModelPicker();">×</button></span>';
   }).join('');
 }
 
@@ -5757,7 +5757,7 @@ function _csShowResult(r){
       '<div style="display:flex;gap:8px;padding:12px 16px 16px;flex-wrap:wrap">'+
         '<button onclick="_csModalHide()" style="flex:1;background:#F0EBF4;color:#5B2A8C;border:none;border-radius:8px;padding:11px;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif">סגור</button>'+
         '<button onclick="_csModalHide();_catalogScrollToCard(\''+p.id+'\')" style="flex:1;background:#5B2A8C;color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif">📍 עבור לחלק</button>'+
-        '<button onclick="_csOrderPart(\''+p.name.replace(/'/g,"\\'")+'\',' +'\''+pn.replace(/'/g,"\\'")+'\''+')" style="flex:1;background:#10b981;color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif">🛒 הזמן חלק</button>'+
+        '<button onclick="_csOrderPart(\''+escAttr(p.name)+'\',' +'\''+escAttr(pn)+'\''+')" style="flex:1;background:#10b981;color:#fff;border:none;border-radius:8px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;font-family:Heebo,sans-serif">🛒 הזמן חלק</button>'+
       '</div>';
     }
   }
