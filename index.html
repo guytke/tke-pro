@@ -6481,7 +6481,6 @@ async function knowledgeHandleUpload(e){
 }
 
 async function knowledgeUploadFile(file, model, token){
-  console.log('[knowledgeUpload] token being sent:', token);
   try{
     var res = await fetch(KNOWLEDGE_WORKER+'/knowledge/upload?model='+encodeURIComponent(model)+'&filename='+encodeURIComponent(file.name),{
       method:'POST',
