@@ -6526,7 +6526,8 @@ const WEBAUTHN_LOGIN_VERIFY_URL  = 'https://tke-proxy.guyshtaiger.workers.dev/au
 const TOKEN_KEY   = 'tke_auth_token';    // localStorage — persists across app restarts (was sessionStorage)
 const TOKEN_EXP_KEY = 'tke_auth_expires'; // localStorage — ISO expiry of the current token, for display only
 const BIO_CRED  = 'tke_bio_cred_id';    // localStorage  — WebAuthn credential id (base64url)
-const BIO_TOKEN = 'tke_bio_token';      // localStorage  — token unlocked by biometric
+const BIO_TOKEN = 'tke_bio_token';      // legacy localStorage key — never read/written anymore
+                                          // (pre-WebAuthn mechanism); initAuth() purges any leftover value
 
 function b64u(buf) {
   return btoa(String.fromCharCode(...new Uint8Array(buf)))
@@ -6702,10 +6703,10 @@ async function acceptBioOffer() {
     const verifyData = await verifyRes.json();
     if (verifyRes.ok && verifyData.verified === true) {
       localStorage.setItem(BIO_CRED, verifyData.credentialId);
-      // loginWithBiometric() hasn't been switched to real WebAuthn login yet
-      // (that's the next step) — it still reads BIO_TOKEN, so it's kept in
-      // sync here too until that step lands.
-      localStorage.setItem(BIO_TOKEN, _pendingBioToken);
+      // No token is stored here (or anywhere) to enable future biometric
+      // login — loginWithBiometric() always performs a fresh WebAuthn
+      // ceremony verified by the server; BIO_CRED alone never grants a
+      // session.
       if (window.showToast) showToast('✅ טביעת אצבע נרשמה!');
     } else if (window.showToast) {
       showToast('⚠️ הרשמת טביעת אצבע לא הושלמה');
@@ -6808,13 +6809,13 @@ async function loginWithBiometric() {
 
 // Boot
 (function initAuth() {
+  // One-time cleanup of the legacy BIO_TOKEN value some devices may still
+  // have from before WebAuthn login was server-verified — it's never read
+  // anywhere anymore, so removing it changes no authentication behavior.
+  // showLogin() decides the biometric button on its own via hasBioCred().
+  localStorage.removeItem(BIO_TOKEN);
   if (getToken()) { showApp(); return; }
-  // Check if there's a bio-protected token (cross-session)
-  if (hasBioCred() && localStorage.getItem(BIO_TOKEN)) {
-    showLogin(); // shows with biometric button
-  } else {
-    showLogin();
-  }
+  showLogin();
 })();
 </script>
 </body>
