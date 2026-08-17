@@ -1,7 +1,7 @@
 // UPDATE THIS on every deploy — browser detects new SW when this string changes
-const CACHE = 'tke-pro-20260613b';
+const CACHE = 'tke-pro-20260817a';
 
-const ASSETS = ['/tke-pro/icon.jpg', '/tke-pro/manifest.json'];
+const ASSETS = ['/tke-pro/icon.jpg', '/tke-pro/manifest.json', '/tke-pro/simplewebauthn-browser.js'];
 
 self.addEventListener('install', e => {
   // Pre-cache only static assets (not index.html — served network-first)
