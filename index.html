@@ -6782,12 +6782,22 @@ async function loginWithBiometric() {
       return;
     }
 
-    if (verifyData.error === 'WEBAUTHN_CREDENTIAL_NOT_FOUND' || verifyData.error === 'WEBAUTHN_CREDENTIAL_REVOKED') {
-      // The stored credential is explicitly no longer valid server-side —
-      // password login is the fallback; the user can re-register biometric
-      // afterward via the normal acceptBioOffer flow. Not deleting BIO_CRED
-      // here — no cleanup was asked for yet, and it's not needed for this
-      // fallback to work correctly.
+    if (verifyData.error === 'WEBAUTHN_CREDENTIAL_NOT_FOUND') {
+      // The server has never heard of this credential ID — definitive,
+      // not a guess (this only happens after a real signed assertion was
+      // checked against webauthn_credentials and found nothing). Clearing
+      // BIO_CRED here is what lets the next successful password login
+      // re-offer registration via doLogin()'s existing !hasBioCred() check
+      // — no other code path does this, so a legacy/local-only credential
+      // (like one from the pre-WebAuthn mechanism) would otherwise block
+      // that offer forever.
+      localStorage.removeItem(BIO_CRED);
+      setLoginErr('טביעת האצבע השמורה כבר לא תקפה — התחבר עם סיסמה');
+    } else if (verifyData.error === 'WEBAUTHN_CREDENTIAL_REVOKED') {
+      // Revoked is different from not-found: this credential *was*
+      // registered and was deliberately disabled server-side. Not clearing
+      // BIO_CRED or re-offering registration automatically here — that's a
+      // separate decision, not implied by this fix.
       setLoginErr('טביעת האצבע השמורה כבר לא תקפה — התחבר עם סיסמה');
     } else if (verifyData.error && verifyData.error.indexOf('WEBAUTHN_CHALLENGE_') === 0) {
       setLoginErr('הזמן לאימות פג — נסה שוב');
