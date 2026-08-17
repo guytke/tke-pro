@@ -6538,6 +6538,20 @@ function getToken()   { return localStorage.getItem(TOKEN_KEY); }
 function setToken(t)  { localStorage.setItem(TOKEN_KEY, t); _authExpiredHandled=false; }
 function hasBioCred() { return !!localStorage.getItem(BIO_CRED); }
 
+// Single place that turns a successful login response into an authenticated
+// session — used today by password login only; WebAuthn login will call
+// this too once it exists, so both produce identical session state with no
+// duplicated logic. expires_at is always whatever the server returned
+// (both /auth/login and the WebAuthn endpoints share the same
+// createSessionForUser() server-side, so the shape is identical) — never
+// computed here. The "סשן התחברות" card in the Tools tab (renderSessionInfo)
+// already reads TOKEN_EXP_KEY on its own; writing it here is the only wiring
+// it needs.
+function applyAuthenticatedSession(response) {
+  setToken(response.token);
+  if (response.expires_at) localStorage.setItem(TOKEN_EXP_KEY, response.expires_at);
+}
+
 async function syncFaultsFromD1() {
   var token = getToken();
   if (!token || !navigator.onLine) return;
@@ -6639,8 +6653,7 @@ async function doLogin() {
     });
     const data = await res.json();
     if (!res.ok) { setLoginErr(data.error || 'שגיאת כניסה'); return; }
-    setToken(data.token);
-    if (data.expires_at) localStorage.setItem(TOKEN_EXP_KEY, data.expires_at);
+    applyAuthenticatedSession(data);
     // Offer biometric registration if supported and not yet registered
     if (window.PublicKeyCredential && !hasBioCred()) {
       _pendingBioToken    = data.token;
