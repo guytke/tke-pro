@@ -6521,6 +6521,8 @@ async function knowledgeDeleteFile(key){
 const AUTH_URL  = 'https://tke-proxy.guyshtaiger.workers.dev/auth/login';
 const WEBAUTHN_REGISTER_OPTIONS_URL = 'https://tke-proxy.guyshtaiger.workers.dev/auth/webauthn/register/options';
 const WEBAUTHN_REGISTER_VERIFY_URL  = 'https://tke-proxy.guyshtaiger.workers.dev/auth/webauthn/register/verify';
+const WEBAUTHN_LOGIN_OPTIONS_URL = 'https://tke-proxy.guyshtaiger.workers.dev/auth/webauthn/login/options';
+const WEBAUTHN_LOGIN_VERIFY_URL  = 'https://tke-proxy.guyshtaiger.workers.dev/auth/webauthn/login/verify';
 const TOKEN_KEY   = 'tke_auth_token';    // localStorage — persists across app restarts (was sessionStorage)
 const TOKEN_EXP_KEY = 'tke_auth_expires'; // localStorage — ISO expiry of the current token, for display only
 const BIO_CRED  = 'tke_bio_cred_id';    // localStorage  — WebAuthn credential id (base64url)
@@ -6734,30 +6736,73 @@ function declineBioOffer() {
   showApp();
 }
 
+// Real server-verified WebAuthn login. BIO_CRED is only ever used to tell
+// the server *which* credential to build allowCredentials around — it
+// proves nothing by itself. The actual identity check happens entirely in
+// /login/verify against webauthn_credentials in D1 (signature verification,
+// revocation, active-user check); this function has no way to create a
+// session on its own. BIO_TOKEN is not read here at all — it belongs to the
+// old, no-longer-trusted mechanism. The only fallback is password login,
+// which stays untouched and always available on the same screen.
+var isBiometricLoginInProgress = false;
 async function loginWithBiometric() {
-  if (!window.PublicKeyCredential) { setLoginErr('מכשיר זה אינו תומך בטביעת אצבע'); return; }
+  if (isBiometricLoginInProgress) return;
   const credId = localStorage.getItem(BIO_CRED);
-  const bioToken = localStorage.getItem(BIO_TOKEN);
-  if (!credId || !bioToken) { setLoginErr('לא נמצאה טביעת אצבע — הכנס סיסמה'); return; }
+  if (!credId) { setLoginErr('לא נמצאה טביעת אצבע — הכנס סיסמה'); return; }
+  if (!(window.SimpleWebAuthnBrowser && SimpleWebAuthnBrowser.browserSupportsWebAuthn())) {
+    setLoginErr('מכשיר זה אינו תומך בטביעת אצבע');
+    return;
+  }
   setLoginErr('');
+  isBiometricLoginInProgress = true;
   try {
-    const challenge = new Uint8Array(32);
-    crypto.getRandomValues(challenge);
-    await navigator.credentials.get({
-      publicKey: {
-        challenge,
-        timeout: 60000,
-        userVerification: 'required',
-        rpId: location.hostname,
-        allowCredentials: [{ type: 'public-key', id: b64uDecode(credId) }],
-      }
+    const optRes = await fetch(WEBAUTHN_LOGIN_OPTIONS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credentialId: credId }),
     });
-    // Biometric OK — restore token to session
-    setToken(bioToken);
-    showApp();
+    if (!optRes.ok) { setLoginErr('שגיאת רשת — בדוק חיבור'); return; }
+    const optionsJSON = await optRes.json();
+
+    const authResponse = await SimpleWebAuthnBrowser.startAuthentication({ optionsJSON });
+
+    const verifyRes = await fetch(WEBAUTHN_LOGIN_VERIFY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ response: authResponse }),
+    });
+    const verifyData = await verifyRes.json();
+
+    if (verifyRes.ok) {
+      // Same response shape password login gets — applyAuthenticatedSession
+      // doesn't need to know (or care) which method produced it.
+      applyAuthenticatedSession(verifyData);
+      showApp();
+      return;
+    }
+
+    if (verifyData.error === 'WEBAUTHN_CREDENTIAL_NOT_FOUND' || verifyData.error === 'WEBAUTHN_CREDENTIAL_REVOKED') {
+      // The stored credential is explicitly no longer valid server-side —
+      // password login is the fallback; the user can re-register biometric
+      // afterward via the normal acceptBioOffer flow. Not deleting BIO_CRED
+      // here — no cleanup was asked for yet, and it's not needed for this
+      // fallback to work correctly.
+      setLoginErr('טביעת האצבע השמורה כבר לא תקפה — התחבר עם סיסמה');
+    } else if (verifyData.error && verifyData.error.indexOf('WEBAUTHN_CHALLENGE_') === 0) {
+      setLoginErr('הזמן לאימות פג — נסה שוב');
+    } else {
+      setLoginErr('אימות טביעת אצבע נכשל — נסה שוב או השתמש בסיסמה');
+    }
   } catch (e) {
-    if (e.name === 'NotAllowedError') return;
-    setLoginErr('אימות נכשל — נסה שוב');
+    if (e && e.code === 'ERROR_CEREMONY_ABORTED') {
+      // We cancelled our own prior ceremony — nothing user-facing happened.
+    } else if (e && e.name === 'NotAllowedError') {
+      setLoginErr('האימות בוטל או שפג הזמן');
+    } else {
+      setLoginErr('שגיאת רשת — בדוק חיבור');
+    }
+  } finally {
+    isBiometricLoginInProgress = false;
   }
 }
 
