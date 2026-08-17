@@ -6519,6 +6519,8 @@ async function knowledgeDeleteFile(key){
 
 // ── Login / Auth ─────────────────────────────────────────
 const AUTH_URL  = 'https://tke-proxy.guyshtaiger.workers.dev/auth/login';
+const WEBAUTHN_REGISTER_OPTIONS_URL = 'https://tke-proxy.guyshtaiger.workers.dev/auth/webauthn/register/options';
+const WEBAUTHN_REGISTER_VERIFY_URL  = 'https://tke-proxy.guyshtaiger.workers.dev/auth/webauthn/register/verify';
 const TOKEN_KEY   = 'tke_auth_token';    // localStorage — persists across app restarts (was sessionStorage)
 const TOKEN_EXP_KEY = 'tke_auth_expires'; // localStorage — ISO expiry of the current token, for display only
 const BIO_CRED  = 'tke_bio_cred_id';    // localStorage  — WebAuthn credential id (base64url)
@@ -6670,30 +6672,59 @@ async function doLogin() {
 
 let _pendingBioToken = null, _pendingBioUsername = '';
 
+// Real server-verified WebAuthn registration. The server is the sole source
+// of truth for whether this succeeded — BIO_CRED is only ever written after
+// /register/verify responds with verified===true, never before, and never
+// on any kind of failure (cancellation, network error, server error). The
+// user is identified from the session (Authorization header) on both
+// requests; no userId is invented or sent. No crypto, no manual encoding —
+// SimpleWebAuthnBrowser.startRegistration() handles the whole ceremony and
+// hands back exactly the JSON body /register/verify expects.
 async function acceptBioOffer() {
   document.getElementById('bio-offer-overlay').style.display = 'none';
   try {
-    const challenge = new Uint8Array(32);
-    crypto.getRandomValues(challenge);
-    const userId = new TextEncoder().encode(_pendingBioUsername || 'user');
-    const cred = await navigator.credentials.create({
-      publicKey: {
-        challenge,
-        rp: { name: 'TKE Pro', id: location.hostname },
-        user: { id: userId, name: _pendingBioUsername, displayName: _pendingBioUsername },
-        pubKeyCredParams: [
-          { type: 'public-key', alg: -7 },
-          { type: 'public-key', alg: -257 }
-        ],
-        authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
-        timeout: 60000,
-      }
+    const optRes = await fetch(WEBAUTHN_REGISTER_OPTIONS_URL, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + _pendingBioToken },
     });
-    localStorage.setItem(BIO_CRED,  b64u(cred.rawId));
-    localStorage.setItem(BIO_TOKEN, _pendingBioToken);
-    if(window.showToast) showToast('✅ טביעת אצבע נרשמה!');
-  } catch(e) {
-    // User cancelled or device doesn't support — just continue
+    if (!optRes.ok) { showApp(); return; }
+    const optionsJSON = await optRes.json();
+
+    const regResponse = await SimpleWebAuthnBrowser.startRegistration({ optionsJSON });
+
+    const verifyRes = await fetch(WEBAUTHN_REGISTER_VERIFY_URL, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + _pendingBioToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ response: regResponse }),
+    });
+    const verifyData = await verifyRes.json();
+    if (verifyRes.ok && verifyData.verified === true) {
+      localStorage.setItem(BIO_CRED, verifyData.credentialId);
+      // loginWithBiometric() hasn't been switched to real WebAuthn login yet
+      // (that's the next step) — it still reads BIO_TOKEN, so it's kept in
+      // sync here too until that step lands.
+      localStorage.setItem(BIO_TOKEN, _pendingBioToken);
+      if (window.showToast) showToast('✅ טביעת אצבע נרשמה!');
+    } else if (window.showToast) {
+      showToast('⚠️ הרשמת טביעת אצבע לא הושלמה');
+    }
+  } catch (e) {
+    // ERROR_CEREMONY_ABORTED = WebAuthnAbortService cancelled a previous
+    // in-flight ceremony on our own behalf (e.g. a second call arriving
+    // before the first finished) — nothing user-facing happened, finish
+    // silently. NotAllowedError is NOT reliable proof the user consciously
+    // cancelled — the spec also raises it on timeout and a few other
+    // non-destructive conditions — so it's treated the same
+    // non-destructively (no BIO_CRED change, no session change) but with a
+    // gentle message rather than staying silent. Either way: BIO_CRED is
+    // never touched here, nothing local gets marked as enabled.
+    if (e && e.code === 'ERROR_CEREMONY_ABORTED') {
+      // silent
+    } else if (e && e.name === 'NotAllowedError') {
+      if (window.showToast) showToast('האימות בוטל או שפג הזמן');
+    } else if (window.showToast) {
+      showToast('⚠️ הרשמת טביעת אצבע נכשלה, אפשר לנסות שוב בפעם הבאה');
+    }
   }
   showApp();
 }
