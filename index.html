@@ -424,6 +424,21 @@ function _showSwUpdateBanner(){
     <div id="tools-bio-status" style="font-size:11px;margin-top:7px;color:var(--text3)"></div>
   </div>
 
+  <!-- APP LOCK SETTINGS — a local UI lock, separate from the server session
+       (see reauth endpoints / checkAppLock()). Always shown, but the select
+       is disabled until the server confirms an active WebAuthn credential. -->
+  <div id="app-lock-settings-card" style="background:var(--bg2);border:1px solid rgba(59,130,246,0.35);border-radius:var(--radius);padding:14px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:700;color:#3b82f6;margin-bottom:4px">🔒 נעילת אפליקציה</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:10px">נועלת את המסך אחרי שהאפליקציה הייתה ברקע — פתיחה מחדש בטביעת אצבע. לא משפיע על תוקף ההתחברות מול השרת.</div>
+    <select id="app-lock-timeout-select" onchange="saveAppLockTimeout()" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 12px;font-size:13px;color:var(--text);font-family:Heebo,sans-serif;outline:none">
+      <option value="never">ללא נעילה</option>
+      <option value="15m">15 דקות</option>
+      <option value="1h">שעה</option>
+      <option value="1d">יום</option>
+    </select>
+    <div id="app-lock-timeout-note" style="font-size:11px;margin-top:7px;color:var(--text3)"></div>
+  </div>
+
   <div style="background:var(--bg2);border:1px solid rgba(255,165,0,0.35);border-radius:var(--radius);padding:14px;margin-bottom:16px">
     <div style="font-size:13px;font-weight:700;color:var(--orange);margin-bottom:4px">⬆️ Backfill פרמטרים לענן (זמני)</div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:10px">שלח את כל הפרמטרים המקומיים לענן — לשימוש חד-פעמי בלבד.</div>
@@ -4333,9 +4348,65 @@ async function renderBioToolsCard(){
   }
 }
 
+var APP_LOCK_TIMEOUT_OPTIONS = ['never', '15m', '1h', '1d'];
+
+function saveAppLockTimeout(){
+  var sel = document.getElementById('app-lock-timeout-select');
+  if(!sel) return;
+  var val = APP_LOCK_TIMEOUT_OPTIONS.indexOf(sel.value) !== -1 ? sel.value : 'never';
+  localStorage.setItem(APP_LOCK_TIMEOUT_KEY, val);
+  // Deliberately no other action here — the new value is only read the next
+  // time the app actually goes to background and comes back (see
+  // checkAppLock(), added in a later stage). There's nothing to "start
+  // counting" yet while the app is open and in the foreground right now.
+}
+
+// Same server-authoritative WebAuthn status check as renderBioToolsCard()
+// above (a second small authenticated GET — negligible cost, kept
+// intentionally separate so the two cards don't have to change together).
+// Fail-closed like its sibling: any error (unsupported device, no token,
+// network failure) disables the select rather than guessing it's usable.
+// Does NOT overwrite an already-saved timeout choice just because the
+// credential is currently unavailable — only disables editing; the actual
+// lock-enforcement logic (later stage) re-checks registration on its own
+// before ever showing the lock screen, so a revoked/missing credential
+// can't strand the user behind a lock they can't pass.
+async function renderAppLockSettingsCard(){
+  var card = document.getElementById('app-lock-settings-card');
+  var sel  = document.getElementById('app-lock-timeout-select');
+  var note = document.getElementById('app-lock-timeout-note');
+  if(!card || !sel) return;
+
+  var saved = localStorage.getItem(APP_LOCK_TIMEOUT_KEY);
+  sel.value = APP_LOCK_TIMEOUT_OPTIONS.indexOf(saved) !== -1 ? saved : 'never';
+
+  var supported = window.PublicKeyCredential &&
+    window.SimpleWebAuthnBrowser && SimpleWebAuthnBrowser.browserSupportsWebAuthn();
+  if(!supported){
+    sel.disabled = true;
+    if(note) note.textContent = 'מכשיר זה אינו תומך בטביעת אצבע';
+    return;
+  }
+
+  var token = getToken();
+  if(!token){ sel.disabled = true; if(note) note.textContent = ''; return; }
+
+  try {
+    var res = await fetch(WEBAUTHN_STATUS_URL, { headers: { Authorization: 'Bearer ' + token } });
+    var data = res.ok ? await res.json() : null;
+    var registered = !!data && data.registered === true;
+    sel.disabled = !registered;
+    if(note) note.textContent = registered ? '' : 'יש להפעיל טביעת אצבע למעלה כדי להשתמש בנעילה';
+  } catch {
+    sel.disabled = true;
+    if(note) note.textContent = 'לא ניתן לבדוק זמינות כרגע';
+  }
+}
+
 function renderToolsStats(){
   renderSessionInfo();
   renderBioToolsCard();
+  renderAppLockSettingsCard();
   var statsDiv = document.getElementById('tools-stats');
   if(!statsDiv) return;
   var f = load();
