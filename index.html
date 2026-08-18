@@ -4275,18 +4275,40 @@ async function enableBiometricFromTools(){
     await acceptBioOffer();
   } finally {
     isToolsBioRegisterInProgress = false;
-    renderBioToolsCard(); // hides the card if registration succeeded
+    await renderBioToolsCard(); // re-checks server status — hides the card if registration succeeded
   }
 }
 
-function renderBioToolsCard(){
+// The server is the source of truth for whether the logged-in user has a
+// working (non-revoked) WebAuthn credential — the local BIO_CRED flag alone
+// can't be trusted here, since it's only cleared during an actual login
+// attempt (loginWithBiometric), which never happens for a user who's already
+// holding a valid session. Fail-closed on any error (missing token, network
+// failure, non-OK response): hide the card rather than guess, matching the
+// card's default (display:none) in the HTML. The tab can simply be reopened
+// once connectivity is back.
+async function renderBioToolsCard(){
   var card = document.getElementById('tools-bio-card');
   if(!card) return;
-  var canOffer = !hasBioCred() && window.PublicKeyCredential &&
-    window.SimpleWebAuthnBrowser && SimpleWebAuthnBrowser.browserSupportsWebAuthn();
-  card.style.display = canOffer ? '' : 'none';
+  card.style.display = 'none';
   var status = document.getElementById('tools-bio-status');
   if(status) status.textContent = '';
+
+  var supported = window.PublicKeyCredential &&
+    window.SimpleWebAuthnBrowser && SimpleWebAuthnBrowser.browserSupportsWebAuthn();
+  if(!supported) return;
+
+  var token = getToken();
+  if(!token) return;
+
+  try {
+    var res = await fetch(WEBAUTHN_STATUS_URL, { headers: { Authorization: 'Bearer ' + token } });
+    if(!res.ok) return;
+    var data = await res.json();
+    if(data.registered === false) card.style.display = '';
+  } catch {
+    // network error — stay hidden (fail-closed), see comment above
+  }
 }
 
 function renderToolsStats(){
@@ -6565,6 +6587,7 @@ const WEBAUTHN_REGISTER_OPTIONS_URL = 'https://tke-proxy.guyshtaiger.workers.dev
 const WEBAUTHN_REGISTER_VERIFY_URL  = 'https://tke-proxy.guyshtaiger.workers.dev/auth/webauthn/register/verify';
 const WEBAUTHN_LOGIN_OPTIONS_URL = 'https://tke-proxy.guyshtaiger.workers.dev/auth/webauthn/login/options';
 const WEBAUTHN_LOGIN_VERIFY_URL  = 'https://tke-proxy.guyshtaiger.workers.dev/auth/webauthn/login/verify';
+const WEBAUTHN_STATUS_URL = 'https://tke-proxy.guyshtaiger.workers.dev/auth/webauthn/status';
 const TOKEN_KEY   = 'tke_auth_token';    // localStorage — persists across app restarts (was sessionStorage)
 const TOKEN_EXP_KEY = 'tke_auth_expires'; // localStorage — ISO expiry of the current token, for display only
 const BIO_CRED  = 'tke_bio_cred_id';    // localStorage  — WebAuthn credential id (base64url)
