@@ -6748,6 +6748,103 @@ document.addEventListener('visibilitychange', function(){
   }
 });
 
+function setAppLockStatus(msg){
+  var el = document.getElementById('app-lock-status');
+  if(el) el.textContent = msg;
+}
+
+// The password-login fallback shown on the lock screen. Also the correct
+// response whenever the server tells us the session itself is invalid
+// (see appLockUnlock() below) — App Lock never substitutes for real
+// authentication once the underlying session has actually expired.
+function appLockFallbackToLogin(){
+  hideAppLockScreen();
+  showLogin();
+}
+
+// Real server-verified re-authentication for App Lock — confirms identity
+// via /auth/webauthn/reauth/*, which never creates a session or touches
+// TOKEN_KEY/TOKEN_EXP_KEY (see the worker-side comments on those
+// endpoints). Deliberately does not reuse loginWithBiometric()/BIO_CRED at
+// all: this only ever runs while already holding a valid session.
+var isAppLockUnlockInProgress = false;
+async function appLockUnlock(){
+  if (isAppLockUnlockInProgress) return;
+  if (!(window.SimpleWebAuthnBrowser && SimpleWebAuthnBrowser.browserSupportsWebAuthn())) {
+    setAppLockStatus('מכשיר זה אינו תומך בטביעת אצבע — אפשר להיכנס עם סיסמה');
+    return;
+  }
+  var token = getToken();
+  if (!token) { appLockFallbackToLogin(); return; } // shouldn't happen — the lock screen only shows when a token exists
+
+  isAppLockUnlockInProgress = true;
+  setAppLockStatus('ממתין לאימות...');
+  try {
+    const optRes = await fetch(WEBAUTHN_REAUTH_OPTIONS_URL, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token },
+    });
+    if (optRes.status === 401) {
+      // The server session itself is no longer valid (requireAuth failed)
+      // — not a biometric failure. App Lock can't and shouldn't paper over
+      // that; fall through to real login.
+      appLockFallbackToLogin();
+      return;
+    }
+    if (!optRes.ok) {
+      const errData = await optRes.json().catch(() => ({}));
+      setAppLockStatus(errData.error === 'WEBAUTHN_NOT_REGISTERED'
+        ? 'אין טביעת אצבע רשומה — אפשר להיכנס עם סיסמה'
+        : 'שגיאה — נסה שוב');
+      return;
+    }
+    const optionsJSON = await optRes.json();
+
+    const authResponse = await SimpleWebAuthnBrowser.startAuthentication({ optionsJSON });
+
+    const verifyRes = await fetch(WEBAUTHN_REAUTH_VERIFY_URL, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ response: authResponse }),
+    });
+    if (verifyRes.status === 401) {
+      const verifyData = await verifyRes.json().catch(() => ({}));
+      if (verifyData.error === 'unauthorized') { appLockFallbackToLogin(); return; }
+      // WEBAUTHN_CREDENTIAL_NOT_FOUND / REVOKED / VERIFICATION_FAILED /
+      // WEBAUTHN_CHALLENGE_* — a real biometric-verification failure, not a
+      // session problem. Stay locked, let the user retry or use password.
+      setAppLockStatus('האימות נכשל — נסה שוב או השתמש בסיסמה');
+      return;
+    }
+    if (!verifyRes.ok) { setAppLockStatus('שגיאה — נסה שוב'); return; }
+
+    const verifyData = await verifyRes.json();
+    if (verifyData.verified === true) {
+      hideAppLockScreen();
+      showApp(); // only now — genuinely unlocked, safe to run the sync calls inside showApp()
+    } else {
+      setAppLockStatus('האימות נכשל — נסה שוב או השתמש בסיסמה');
+    }
+  } catch (e) {
+    // Same non-destructive handling as acceptBioOffer()/loginWithBiometric():
+    // ERROR_CEREMONY_ABORTED is silent (nothing user-facing happened),
+    // NotAllowedError gets a gentle message (spec also raises it on
+    // timeout, not only conscious cancellation). Either way: stay locked,
+    // no session/BIO_CRED/registration change. A network error lands here
+    // too (fetch throws) — never opens the app on a failed/unreachable
+    // check, never falls back to an unauthenticated "just let them in".
+    if (e && e.code === 'ERROR_CEREMONY_ABORTED') {
+      // silent
+    } else if (e && e.name === 'NotAllowedError') {
+      setAppLockStatus('האימות בוטל או שפג הזמן');
+    } else {
+      setAppLockStatus('לא ניתן לאמת כרגע — בדוק חיבור ונסה שוב');
+    }
+  } finally {
+    isAppLockUnlockInProgress = false;
+  }
+}
+
 function b64u(buf) {
   return btoa(String.fromCharCode(...new Uint8Array(buf)))
     .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
