@@ -394,6 +394,14 @@ function _showSwUpdateBanner(){
     <div id="tools-session-info" style="font-size:12px;color:var(--text2)"></div>
   </div>
 
+  <!-- BIOMETRIC ENABLE — shown only when logged in without a registered credential -->
+  <div id="tools-bio-card" style="display:none;background:var(--bg2);border:1px solid rgba(59,130,246,0.35);border-radius:var(--radius);padding:14px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:700;color:#3b82f6;margin-bottom:4px">👆 טביעת אצבע</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:10px">הפעל כניסה מהירה עם טביעת אצבע במכשיר זה, בלי לצאת מהאפליקציה.</div>
+    <button onclick="enableBiometricFromTools()" style="background:#3b82f6;border:none;border-radius:var(--radius-sm);padding:9px 16px;color:#fff;font-size:13px;cursor:pointer;font-family:Heebo,sans-serif;font-weight:600;width:100%">הפעל טביעת אצבע</button>
+    <div id="tools-bio-status" style="font-size:11px;margin-top:7px;color:var(--text3)"></div>
+  </div>
+
   <div style="background:var(--bg2);border:1px solid rgba(255,165,0,0.35);border-radius:var(--radius);padding:14px;margin-bottom:16px">
     <div style="font-size:13px;font-weight:700;color:var(--orange);margin-bottom:4px">⬆️ Backfill פרמטרים לענן (זמני)</div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:10px">שלח את כל הפרמטרים המקומיים לענן — לשימוש חד-פעמי בלבד.</div>
@@ -4248,8 +4256,19 @@ function renderSessionInfo(){
   el.textContent = 'תקף עד '+dateStr+' בשעה '+timeStr+' ('+remaining+')';
 }
 
+function renderBioToolsCard(){
+  var card = document.getElementById('tools-bio-card');
+  if(!card) return;
+  var canOffer = !hasBioCred() && window.PublicKeyCredential &&
+    window.SimpleWebAuthnBrowser && SimpleWebAuthnBrowser.browserSupportsWebAuthn();
+  card.style.display = canOffer ? '' : 'none';
+  var status = document.getElementById('tools-bio-status');
+  if(status) status.textContent = '';
+}
+
 function renderToolsStats(){
   renderSessionInfo();
+  renderBioToolsCard();
   var statsDiv = document.getElementById('tools-stats');
   if(!statsDiv) return;
   var f = load();
