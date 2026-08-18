@@ -4256,6 +4256,29 @@ function renderSessionInfo(){
   el.textContent = 'תקף עד '+dateStr+' בשעה '+timeStr+' ('+remaining+')';
 }
 
+// Lets an already-logged-in user (valid session, no BIO_CRED) trigger the
+// same server-verified registration ceremony normally offered right after
+// doLogin(). Reuses acceptBioOffer() as-is — only _pendingBioToken is set
+// here, matching what doLogin() does before showing the bio-offer overlay.
+// _pendingBioUsername is intentionally not set: acceptBioOffer() never
+// reads it.
+var isToolsBioRegisterInProgress = false;
+async function enableBiometricFromTools(){
+  if (isToolsBioRegisterInProgress) return;
+  var token = getToken();
+  if (!token) return; // Tools tab is only reachable while logged in
+  isToolsBioRegisterInProgress = true;
+  var status = document.getElementById('tools-bio-status');
+  if (status) status.textContent = 'ממתין לאימות...';
+  _pendingBioToken = token;
+  try {
+    await acceptBioOffer();
+  } finally {
+    isToolsBioRegisterInProgress = false;
+    renderBioToolsCard(); // hides the card if registration succeeded
+  }
+}
+
 function renderBioToolsCard(){
   var card = document.getElementById('tools-bio-card');
   if(!card) return;
@@ -6727,6 +6750,13 @@ async function acceptBioOffer() {
       // ceremony verified by the server; BIO_CRED alone never grants a
       // session.
       if (window.showToast) showToast('✅ טביעת אצבע נרשמה!');
+    } else if (verifyData && verifyData.error === 'WEBAUTHN_FRESH_AUTH_REQUIRED') {
+      // Registration requires a session created in the last 15 minutes
+      // (server-enforced, see requireFreshAuth() in the worker). This is
+      // the expected path when triggered from the Tools tab long after
+      // login — give a specific, actionable message instead of the
+      // generic failure toast below.
+      if (window.showToast) showToast('כדי להפעיל טביעת אצבע יש להתחבר מחדש עם סיסמה');
     } else if (window.showToast) {
       showToast('⚠️ הרשמת טביעת אצבע לא הושלמה');
     }
