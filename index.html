@@ -6699,6 +6699,54 @@ const BIO_TOKEN = 'tke_bio_token';      // legacy localStorage key — never rea
 // stale relative to them.
 const APP_LOCK_TIMEOUT_KEY     = 'TKE_PRO_APP_LOCK_TIMEOUT';      // 'never' | '15m' | '1h' | '1d'
 const APP_LOCK_LAST_ACTIVE_KEY = 'TKE_PRO_APP_LOCK_LAST_ACTIVE';  // epoch ms (string) of the last time the app went to background
+const APP_LOCK_TIMEOUT_MS = { '15m': 15*60*1000, '1h': 60*60*1000, '1d': 24*60*60*1000 };
+
+// Timer semantics: the clock starts when the app goes to background
+// (visibilitychange -> hidden), not from continuous in-app idle time — this
+// is what the timeout options describe ("15 דקות/שעה/יום") and needs no
+// activity-polling. LAST_ACTIVE is written to localStorage (not just kept
+// in memory) so a full close+reopen — not just a same-tab resume — is
+// measured correctly too.
+function appLockRecordBackgrounded(){
+  localStorage.setItem(APP_LOCK_LAST_ACTIVE_KEY, String(Date.now()));
+}
+
+// Pure — no DOM/localStorage writes. Called from both initAuth() (cold
+// start / full reopen) and the visibilitychange listener (resume from
+// background) so the two paths can never disagree about what "locked"
+// means. Returns false (never lock) if: the setting is 'never'/unset, or
+// the app has never been backgrounded yet (nothing to measure against).
+function appLockShouldShowNow(){
+  var timeout = localStorage.getItem(APP_LOCK_TIMEOUT_KEY);
+  if(!timeout || timeout === 'never' || !APP_LOCK_TIMEOUT_MS[timeout]) return false;
+  var lastActive = parseInt(localStorage.getItem(APP_LOCK_LAST_ACTIVE_KEY), 10);
+  if(!lastActive) return false;
+  return (Date.now() - lastActive) > APP_LOCK_TIMEOUT_MS[timeout];
+}
+
+function showAppLockScreen(){
+  var overlay = document.getElementById('app-lock-overlay');
+  if(overlay) overlay.style.display = 'flex';
+  var status = document.getElementById('app-lock-status');
+  if(status) status.textContent = '';
+}
+
+function hideAppLockScreen(){
+  var overlay = document.getElementById('app-lock-overlay');
+  if(overlay) overlay.style.display = 'none';
+}
+
+// Single listener, both directions handled here so the "when did we last go
+// to background" and "should we lock now" decisions always go through the
+// same two functions above — nothing else writes APP_LOCK_LAST_ACTIVE_KEY or
+// decides to show the lock screen.
+document.addEventListener('visibilitychange', function(){
+  if(document.hidden){
+    appLockRecordBackgrounded();
+  } else if(getToken() && appLockShouldShowNow()){
+    showAppLockScreen();
+  }
+});
 
 function b64u(buf) {
   return btoa(String.fromCharCode(...new Uint8Array(buf)))
@@ -7002,7 +7050,13 @@ async function loginWithBiometric() {
   // anywhere anymore, so removing it changes no authentication behavior.
   // showLogin() decides the biometric button on its own via hasBioCred().
   localStorage.removeItem(BIO_TOKEN);
-  if (getToken()) { showApp(); return; }
+  if (getToken()) {
+    // App Lock check happens before showApp() (not after) — showApp()
+    // triggers syncFaultsFromD1/syncLearningFromD1/flushAllSyncQueues, and a
+    // locked session shouldn't perform any of that until unlocked.
+    if (appLockShouldShowNow()) showAppLockScreen(); else showApp();
+    return;
+  }
   showLogin();
 })();
 </script>
