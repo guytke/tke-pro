@@ -205,6 +205,12 @@ textarea.field-area:focus{border-color:var(--green-border)}
 .bio-offer-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px}
 .bio-offer-sub{font-size:13px;color:var(--text2);margin-bottom:22px;line-height:1.5}
 .bio-offer-btns{display:flex;flex-direction:column;gap:9px}
+/* APP LOCK — solid background (not translucent like bio-offer-overlay):
+   must fully hide app content behind it, not just dim it. z-index above
+   both bio-offer-overlay and login-screen so it always wins if somehow
+   more than one overlay is eligible at once. */
+#app-lock-overlay{position:fixed;inset:0;background:var(--bg);z-index:10001;display:none;align-items:center;justify-content:center;padding:20px}
+#app-lock-status{font-size:12px;color:var(--text3);margin-top:14px;min-height:16px}
 /* LOGIN */
 #login-screen{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
 .login-box{width:100%;max-width:360px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:32px 24px}
@@ -316,6 +322,22 @@ function _showSwUpdateBanner(){
       <button class="login-btn-primary" onclick="acceptBioOffer()">✅ כן, הפעל</button>
       <button class="login-btn-bio" onclick="declineBioOffer()">לא תודה</button>
     </div>
+  </div>
+</div>
+
+<!-- APP LOCK OVERLAY — local UI lock only, does not affect the server
+     session (see appLockUnlock() / /auth/webauthn/reauth/*). Behavior wired
+     in a later stage; this is markup + styling only. -->
+<div id="app-lock-overlay">
+  <div class="bio-offer-box">
+    <div class="bio-offer-icon">🔒</div>
+    <div class="bio-offer-title">האפליקציה נעולה</div>
+    <div class="bio-offer-sub">פתח באמצעות טביעת אצבע כדי להמשיך.</div>
+    <div class="bio-offer-btns">
+      <button class="login-btn-primary" onclick="appLockUnlock()">👆 פתח באמצעות טביעת אצבע</button>
+      <button class="login-btn-bio" onclick="appLockFallbackToLogin()">כניסה מחדש עם סיסמה</button>
+    </div>
+    <div id="app-lock-status"></div>
   </div>
 </div>
 
@@ -6588,11 +6610,24 @@ const WEBAUTHN_REGISTER_VERIFY_URL  = 'https://tke-proxy.guyshtaiger.workers.dev
 const WEBAUTHN_LOGIN_OPTIONS_URL = 'https://tke-proxy.guyshtaiger.workers.dev/auth/webauthn/login/options';
 const WEBAUTHN_LOGIN_VERIFY_URL  = 'https://tke-proxy.guyshtaiger.workers.dev/auth/webauthn/login/verify';
 const WEBAUTHN_STATUS_URL = 'https://tke-proxy.guyshtaiger.workers.dev/auth/webauthn/status';
+const WEBAUTHN_REAUTH_OPTIONS_URL = 'https://tke-proxy.guyshtaiger.workers.dev/auth/webauthn/reauth/options';
+const WEBAUTHN_REAUTH_VERIFY_URL  = 'https://tke-proxy.guyshtaiger.workers.dev/auth/webauthn/reauth/verify';
 const TOKEN_KEY   = 'tke_auth_token';    // localStorage — persists across app restarts (was sessionStorage)
 const TOKEN_EXP_KEY = 'tke_auth_expires'; // localStorage — ISO expiry of the current token, for display only
 const BIO_CRED  = 'tke_bio_cred_id';    // localStorage  — WebAuthn credential id (base64url)
 const BIO_TOKEN = 'tke_bio_token';      // legacy localStorage key — never read/written anymore
                                           // (pre-WebAuthn mechanism); initAuth() purges any leftover value
+
+// App Lock — a purely local UI lock, entirely separate from the server
+// session above (never reads/writes TOKEN_KEY/TOKEN_EXP_KEY). Namespaced
+// with a TKE_PRO_ prefix because tke-pro and tke-technician share the same
+// origin (https://guytke.github.io) and localStorage — an unprefixed key
+// here could collide with FieldPro's own future App Lock. No third
+// "state" key: locked/unlocked is always derived fresh from these two
+// (never persisted on its own), so there's no separate flag that can go
+// stale relative to them.
+const APP_LOCK_TIMEOUT_KEY     = 'TKE_PRO_APP_LOCK_TIMEOUT';      // 'never' | '15m' | '1h' | '1d'
+const APP_LOCK_LAST_ACTIVE_KEY = 'TKE_PRO_APP_LOCK_LAST_ACTIVE';  // epoch ms (string) of the last time the app went to background
 
 function b64u(buf) {
   return btoa(String.fromCharCode(...new Uint8Array(buf)))
